@@ -42,6 +42,7 @@ impl ModelSelection for MinerFirmware {
     async fn get_model(&self, ip: IpAddr) -> Option<MinerModel> {
         match self {
             MinerFirmware::LuxOS => model::get_model_luxos(ip).await,
+            MinerFirmware::BraiinsOS => model::get_model_braiins_os(ip).await,
             _ => None,
         }
     }

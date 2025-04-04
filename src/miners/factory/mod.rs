@@ -12,10 +12,9 @@ use std::{collections::HashSet, error::Error};
 use tokio::task::JoinSet;
 
 use super::commands::MinerCommand;
+use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use traits::{DiscoveryCommands, ModelSelection};
-
-use super::util::{send_rpc_command, send_web_command};
 
 const MAX_WAIT_TIME: Duration = Duration::from_secs(5);
 
@@ -104,10 +103,7 @@ impl MinerFactory {
     pub async fn get_miner(
         self,
         ip: IpAddr,
-    ) -> Result<
-        Option<(Option<MinerMake>, Option<MinerModel>, Option<MinerFirmware>)>,
-        Box<dyn Error>,
-    > {
+    ) -> Result<Option<(Option<MinerModel>, Option<MinerFirmware>)>, Box<dyn Error>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -171,22 +167,16 @@ impl MinerFactory {
         );
 
         match miner_info {
-            Some((make, firmware)) => match (make, firmware) {
-                (Some(make), Some(MinerFirmware::Stock)) => {
-                    let model = make.get_model(ip).await;
-                    Ok(Some((Some(make), model, firmware)))
-                }
-                (_, Some(firmware)) => {
-                    let model = firmware.get_model(ip).await;
-                    match model {
-                        Some(model) => {
-                            Ok(Some((Some(model.get_make()), Some(model), Some(firmware))))
-                        }
-                        None => Ok(Some((None, None, Some(firmware)))),
-                    }
-                }
-                _ => Ok(None),
-            },
+            Some((make, firmware)) => {
+                let model = if let Some(miner_make) = make {
+                    miner_make.get_model(ip).await
+                } else if let Some(miner_firmware) = firmware {
+                    miner_firmware.get_model(ip).await
+                } else {
+                    return Ok(None);
+                };
+                Ok(Some((model, firmware)))
+            }
             None => Ok(None),
         }
     }
@@ -198,19 +188,22 @@ impl MinerFactory {
         }
     }
 
-    pub fn with_search_makes(&mut self, search_makes: Vec<MinerMake>) {
+    pub fn with_search_makes(&mut self, search_makes: Vec<MinerMake>) -> &Self {
         self.search_makes = Some(search_makes);
+        self
     }
-    pub fn with_search_firmwares(&mut self, search_firmwares: Vec<MinerFirmware>) {
+    pub fn with_search_firmwares(&mut self, search_firmwares: Vec<MinerFirmware>) -> &Self {
         self.search_firmwares = Some(search_firmwares);
+        self
     }
-    pub fn add_search_make(&mut self, search_make: MinerMake) {
+    pub fn add_search_make(&mut self, search_make: MinerMake) -> &Self {
         if self.search_makes.is_none() {
             self.search_makes = Some(vec![search_make]);
         }
         self.search_makes.as_mut().unwrap().push(search_make);
+        self
     }
-    pub fn add_search_firmware(&mut self, search_firmware: MinerFirmware) {
+    pub fn add_search_firmware(&mut self, search_firmware: MinerFirmware) -> &Self {
         if self.search_firmwares.is_none() {
             self.search_firmwares = Some(vec![search_firmware]);
         }
@@ -218,23 +211,26 @@ impl MinerFactory {
             .as_mut()
             .unwrap()
             .push(search_firmware);
+        self
     }
-    pub fn remove_search_make(&mut self, search_make: MinerMake) {
+    pub fn remove_search_make(&mut self, search_make: MinerMake) -> &Self {
         if self.search_makes.is_none() {
-            return;
+            return self;
         }
         self.search_makes
             .as_mut()
             .unwrap()
             .retain(|val| *val != search_make);
+        self
     }
-    pub fn remove_search_firmware(&mut self, search_firmware: MinerFirmware) {
+    pub fn remove_search_firmware(&mut self, search_firmware: MinerFirmware) -> &Self {
         if self.search_firmwares.is_none() {
-            return;
+            return self;
         }
         self.search_firmwares
             .as_mut()
             .unwrap()
             .retain(|val| *val != search_firmware);
+        self
     }
 }
