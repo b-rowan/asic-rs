@@ -27,8 +27,8 @@ async fn get_miner_type_from_command(
             let response = send_rpc_command(&ip, command).await?;
             parse_type_from_socket(response)
         }
-        MinerCommand::WebAPI { command, https } => {
-            let response = send_web_command(&ip, command, https).await?;
+        MinerCommand::WebAPI { command } => {
+            let response = send_web_command(&ip, command).await?;
             parse_type_from_web(response)
         }
         _ => None,
@@ -232,5 +232,34 @@ impl MinerFactory {
             .unwrap()
             .retain(|val| *val != search_firmware);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_type_from_socket_whatsminer_2024_09_30() {
+        const RAW_DATA: &str = r#"{"STATUS": [{"STATUS": "S", "Msg": "Device Details"}], "DEVDETAILS": [{"DEVDETAILS": 0, "Name": "SM", "ID": 0, "Driver": "bitmicro", "Kernel": "", "Model": "M30S+_VE40"}, {"DEVDETAILS": 1, "Name": "SM", "ID": 1, "Driver": "bitmicro", "Kernel": "", "Model": "M30S+_VE40"}, {"DEVDETAILS": 2, "Name": "SM", "ID": 2, "Driver": "bitmicro", "Kernel": "", "Model": "M30S+_VE40"}], "id": 1}"#;
+        let parsed_data = serde_json::from_str(RAW_DATA).unwrap();
+        let result = parse_type_from_socket(parsed_data);
+        assert_eq!(
+            result,
+            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
+        )
+    }
+    #[test]
+    fn test_parse_type_from_web_whatsminer_2024_09_30() {
+        let mut headers = HeaderMap::new();
+        headers.insert("location", "https://example.com/".parse().unwrap());
+
+        let response_data = (String::from(""), headers, StatusCode::TEMPORARY_REDIRECT);
+
+        let result = parse_type_from_web(response_data);
+        assert_eq!(
+            result,
+            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
+        )
     }
 }

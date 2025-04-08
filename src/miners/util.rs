@@ -31,7 +31,6 @@ pub(crate) async fn send_rpc_command(
 pub(crate) async fn send_web_command(
     ip: &IpAddr,
     command: &'static str,
-    https: bool,
 ) -> Option<(String, HeaderMap, StatusCode)> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
@@ -39,11 +38,10 @@ pub(crate) async fn send_web_command(
         .gzip(true)
         .build()
         .expect("Failed to initalize client");
-    let scheme = if https { "https" } else { "http" };
     let resp = client
         .execute(
             client
-                .get(format!("{}://{}{}", scheme, ip, command))
+                .get(format!("http://{}{}", ip, command))
                 .build()
                 .expect("Failed to construct request."),
         )

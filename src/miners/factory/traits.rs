@@ -1,4 +1,4 @@
-use super::commands::{HTTP_WEB_ROOT, HTTPS_WEB_ROOT, RPC_DEVDETAILS, RPC_VERSION};
+use super::commands::{HTTP_WEB_ROOT, RPC_DEVDETAILS, RPC_VERSION};
 use super::model;
 use crate::data::device::models::MinerModel;
 use crate::data::device::{MinerFirmware, MinerMake};
@@ -16,7 +16,7 @@ impl DiscoveryCommands for MinerMake {
     fn get_discovery_commands(&self) -> Vec<MinerCommand> {
         match self {
             MinerMake::AntMiner => vec![RPC_VERSION, HTTP_WEB_ROOT],
-            MinerMake::WhatsMiner => vec![RPC_DEVDETAILS, HTTPS_WEB_ROOT],
+            MinerMake::WhatsMiner => vec![RPC_DEVDETAILS, HTTP_WEB_ROOT],
             MinerMake::AvalonMiner => vec![RPC_VERSION, HTTP_WEB_ROOT],
             MinerMake::EPic => vec![HTTP_WEB_ROOT],
             MinerMake::Braiins => vec![RPC_VERSION, HTTP_WEB_ROOT],
