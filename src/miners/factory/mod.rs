@@ -1,4 +1,5 @@
 mod commands;
+mod hardware;
 mod model;
 mod traits;
 
@@ -6,6 +7,7 @@ use futures::future::FutureExt;
 use futures::pin_mut;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
+use serde::Serialize;
 use std::net::IpAddr;
 use std::time::Duration;
 use std::{collections::HashSet, error::Error};
@@ -14,6 +16,8 @@ use tokio::task::JoinSet;
 use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
+use crate::miners::backends::btminer::BTMinerV3Backend;
+use crate::miners::backends::traits::GetMinerData;
 use traits::{DiscoveryCommands, ModelSelection};
 
 const MAX_WAIT_TIME: Duration = Duration::from_secs(5);
@@ -94,6 +98,19 @@ fn parse_type_from_web(
         _ => None,
     }
 }
+fn select_backend(
+    ip: IpAddr,
+    make: Option<MinerMake>,
+    model: Option<MinerModel>,
+    firmware: Option<MinerFirmware>,
+) -> Option<Box<impl GetMinerData>> {
+    match (make, firmware) {
+        (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => Some(Box::new(
+            BTMinerV3Backend::new(ip, model.expect("Could not find model")),
+        )),
+        _ => None,
+    }
+}
 
 pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
@@ -103,7 +120,7 @@ impl MinerFactory {
     pub async fn get_miner(
         self,
         ip: IpAddr,
-    ) -> Result<Option<(Option<MinerModel>, Option<MinerFirmware>)>, Box<dyn Error>> {
+    ) -> Result<Option<Box<impl GetMinerData>>, Box<dyn Error>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -175,7 +192,7 @@ impl MinerFactory {
                 } else {
                     return Ok(None);
                 };
-                Ok(Some((model, firmware)))
+                Ok(select_backend(ip, make, model, firmware))
             }
             None => Ok(None),
         }

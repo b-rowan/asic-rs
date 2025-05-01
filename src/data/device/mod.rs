@@ -52,10 +52,45 @@ pub enum HashAlgorithm {
     Kadena,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceInfo {
     pub make: MinerMake,
     pub model: MinerModel,
+    pub hardware: MinerHardware,
     pub firmware: MinerFirmware,
     pub algo: HashAlgorithm,
+}
+
+impl DeviceInfo {
+    pub(crate) fn new(
+        make: MinerMake,
+        model: MinerModel,
+        firmware: MinerFirmware,
+        algo: HashAlgorithm,
+    ) -> Self {
+        Self {
+            make,
+            hardware: MinerHardware::from(&model),
+            model,
+            firmware,
+            algo,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MinerHardware {
+    pub chips: Option<u16>,
+    pub fans: Option<u8>,
+    pub boards: Option<u8>,
+}
+
+impl From<&MinerModel> for MinerHardware {
+    fn from(model: &MinerModel) -> Self {
+        match model {
+            MinerModel::AntMiner(model_name) => Self::from(model_name),
+            MinerModel::WhatsMiner(model_name) => Self::from(model_name),
+            MinerModel::Braiins(model_name) => Self::from(model_name),
+        }
+    }
 }

@@ -1,10 +1,10 @@
-use serde_json::Error;
+use serde_json;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug)]
 pub enum RPCError {
     StatusCheckFailed(String),
-    DeserializationFailed(Error),
+    DeserializationFailed(serde_json::Error),
     ConnectionFailed,
 }
 
@@ -26,8 +26,13 @@ impl Display for RPCError {
 
 impl std::error::Error for RPCError {}
 
-impl From<Error> for RPCError {
-    fn from(value: Error) -> Self {
+impl From<serde_json::Error> for RPCError {
+    fn from(value: serde_json::Error) -> Self {
         Self::DeserializationFailed(value)
+    }
+}
+impl From<std::io::Error> for RPCError {
+    fn from(_: std::io::Error) -> Self {
+        Self::ConnectionFailed
     }
 }

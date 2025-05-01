@@ -22,6 +22,7 @@ name = "asic-rs"
 version = "0.1.0"
 dependencies = [
  "diqwest",
+ "dyn_serde",
  "futures",
  "macaddr",
  "measurements",
@@ -29,6 +30,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -206,6 +208,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "dyn_serde"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42501063765b768d479b7c61ff59de45bbe9ab37675d13a253647f2d4748a1d6"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -766,6 +777,9 @@ name = "macaddr"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baee0bbc17ce759db233beb01648088061bf678383130602a298e6998eedb2d8"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "md-5"

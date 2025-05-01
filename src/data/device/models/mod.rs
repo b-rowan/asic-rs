@@ -1,8 +1,8 @@
-use std::{fmt::Display, str::FromStr};
-
 use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
 use braiins::BraiinsModel;
+use serde::Serialize;
+use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
 pub mod antminer;
@@ -46,7 +46,7 @@ impl FromStr for BraiinsModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
     WhatsMiner(WhatsMinerModel),

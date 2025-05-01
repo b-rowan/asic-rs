@@ -1,16 +1,19 @@
-use asic_rs::miners::api::rpc::luxminer::LUXMinerRPC;
-use asic_rs::miners::api::rpc::traits::SendRPCCommand;
-use serde_json::Value;
+use asic_rs::get_miner;
+use asic_rs::miners::backends::traits::GetMinerData;
 use std::net::IpAddr;
 
 #[tokio::main]
 async fn main() {
-    let miner_ip = IpAddr::from([192, 168, 86, 34]);
-    let port: u16 = 4028;
+    let miner_ip = IpAddr::from([10, 0, 3, 131]);
 
-    let miner_rpc = LUXMinerRPC::new(miner_ip, Some(port));
-    dbg!(miner_rpc.send_command::<Value>("devdetails").await);
+    let miner = get_miner(miner_ip).await.unwrap();
+    if miner.is_some() {
+        dbg!(miner.unwrap().get_data().await);
+    }
 
-    // let miner_info = get_miner(miner_ip).await.unwrap();
-    // dbg!(miner_info);
+    // let miner = BTMinerV3Backend::new(miner_ip);
+    // dbg!(miner.get_device_info().await.unwrap());
+    // dbg!(miner.get_miner_status_summary().await.unwrap());
+    // dbg!(miner.get_miner_status_pools().await.unwrap());
+    // dbg!(miner.get_miner_status_edevs().await.unwrap());
 }
