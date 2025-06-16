@@ -1,5 +1,4 @@
-use crate::data::device::models::MinerModelFactory;
-use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
+use crate::data::device::MinerModel;
 use crate::miners::factory::model::whatsminer::{get_model_whatsminer_v2, get_model_whatsminer_v3};
 use crate::miners::util;
 use diqwest::WithDigestAuth;
@@ -19,9 +18,7 @@ pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
             let json_data = data.json::<serde_json::Value>().await.ok()?;
             let model = json_data["minertype"].as_str().unwrap_or("").to_uppercase();
 
-            MinerModelFactory::new()
-                .with_make(MinerMake::AntMiner)
-                .parse_model(&model)
+            Some(MinerModel::AntMiner(None).parse_model_str(&model))
         }
         None => None,
     }
@@ -75,9 +72,7 @@ pub(crate) async fn get_model_luxos(ip: IpAddr) -> Option<MinerModel> {
             }
             let model = model.unwrap().to_uppercase();
 
-            MinerModelFactory::new()
-                .with_firmware(MinerFirmware::LuxOS)
-                .parse_model(&model)
+            Some(MinerModel::AntMiner(None).parse_model_str(&model))
         }
         None => None,
     }
@@ -97,9 +92,7 @@ pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Option<MinerModel> {
                 .replace("BITMAIN ", "")
                 .replace("S19XP", "S19 XP");
 
-            MinerModelFactory::new()
-                .with_firmware(MinerFirmware::BraiinsOS)
-                .parse_model(&model)
+            Some(MinerModel::AntMiner(None).parse_model_str(&model))
         }
         None => None,
     }

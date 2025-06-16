@@ -24,7 +24,7 @@ const MAX_WAIT_TIME: Duration = Duration::from_secs(5);
 async fn get_miner_type_from_command(
     ip: IpAddr,
     command: MinerCommand,
-) -> Option<(Option<MinerMake>, Option<MinerFirmware>)> {
+) -> Option<(Option<MinerModel>, Option<MinerFirmware>)> {
     match command {
         MinerCommand::RPC { command } => {
             let response = send_rpc_command(&ip, command).await?;
@@ -40,7 +40,7 @@ async fn get_miner_type_from_command(
 
 fn parse_type_from_socket(
     response: serde_json::Value,
-) -> Option<(Option<MinerMake>, Option<MinerFirmware>)> {
+) -> Option<(Option<MinerModel>, Option<MinerFirmware>)> {
     let json_string = response.to_string().to_uppercase();
 
     match () {
@@ -48,15 +48,17 @@ fn parse_type_from_socket(
             Some((None, Some(MinerFirmware::BraiinsOS)))
         }
         _ if json_string.contains("LUXMINER") => Some((None, Some(MinerFirmware::LuxOS))),
-        _ if json_string.contains("BITMICRO") || json_string.contains("BTMINER") => {
-            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
-        }
+        _ if json_string.contains("BITMICRO") || json_string.contains("BTMINER") => Some((
+            Some(MinerModel::WhatsMiner(None)),
+            Some(MinerFirmware::Stock),
+        )),
         _ if json_string.contains("ANTMINER") && !json_string.contains("DEVDETAILS") => {
-            Some((Some(MinerMake::AntMiner), Some(MinerFirmware::Stock)))
+            Some((Some(MinerModel::AntMiner(None)), Some(MinerFirmware::Stock)))
         }
-        _ if json_string.contains("AVALON") => {
-            Some((Some(MinerMake::AvalonMiner), Some(MinerFirmware::Stock)))
-        }
+        _ if json_string.contains("AVALON") => Some((
+            Some(MinerModel::AvalonMiner(None)),
+            Some(MinerFirmware::Stock),
+        )),
         _ if json_string.contains("VNISH") => Some((None, Some(MinerFirmware::VNish))),
         _ => None,
     }
@@ -64,8 +66,9 @@ fn parse_type_from_socket(
 
 fn parse_type_from_web(
     response: (String, HeaderMap, StatusCode),
-) -> Option<(Option<MinerMake>, Option<MinerFirmware>)> {
+) -> Option<(Option<MinerModel>, Option<MinerFirmware>)> {
     let (resp_text, resp_headers, resp_status) = response;
+
     let auth_header = match resp_headers.get("www-authenticate") {
         Some(header) => header.to_str().unwrap(),
         None => "",
@@ -77,34 +80,37 @@ fn parse_type_from_web(
 
     match () {
         _ if resp_status == 401 && auth_header.contains("realm=\"antMiner") => {
-            Some((Some(MinerMake::AntMiner), Some(MinerFirmware::Stock)))
+            Some((Some(MinerModel::AntMiner(None)), Some(MinerFirmware::Stock)))
         }
         _ if resp_text.contains("Braiins OS") => Some((None, Some(MinerFirmware::BraiinsOS))),
         _ if resp_text.contains("Luxor Firmware") => Some((None, Some(MinerFirmware::LuxOS))),
         _ if resp_text.contains("AxeOS") => {
-            Some((Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)))
+            Some((Some(MinerModel::BitAxe(None)), Some(MinerFirmware::Stock)))
         }
         _ if resp_text.contains("Miner Web Dashboard") => Some((None, Some(MinerFirmware::EPic))),
-        _ if resp_text.contains("Avalon") => {
-            Some((Some(MinerMake::AvalonMiner), Some(MinerFirmware::Stock)))
-        }
+        _ if resp_text.contains("Avalon") => Some((
+            Some(MinerModel::AvalonMiner(None)),
+            Some(MinerFirmware::Stock),
+        )),
         _ if resp_text.contains("AnthillOS") => Some((None, Some(MinerFirmware::VNish))),
         _ if redirect_header.contains("https://") && resp_status == 307
             || resp_text.contains("/cgi-bin/luci") =>
         {
-            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
+            Some((
+                Some(MinerModel::WhatsMiner(None)),
+                Some(MinerFirmware::Stock),
+            ))
         }
         _ => None,
     }
 }
 fn select_backend(
     ip: IpAddr,
-    make: Option<MinerMake>,
     model: Option<MinerModel>,
     firmware: Option<MinerFirmware>,
 ) -> Option<Box<impl GetMinerData>> {
-    match (make, firmware) {
-        (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => Some(Box::new(
+    match (model, firmware) {
+        (Some(MinerModel::WhatsMiner(_)), Some(MinerFirmware::Stock)) => Some(Box::new(
             BTMinerV3Backend::new(ip, model.expect("Could not find model")),
         )),
         _ => None,
@@ -183,15 +189,15 @@ impl MinerFactory {
         );
 
         match miner_info {
-            Some((make, firmware)) => {
-                let model = if let Some(miner_make) = make {
-                    miner_make.get_model(ip).await
+            Some((model, firmware)) => {
+                let model = if let Some(miner_model) = model {
+                    miner_model.get_model(ip).await
                 } else if let Some(miner_firmware) = firmware {
                     miner_firmware.get_model(ip).await
                 } else {
                     return Ok(None);
                 };
-                Ok(select_backend(ip, make, model, firmware))
+                Ok(select_backend(ip, model, firmware))
             }
             None => Ok(None),
         }
@@ -262,7 +268,10 @@ mod tests {
         let result = parse_type_from_socket(parsed_data);
         assert_eq!(
             result,
-            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
+            Some((
+                Some(MinerModel::WhatsMiner(None)),
+                Some(MinerFirmware::Stock)
+            ))
         )
     }
     #[test]
@@ -275,7 +284,10 @@ mod tests {
         let result = parse_type_from_web(response_data);
         assert_eq!(
             result,
-            Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
+            Some((
+                Some(MinerModel::WhatsMiner(None)),
+                Some(MinerFirmware::Stock)
+            ))
         )
     }
 }

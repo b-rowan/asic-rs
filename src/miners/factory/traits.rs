@@ -47,12 +47,11 @@ impl ModelSelection for MinerFirmware {
         }
     }
 }
-
-impl ModelSelection for MinerMake {
+impl ModelSelection for MinerModel {
     async fn get_model(&self, ip: IpAddr) -> Option<MinerModel> {
         match self {
-            MinerMake::AntMiner => model::get_model_antminer(ip).await,
-            MinerMake::WhatsMiner => model::get_model_whatsminer(ip).await,
+            MinerModel::AntMiner(_) => model::get_model_antminer(ip).await,
+            MinerModel::WhatsMiner(_) => model::get_model_whatsminer(ip).await,
             _ => None,
         }
     }

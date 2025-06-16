@@ -54,7 +54,6 @@ pub enum HashAlgorithm {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceInfo {
-    pub make: MinerMake,
     pub model: MinerModel,
     pub hardware: MinerHardware,
     pub firmware: MinerFirmware,
@@ -62,14 +61,8 @@ pub struct DeviceInfo {
 }
 
 impl DeviceInfo {
-    pub(crate) fn new(
-        make: MinerMake,
-        model: MinerModel,
-        firmware: MinerFirmware,
-        algo: HashAlgorithm,
-    ) -> Self {
+    pub(crate) fn new(model: MinerModel, firmware: MinerFirmware, algo: HashAlgorithm) -> Self {
         Self {
-            make,
             hardware: MinerHardware::from(&model),
             model,
             firmware,
@@ -88,9 +81,14 @@ pub struct MinerHardware {
 impl From<&MinerModel> for MinerHardware {
     fn from(model: &MinerModel) -> Self {
         match model {
-            MinerModel::AntMiner(model_name) => Self::from(model_name),
-            MinerModel::WhatsMiner(model_name) => Self::from(model_name),
-            MinerModel::Braiins(model_name) => Self::from(model_name),
+            MinerModel::AntMiner(Some(model_name)) => Self::from(model_name),
+            MinerModel::WhatsMiner(Some(model_name)) => Self::from(model_name),
+            MinerModel::Braiins(Some(model_name)) => Self::from(model_name),
+            _ => Self {
+                chips: None,
+                fans: None,
+                boards: None,
+            },
         }
     }
 }

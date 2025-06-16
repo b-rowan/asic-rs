@@ -4,12 +4,14 @@ use std::net::IpAddr;
 
 #[tokio::main]
 async fn main() {
-    let miner_ip = IpAddr::from([10, 0, 3, 131]);
+    let miner_ip = IpAddr::from([10, 0, 1, 82]);
 
     let miner = get_miner(miner_ip).await.unwrap();
-    if miner.is_some() {
-        dbg!(miner.unwrap().get_data().await);
-    }
+    dbg!(&miner.unwrap().get_data().await);
+
+    // if miner.is_some() {
+    //     dbg!(miner.unwrap().get_data().await);
+    // }
 
     // let miner = BTMinerV3Backend::new(miner_ip);
     // dbg!(miner.get_device_info().await.unwrap());

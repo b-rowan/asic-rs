@@ -1,5 +1,4 @@
-use crate::data::device::models::MinerModelFactory;
-use crate::data::device::{MinerMake, MinerModel};
+use crate::data::device::MinerModel;
 use crate::miners::api::rpc::{btminer::BTMinerV3RPC, traits::SendRPCCommand};
 use crate::miners::util;
 use serde_json::Value;
@@ -17,9 +16,7 @@ pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
             model.pop();
             model.push('0');
 
-            MinerModelFactory::new()
-                .with_make(MinerMake::WhatsMiner)
-                .parse_model(&model)
+            Some(MinerModel::WhatsMiner(None).parse_model_str(&model))
         }
         None => None,
     }
@@ -43,9 +40,7 @@ pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Option<MinerModel> {
             model.pop();
             model.push('0');
 
-            MinerModelFactory::new()
-                .with_make(MinerMake::WhatsMiner)
-                .parse_model(&model)
+            Some(MinerModel::WhatsMiner(None).parse_model_str(&model))
         }
         Err(_) => None,
     }

@@ -1,6 +1,6 @@
 use super::traits::GetMinerData;
 use crate::data::board::BoardData;
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
+use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::miner::MinerData;
@@ -27,12 +27,7 @@ impl BTMinerV3Backend {
         BTMinerV3Backend {
             ip,
             rpc: BTMinerV3RPC::new(ip, None),
-            device_info: DeviceInfo::new(
-                MinerMake::WhatsMiner,
-                model,
-                MinerFirmware::Stock,
-                HashAlgorithm::SHA256,
-            ),
+            device_info: DeviceInfo::new(model, MinerFirmware::Stock, HashAlgorithm::SHA256),
         }
     }
     pub async fn get_device_info(&self) -> Result<GetDeviceInfo, RPCError> {

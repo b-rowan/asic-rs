@@ -1,11 +1,14 @@
-use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
+use avalonminer::AvalonMinerModel;
+use bitaxe::BitAxeModel;
 use braiins::BraiinsModel;
 use serde::Serialize;
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
 pub mod antminer;
+pub mod avalonminer;
+pub mod bitaxe;
 pub mod braiins;
 pub mod whatsminer;
 
@@ -36,7 +39,6 @@ impl FromStr for AntMinerModel {
             .map_err(|_| ModelParseError)
     }
 }
-
 impl FromStr for BraiinsModel {
     type Err = ModelParseError;
 
@@ -45,72 +47,42 @@ impl FromStr for BraiinsModel {
             .map_err(|_| ModelParseError)
     }
 }
+impl FromStr for AvalonMinerModel {
+    type Err = ModelParseError;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelParseError)
+    }
+}
+impl FromStr for BitAxeModel {
+    type Err = ModelParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelParseError)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Copy)]
 pub enum MinerModel {
-    AntMiner(AntMinerModel),
-    WhatsMiner(WhatsMinerModel),
-    Braiins(BraiinsModel),
+    AntMiner(Option<AntMinerModel>),
+    WhatsMiner(Option<WhatsMinerModel>),
+    Braiins(Option<BraiinsModel>),
+    AvalonMiner(Option<AvalonMinerModel>),
+    BitAxe(Option<BitAxeModel>),
 }
 
-pub(crate) struct MinerModelFactory {
-    make: Option<MinerMake>,
-    firmware: Option<MinerFirmware>,
-}
-
-impl MinerModelFactory {
-    pub fn new() -> Self {
-        MinerModelFactory {
-            make: None,
-            firmware: None,
-        }
-    }
-
-    pub(crate) fn with_make(&mut self, make: MinerMake) -> &Self {
-        self.make = Some(make);
-        self
-    }
-    pub(crate) fn with_firmware(&mut self, firmware: MinerFirmware) -> &Self {
-        self.firmware = Some(firmware);
-        self
-    }
-
-    pub(crate) fn parse_model(&self, model_str: &str) -> Option<MinerModel> {
-        match self.make {
-            Some(MinerMake::AntMiner) => {
-                let model = AntMinerModel::from_str(model_str).ok();
-                match model {
-                    Some(model) => Some(MinerModel::AntMiner(model)),
-                    None => None,
-                }
+impl MinerModel {
+    pub fn parse_model_str(self: Self, s: &str) -> Self {
+        match self {
+            MinerModel::AntMiner(_) => MinerModel::AntMiner(AntMinerModel::from_str(s).ok()),
+            MinerModel::WhatsMiner(_) => MinerModel::WhatsMiner(WhatsMinerModel::from_str(s).ok()),
+            MinerModel::Braiins(_) => MinerModel::Braiins(BraiinsModel::from_str(s).ok()),
+            MinerModel::AvalonMiner(_) => {
+                MinerModel::AvalonMiner(AvalonMinerModel::from_str(s).ok())
             }
-            Some(MinerMake::WhatsMiner) => {
-                let model = WhatsMinerModel::from_str(model_str).ok();
-                match model {
-                    Some(model) => Some(MinerModel::WhatsMiner(model)),
-                    None => None,
-                }
-            }
-            None => match self.firmware {
-                Some(MinerFirmware::BraiinsOS) => {
-                    if let Ok(model) = AntMinerModel::from_str(model_str) {
-                        return Some(MinerModel::AntMiner(model));
-                    }
-                    if let Ok(model) = BraiinsModel::from_str(model_str) {
-                        return Some(MinerModel::Braiins(model));
-                    }
-                    None
-                }
-                Some(MinerFirmware::LuxOS) => {
-                    if let Ok(model) = AntMinerModel::from_str(model_str) {
-                        return Some(MinerModel::AntMiner(model));
-                    }
-                    None
-                }
-                None => None,
-                _ => None,
-            },
-            _ => None,
+            MinerModel::BitAxe(_) => MinerModel::BitAxe(BitAxeModel::from_str(s).ok()),
         }
     }
 }
