@@ -1824,11 +1824,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
 impl From<&BitaxeModel> for MinerHardware {
     fn from(model: &BitaxeModel) -> Self {
         match model {
-           _ => Self {
+            _ => Self {
                 chips: Some(1),
                 fans: Some(1),
                 boards: Some(1),
-            }
+            },
         }
     }
 }

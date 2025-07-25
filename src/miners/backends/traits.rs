@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::data::miner::MinerData;
 use crate::miners::data::{DataField, DataLocation};
+use async_trait::async_trait;
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]

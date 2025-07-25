@@ -73,12 +73,12 @@ impl EspWebApi {
                         match response.json().await {
                             Ok(json_data) => return Ok(json_data),
                             Err(e) => {
-                                if  attempt == self.retries {
+                                if attempt == self.retries {
                                     return Err(ESPMinerError::ParseError(e.to_string()));
                                 }
                             }
                         }
-                    } else if  attempt == self.retries {
+                    } else if attempt == self.retries {
                         return Err(ESPMinerError::HttpError(response.status().as_u16()));
                     }
                 }

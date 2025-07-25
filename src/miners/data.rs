@@ -7,34 +7,62 @@ use strum::{EnumIter, IntoEnumIterator};
 /// Represents the individual pieces of data that can be queried from a miner device.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]
 pub enum DataField {
+    /// Schema version of the miner data.
+    SchemaVersion,
+    /// Timestamp of when the data was collected.
+    Timestamp,
+    /// IP address of the miner.
+    Ip,
     /// MAC address of the miner.
     Mac,
+    /// Information about the miner's device.
+    DeviceInfo,
+    /// Serial number of the miner.
+    SerialNumber,
+    /// Hostname assigned to the miner.
+    Hostname,
     /// Version of the miner's API.
     ApiVersion,
     /// Firmware version of the miner.
-    FwVersion,
-    /// Hostname assigned to the miner.
-    Hostname,
-    /// Current hashrate reported by the miner.
-    Hashrate,
-    /// Expected hashrate based on configuration.
-    ExpectedHashrate,
+    FirmwareVersion,
+    /// Control board version of the miner.
+    ControlBoardVersion,
+    /// Expected number of hashboards.
+    ExpectedHashboards,
     /// Details about the hashboards (e.g., temperatures, chips, etc.).
     Hashboards,
-    /// Current power consumption in watts.
-    Wattage,
+    /// Current hashrate reported by the miner.
+    Hashrate,
+    /// Expected number of chips across all hashboards.
+    ExpectedChips,
+    /// Total number of chips detected.
+    TotalChips,
+    /// Expected number of fans.
+    ExpectedFans,
     /// Fan speed or fan configuration.
     Fans,
-    /// Uptime in seconds or another unit.
+    /// PSU fan speed or configuration.
+    PsuFans,
+    /// Average temperature reported by the miner.
+    AverageTemperature,
+    /// Fluid temperature reported by the miner.
+    FluidTemperature,
+    /// Current power consumption in watts.
+    Wattage,
+    /// Configured power limit in watts.
+    WattageLimit,
+    /// Efficiency of the miner (e.g., J/TH).
+    Efficiency,
+    /// Whether the fault or alert light is flashing.
+    LightFlashing,
+    /// Messages reported by the miner (e.g., errors or warnings).
+    Messages,
+    /// Uptime in seconds.
     Uptime,
-    /// Pool configuration (addresses, statuses, etc.).
-    Pools,
-    /// Reported errors from the miner.
-    Errors,
-    /// Status of the fault or alert light.
-    FaultLight,
     /// Whether the miner is currently hashing.
     IsMining,
+    /// Pool configuration (addresses, statuses, etc.).
+    Pools,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,
@@ -91,7 +119,8 @@ impl<'a> DataCollector<'a> {
 
     /// Collects **all** available fields from the miner and returns a map of results.
     pub async fn collect_all(&mut self) -> HashMap<DataField, &Value> {
-        self.collect(DataField::iter().collect::<Vec<_>>().as_slice()).await
+        self.collect(DataField::iter().collect::<Vec<_>>().as_slice())
+            .await
     }
 
     /// Collects only the specified fields from the miner and returns a map of results.
