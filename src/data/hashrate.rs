@@ -16,8 +16,11 @@ pub enum HashRateUnit {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HashRate {
+    /// The current amount of hashes being computed
     pub value: f64,
+    /// The unit of the hashes in value
     pub unit: HashRateUnit,
+    /// The algorithm of the computed hashes
     pub algo: String,
 }
 

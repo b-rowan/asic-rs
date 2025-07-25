@@ -20,9 +20,14 @@ impl From<String> for PoolScheme {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolURL {
+    /// The scheme being used to connect to this pool
     pub scheme: PoolScheme,
+    /// The public host of the pool
     pub host: String,
+    /// The port being used to connect to the pool
     pub port: u16,
+    /// The public key for this pool
+    /// Only used for Stratum V2 pools
     pub pubkey: Option<String>,
 }
 
