@@ -18,6 +18,7 @@ use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::btminer::BTMinerV3Backend;
 use crate::miners::backends::espminer::ESPMiner;
 use crate::miners::backends::traits::GetMinerData;
+use crate::miners::factory::traits::VersionSelection;
 use traits::{DiscoveryCommands, ModelSelection};
 
 const MAX_WAIT_TIME: Duration = Duration::from_secs(5);
@@ -103,13 +104,14 @@ fn select_backend(
     make: Option<MinerMake>,
     model: Option<MinerModel>,
     firmware: Option<MinerFirmware>,
+    version: Option<semver::Version>,
 ) -> Option<Box<dyn GetMinerData>> {
     match (make, firmware) {
         (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => Some(Box::new(
             BTMinerV3Backend::new(ip, model.expect("Could not find model")),
         )),
         (Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)) => {
-            Some(Box::new(ESPMiner::new(ip, model?, firmware?)))
+            Some(ESPMiner::new(ip, model?, firmware?, version?))
         }
         _ => None,
     }
@@ -195,7 +197,15 @@ impl MinerFactory {
                 } else {
                     return Ok(None);
                 };
-                Ok(select_backend(ip, make, model, firmware))
+                let version = if let Some(miner_make) = make {
+                    miner_make.get_version(ip).await
+                } else if let Some(miner_firmware) = firmware {
+                    miner_firmware.get_version(ip).await
+                } else {
+                    return Ok(None);
+                };
+
+                Ok(select_backend(ip, make, model, firmware, version))
             }
             None => Ok(None),
         }

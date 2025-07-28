@@ -81,6 +81,18 @@ pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> Option<MinerModel> {
         _ => None,
     }
 }
+pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
+    let raw_json = util::send_web_command(&ip, "/api/system/info")
+        .await
+        .unwrap()
+        .0;
+    let response: serde_json::Value = serde_json::from_str(&raw_json).ok()?;
+
+    match response["version"].as_str() {
+        Some(v) => Some(semver::Version::parse(v).unwrap()),
+        _ => None,
+    }
+}
 
 pub(crate) async fn get_model_luxos(ip: IpAddr) -> Option<MinerModel> {
     let response = util::send_rpc_command(&ip, "version").await;

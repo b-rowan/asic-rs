@@ -1,6 +1,6 @@
 use super::{MinerFirmware, MinerMake};
-use bitaxe::BitaxeModel;
 use antminer::AntMinerModel;
+use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use serde::Serialize;
 use std::{fmt::Display, str::FromStr};

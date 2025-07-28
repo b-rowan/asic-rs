@@ -3,6 +3,7 @@ use super::model;
 use crate::data::device::models::MinerModel;
 use crate::data::device::{MinerFirmware, MinerMake};
 use crate::miners::commands::MinerCommand;
+use semver;
 use std::net::IpAddr;
 
 pub(crate) trait DiscoveryCommands {
@@ -10,6 +11,10 @@ pub(crate) trait DiscoveryCommands {
 }
 pub(crate) trait ModelSelection {
     async fn get_model(&self, ip: IpAddr) -> Option<MinerModel>;
+}
+
+pub(crate) trait VersionSelection {
+    async fn get_version(&self, ip: IpAddr) -> Option<semver::Version>;
 }
 
 impl DiscoveryCommands for MinerMake {
@@ -47,6 +52,13 @@ impl ModelSelection for MinerFirmware {
         }
     }
 }
+impl VersionSelection for MinerFirmware {
+    async fn get_version(&self, _ip: IpAddr) -> Option<semver::Version> {
+        match self {
+            _ => None,
+        }
+    }
+}
 
 impl ModelSelection for MinerMake {
     async fn get_model(&self, ip: IpAddr) -> Option<MinerModel> {
@@ -54,6 +66,14 @@ impl ModelSelection for MinerMake {
             MinerMake::AntMiner => model::get_model_antminer(ip).await,
             MinerMake::WhatsMiner => model::get_model_whatsminer(ip).await,
             MinerMake::BitAxe => model::get_model_bitaxe(ip).await,
+            _ => None,
+        }
+    }
+}
+impl VersionSelection for MinerMake {
+    async fn get_version(&self, ip: IpAddr) -> Option<semver::Version> {
+        match self {
+            MinerMake::BitAxe => model::get_version_bitaxe(ip).await,
             _ => None,
         }
     }
