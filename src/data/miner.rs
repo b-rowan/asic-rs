@@ -1,14 +1,17 @@
+use crate::data::serialize::serialize_macaddr;
+use crate::data::serialize::serialize_power;
+use crate::data::serialize::serialize_temperature;
 use std::{net::IpAddr, time::Duration};
-
-use macaddr::MacAddr;
-use measurements::{Power, Temperature};
 
 use super::{
     board::BoardData, device::DeviceInfo, fan::FanData, hashrate::HashRate, message::MinerMessage,
     pool::PoolData,
 };
+use macaddr::MacAddr;
+use measurements::{Power, Temperature};
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
     pub schema_version: String,
@@ -17,6 +20,8 @@ pub struct MinerData {
     /// The IP address of the miner this data is for
     pub ip: IpAddr,
     /// The MAC address of the miner this data is for
+    #[serde(serialize_with = "serialize_macaddr")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mac: Option<MacAddr>,
     /// Hardware information about this miner
     pub device_info: DeviceInfo,
@@ -47,12 +52,20 @@ pub struct MinerData {
     /// The current PDU fan information for the miner
     pub psu_fans: Vec<FanData>,
     /// The average temperature across all chips in the miner
+    #[serde(serialize_with = "serialize_temperature")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub average_temperature: Option<Temperature>,
     /// The environment temperature of the miner, such as air temperature or immersion fluid temperature
+    #[serde(serialize_with = "serialize_temperature")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fluid_temperature: Option<Temperature>,
     /// The current power consumption of the miner
+    #[serde(serialize_with = "serialize_power")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wattage: Option<Power>,
     /// The current power limit or power target of the miner
+    #[serde(serialize_with = "serialize_power")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wattage_limit: Option<Power>,
     /// The current efficiency in W/TH/s (J/TH) of the miner
     pub efficiency: Option<f64>,
