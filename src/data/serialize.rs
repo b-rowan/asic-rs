@@ -8,10 +8,10 @@ pub(crate) fn serialize_angular_velocity<S>(
 where
     S: serde::Serializer,
 {
-    if let Some(some) = v {
-        return serializer.serialize_f64(some.as_rpm());
+    match v {
+        Some(angular_velocity) => serializer.serialize_f64(angular_velocity.as_rpm()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize angular velocity");
 }
 
 pub(crate) fn serialize_temperature<S>(
@@ -21,20 +21,20 @@ pub(crate) fn serialize_temperature<S>(
 where
     S: serde::Serializer,
 {
-    if let Some(some) = t {
-        return serializer.serialize_f64(some.as_celsius());
+    match t {
+        Some(temperature) => serializer.serialize_f64(temperature.as_celsius()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize temperature");
 }
 
 pub(crate) fn serialize_power<S>(p: &Option<Power>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    if let Some(some) = p {
-        return serializer.serialize_f64(some.as_watts());
+    match p {
+        Some(power) => serializer.serialize_f64(power.as_watts()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize power");
 }
 
 pub(crate) fn serialize_frequency<S>(
@@ -44,27 +44,27 @@ pub(crate) fn serialize_frequency<S>(
 where
     S: serde::Serializer,
 {
-    if let Some(some) = f {
-        return serializer.serialize_f64(some.as_megahertz());
+    match f {
+        Some(frequency) => serializer.serialize_f64(frequency.as_megahertz()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize frequency");
 }
 pub(crate) fn serialize_voltage<S>(v: &Option<Voltage>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    if let Some(some) = v {
-        return serializer.serialize_f64(some.as_volts());
+    match v {
+        Some(voltage) => serializer.serialize_f64(voltage.as_volts()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize voltage");
 }
 
-pub(crate) fn serialize_macaddr<S>(v: &Option<MacAddr>, serializer: S) -> Result<S::Ok, S::Error>
+pub(crate) fn serialize_macaddr<S>(m: &Option<MacAddr>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    if let Some(some) = v {
-        return serializer.serialize_str(&some.to_string());
+    match m {
+        Some(macaddr) => serializer.serialize_str(&macaddr.to_string()),
+        None => serializer.serialize_none(),
     }
-    panic!("Cannot serialize voltage");
 }
