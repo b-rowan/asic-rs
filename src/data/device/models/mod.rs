@@ -49,6 +49,7 @@ impl FromStr for BraiinsModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
     WhatsMiner(WhatsMinerModel),
