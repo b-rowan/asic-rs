@@ -307,7 +307,7 @@ impl<'de> Deserialize<'de> for GetDeviceInfo {
         value["msg"]["power"]["fanspeed"].as_f64().map(|f| {
             psu_fans.push(FanData {
                 position: 0,
-                rpm: AngularVelocity::from_rpm(f),
+                rpm: Some(AngularVelocity::from_rpm(f)),
             })
         });
 
@@ -389,7 +389,7 @@ impl<'de> Deserialize<'de> for GetMinerStatusSummary {
             if fan.is_some() {
                 fans.push(FanData {
                     position: idx as i16,
-                    rpm: AngularVelocity::from_rpm(fan.unwrap()),
+                    rpm: Some(AngularVelocity::from_rpm(fan.unwrap())),
                 });
             }
         }

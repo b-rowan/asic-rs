@@ -1,11 +1,13 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum MessageSeverity {
     Error,
     Warning,
     Info,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct MinerMessage {
     /// The time this message was generated or occurred
     pub timestamp: u32,

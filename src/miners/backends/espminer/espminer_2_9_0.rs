@@ -85,7 +85,7 @@ impl GetMinerData for ESPMiner290 {
         let fans = data.extract_map_or::<f64, _>(DataField::Fans, Vec::new(), |f| {
             vec![FanData {
                 position: 0,
-                rpm: AngularVelocity::from_rpm(f),
+                rpm: Some(AngularVelocity::from_rpm(f)),
             }]
         });
 
