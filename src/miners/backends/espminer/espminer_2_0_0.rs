@@ -21,16 +21,16 @@ use crate::miners::data::{
     get_by_pointer,
 };
 
-pub struct ESPMiner {
+pub struct ESPMiner200 {
     model: MinerModel,
     web: EspWebApi,
     ip: IpAddr,
     firmware: MinerFirmware,
 }
 
-impl ESPMiner {
+impl ESPMiner200 {
     pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
-        ESPMiner {
+        ESPMiner200 {
             model,
             web: EspWebApi::new(ip.to_string(), 80),
             ip,
@@ -40,7 +40,7 @@ impl ESPMiner {
 }
 
 #[async_trait]
-impl GetMinerData for ESPMiner {
+impl GetMinerData for ESPMiner200 {
     async fn get_data(&self) -> MinerData {
         let mut collector = DataCollector::new(self, &self.web);
         let data = collector.collect_all().await;
@@ -293,7 +293,6 @@ impl GetMinerData for ESPMiner {
 
     fn get_locations(&self, data_field: DataField) -> &'static [DataLocation] {
         const SYSTEM_INFO_CMD: &str = "system/info";
-        const ASIC_INFO_CMD: &str = "system/asic";
 
         match data_field {
             DataField::Mac => &[(
@@ -311,6 +310,13 @@ impl GetMinerData for ESPMiner {
                 },
             )],
             DataField::FirmwareVersion => &[(
+                SYSTEM_INFO_CMD,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("version"),
+                },
+            )],
+            DataField::ApiVersion => &[(
                 SYSTEM_INFO_CMD,
                 DataExtractor {
                     func: get_by_key,
@@ -338,22 +344,13 @@ impl GetMinerData for ESPMiner {
                     key: Some("hashRate"),
                 },
             )],
-            DataField::TotalChips => &[
-                (
-                    SYSTEM_INFO_CMD,
-                    DataExtractor {
-                        func: get_by_key,
-                        key: Some("asicCount"),
-                    },
-                ),
-                (
-                    ASIC_INFO_CMD,
-                    DataExtractor {
-                        func: get_by_key,
-                        key: Some("asicCount"),
-                    },
-                ),
-            ],
+            DataField::TotalChips => &[(
+                SYSTEM_INFO_CMD,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("asicCount"),
+                },
+            )],
             DataField::Fans => &[(
                 SYSTEM_INFO_CMD,
                 DataExtractor {
