@@ -15,7 +15,7 @@ use tokio::task::JoinSet;
 use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
-use crate::miners::backends::btminer::BTMinerV3Backend;
+use crate::miners::backends::btminer::BTMiner;
 use crate::miners::backends::espminer::ESPMiner;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::factory::traits::VersionSelection;
@@ -107,9 +107,9 @@ fn select_backend(
     version: Option<semver::Version>,
 ) -> Option<Box<dyn GetMinerData>> {
     match (make, firmware) {
-        (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => Some(Box::new(
-            BTMinerV3Backend::new(ip, model.expect("Could not find model")),
-        )),
+        (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => {
+            Some(BTMiner::new(ip, model?, firmware?, version?))
+        }
         (Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)) => {
             Some(ESPMiner::new(ip, model?, firmware?, version?))
         }

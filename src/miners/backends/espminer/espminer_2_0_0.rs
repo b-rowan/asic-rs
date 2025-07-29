@@ -7,8 +7,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::MinerMake::BitAxe;
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerHardware, MinerModel};
+use crate::data::device::MinerMake;
+use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
@@ -22,19 +22,17 @@ use crate::miners::data::{
 };
 
 pub struct ESPMiner200 {
-    model: MinerModel,
-    web: EspWebApi,
     ip: IpAddr,
-    firmware: MinerFirmware,
+    web: EspWebApi,
+    device_info: DeviceInfo,
 }
 
 impl ESPMiner200 {
-    pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
+    pub fn new(ip: IpAddr, model: MinerModel, firmware: MinerFirmware) -> Self {
         ESPMiner200 {
-            model,
-            web: EspWebApi::new(ip.to_string(), 80),
             ip,
-            firmware: miner_firmware,
+            web: EspWebApi::new(ip.to_string(), 80),
+            device_info: DeviceInfo::new(MinerMake::BitAxe, model, firmware, HashAlgorithm::SHA256),
         }
     }
 }
@@ -96,7 +94,7 @@ impl GetMinerData for ESPMiner200 {
         let is_mining = hashrate.as_ref().map_or(false, |hr| hr.value > 0.0);
 
         // Get hardware specifications based on the miner model
-        let miner_hardware = MinerHardware::from(&self.model);
+        let miner_hardware = self.device_info.hardware.clone();
 
         let hashboards = {
             // Extract nested values with type conversion
@@ -246,12 +244,7 @@ impl GetMinerData for ESPMiner200 {
             mac,
 
             // Device identification
-            device_info: DeviceInfo::new(
-                BitAxe,
-                self.model.clone(),
-                self.firmware,
-                HashAlgorithm::SHA256,
-            ),
+            device_info: self.device_info.clone(),
             serial_number: None,
             hostname,
 

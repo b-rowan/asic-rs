@@ -74,6 +74,7 @@ impl VersionSelection for MinerMake {
     async fn get_version(&self, ip: IpAddr) -> Option<semver::Version> {
         match self {
             MinerMake::BitAxe => model::get_version_bitaxe(ip).await,
+            MinerMake::WhatsMiner => model::get_version_whatsminer(ip).await,
             _ => None,
         }
     }
