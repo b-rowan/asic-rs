@@ -7,34 +7,34 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::MinerMake::BitAxe;
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerHardware, MinerModel};
+use crate::data::device::MinerMake;
+use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
 use crate::data::miner::MinerData;
 use crate::data::pool::{PoolData, PoolScheme, PoolURL};
-use crate::miners::api::web::esp_web_api::EspWebApi;
+use crate::miners::api::web::espminer::ESPMinerWebAPI;
 use crate::miners::backends::traits::GetMinerData;
+use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
 };
 
+#[derive(Debug)]
 pub struct ESPMiner200 {
-    model: MinerModel,
-    web: EspWebApi,
     ip: IpAddr,
-    firmware: MinerFirmware,
+    web: ESPMinerWebAPI,
+    device_info: DeviceInfo,
 }
 
 impl ESPMiner200 {
-    pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
+    pub fn new(ip: IpAddr, model: MinerModel, firmware: MinerFirmware) -> Self {
         ESPMiner200 {
-            model,
-            web: EspWebApi::new(ip.to_string(), 80),
             ip,
-            firmware: miner_firmware,
+            web: ESPMinerWebAPI::new(ip, 80),
+            device_info: DeviceInfo::new(MinerMake::BitAxe, model, firmware, HashAlgorithm::SHA256),
         }
     }
 }
@@ -96,7 +96,7 @@ impl GetMinerData for ESPMiner200 {
         let is_mining = hashrate.as_ref().map_or(false, |hr| hr.value > 0.0);
 
         // Get hardware specifications based on the miner model
-        let miner_hardware = MinerHardware::from(&self.model);
+        let miner_hardware = self.device_info.hardware.clone();
 
         let hashboards = {
             // Extract nested values with type conversion
@@ -246,12 +246,7 @@ impl GetMinerData for ESPMiner200 {
             mac,
 
             // Device identification
-            device_info: DeviceInfo::new(
-                BitAxe,
-                self.model.clone(),
-                self.firmware,
-                HashAlgorithm::SHA256,
-            ),
+            device_info: self.device_info.clone(),
             serial_number: None,
             hostname,
 
@@ -264,6 +259,7 @@ impl GetMinerData for ESPMiner200 {
             expected_hashboards: miner_hardware.boards,
             hashboards,
             hashrate,
+            expected_hashrate: None,
 
             // Chip information
             expected_chips: miner_hardware.chips,
@@ -291,102 +287,105 @@ impl GetMinerData for ESPMiner200 {
         }
     }
 
-    fn get_locations(&self, data_field: DataField) -> &'static [DataLocation] {
-        const SYSTEM_INFO_CMD: &str = "system/info";
+    fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
+        let system_info_command: MinerCommand = MinerCommand::WebAPI {
+            command: "system/info",
+            parameters: None,
+        };
 
         match data_field {
-            DataField::Mac => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Mac => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("macAddr"),
                 },
             )],
-            DataField::Hostname => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Hostname => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hostname"),
                 },
             )],
-            DataField::FirmwareVersion => &[(
-                SYSTEM_INFO_CMD,
+            DataField::FirmwareVersion => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
                 },
             )],
-            DataField::ApiVersion => &[(
-                SYSTEM_INFO_CMD,
+            DataField::ApiVersion => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
                 },
             )],
-            DataField::ControlBoardVersion => &[(
-                SYSTEM_INFO_CMD,
+            DataField::ControlBoardVersion => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("boardVersion"),
                 },
             )],
-            DataField::Hashboards => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Hashboards => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
                 },
             )],
-            DataField::Hashrate => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Hashrate => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hashRate"),
                 },
             )],
-            DataField::TotalChips => &[(
-                SYSTEM_INFO_CMD,
+            DataField::TotalChips => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("asicCount"),
                 },
             )],
-            DataField::Fans => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Fans => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("fanrpm"),
                 },
             )],
-            DataField::AverageTemperature => &[(
-                SYSTEM_INFO_CMD,
+            DataField::AverageTemperature => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("temp"),
                 },
             )],
-            DataField::Wattage => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Wattage => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("power"),
                 },
             )],
-            DataField::Uptime => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Uptime => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("uptimeSeconds"),
                 },
             )],
-            DataField::Pools => &[(
-                SYSTEM_INFO_CMD,
+            DataField::Pools => vec![(
+                system_info_command,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
                 },
             )],
-            _ => &[],
+            _ => vec![],
         }
     }
 }

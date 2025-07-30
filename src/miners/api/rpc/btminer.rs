@@ -1,13 +1,13 @@
-use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::api::rpc::traits::SendRPCCommand;
+use crate::miners::api::{ApiClient, rpc::errors::RPCError};
+use crate::miners::commands::MinerCommand;
 use async_trait::async_trait;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+#[derive(Debug)]
 pub struct BTMinerV3RPC {
     ip: IpAddr,
     port: u16,
@@ -18,6 +18,22 @@ impl BTMinerV3RPC {
         Self {
             ip,
             port: port.unwrap_or(4433),
+        }
+    }
+}
+
+#[async_trait]
+impl ApiClient for BTMinerV3RPC {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value, String> {
+        match command {
+            MinerCommand::RPC {
+                command,
+                parameters,
+            } => self
+                .send_command(command, parameters.clone())
+                .await
+                .map_err(|e| e.to_string()),
+            _ => Result::Err("Cannot send non RPC command to RPC API".to_string()),
         }
     }
 }
@@ -53,24 +69,29 @@ impl RPCCommandStatus {
 
 #[async_trait]
 impl SendRPCCommand for BTMinerV3RPC {
-    async fn send_command<T, P>(
+    async fn send_command(
         &self,
         command: &'static str,
-        param: Option<P>,
-    ) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned,
-        P: Serialize + Send,
-    {
+        parameters: Option<Value>,
+    ) -> Result<Value, RPCError> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
-        let request = match param {
-            Some(p) => {
-                json!({ "cmd": command, "param": p })
+        let request = match parameters {
+            Some(Value::Object(mut obj)) => {
+                // Use the existing object as the base
+                obj.insert("cmd".to_string(), json!(command));
+                Value::Object(obj)
             }
-            None => json!({ "cmd": command }),
+            Some(other) => {
+                // Wrap non-objects into the "param" key
+                json!({ "cmd": command, "param": other })
+            }
+            None => {
+                // No parameters at all
+                json!({ "cmd": command })
+            }
         };
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
@@ -88,13 +109,10 @@ impl SendRPCCommand for BTMinerV3RPC {
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 
-        self.parse_rpc_result::<T>(&response_str)
+        self.parse_rpc_result(&response_str)
     }
 
-    fn parse_rpc_result<T>(&self, response: &str) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned,
-    {
+    fn parse_rpc_result(&self, response: &str) -> Result<Value, RPCError> {
         let status = RPCCommandStatus::from_btminer_v3(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),

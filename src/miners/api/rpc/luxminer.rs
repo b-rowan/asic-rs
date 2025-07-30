@@ -2,9 +2,7 @@ use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::api::rpc::traits::SendRPCCommand;
 use async_trait::async_trait;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -39,15 +37,11 @@ impl RPCCommandStatus {
 
 #[async_trait]
 impl SendRPCCommand for LUXMinerRPC {
-    async fn send_command<T, P>(
+    async fn send_command(
         &self,
         command: &'static str,
-        param: Option<P>,
-    ) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned,
-        P: Serialize + Send,
-    {
+        param: Option<Value>,
+    ) -> Result<Value, RPCError> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -66,13 +60,10 @@ impl SendRPCCommand for LUXMinerRPC {
             .into_owned()
             .replace('\0', "");
 
-        self.parse_rpc_result::<T>(&response)
+        self.parse_rpc_result(&response)
     }
 
-    fn parse_rpc_result<T>(&self, response: &str) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned,
-    {
+    fn parse_rpc_result(&self, response: &str) -> Result<Value, RPCError> {
         let status = RPCCommandStatus::from_luxminer(response)?;
 
         match status.into_result() {

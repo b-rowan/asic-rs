@@ -1,6 +1,6 @@
-use crate::miners::api::ApiClient;
 use crate::miners::backends::traits::GetMinerData;
-use serde_json::Value;
+use crate::miners::{api::ApiClient, commands::MinerCommand};
+use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator};
 
@@ -33,6 +33,8 @@ pub enum DataField {
     Hashboards,
     /// Current hashrate reported by the miner.
     Hashrate,
+    /// Expected hashrate for the miner.
+    ExpectedHashrate,
     /// Expected number of chips across all hashboards.
     ExpectedChips,
     /// Total number of chips detected.
@@ -81,7 +83,7 @@ pub struct DataExtractor {
 }
 
 /// Alias for a tuple describing the API command and the extractor used to parse its result.
-pub type DataLocation = (&'static str, DataExtractor);
+pub type DataLocation = (MinerCommand, DataExtractor);
 
 /// Extracts a value from a JSON object using a key (flat lookup).
 ///
@@ -190,7 +192,7 @@ pub trait DataExtensions {
     ) -> U;
 }
 
-impl<'a> DataExtensions for HashMap<DataField, &'a Value> {
+impl<'a> DataExtensions for HashMap<DataField, Value> {
     fn extract<T: FromValue>(&self, field: DataField) -> Option<T> {
         self.get(&field).and_then(|v| T::from_value(v))
     }
@@ -251,7 +253,7 @@ pub struct DataCollector<'a> {
     /// API client used to send commands to the miner.
     api_client: &'a dyn ApiClient,
     /// Cache of command responses keyed by command string.
-    cache: HashMap<String, Value>,
+    cache: HashMap<MinerCommand, Value>,
 }
 
 impl<'a> DataCollector<'a> {
@@ -265,7 +267,7 @@ impl<'a> DataCollector<'a> {
     }
 
     /// Collects **all** available fields from the miner and returns a map of results.
-    pub async fn collect_all(&mut self) -> HashMap<DataField, &Value> {
+    pub async fn collect_all(&mut self) -> HashMap<DataField, Value> {
         self.collect(DataField::iter().collect::<Vec<_>>().as_slice())
             .await
     }
@@ -273,13 +275,13 @@ impl<'a> DataCollector<'a> {
     /// Collects only the specified fields from the miner and returns a map of results.
     ///
     /// This method sends only the minimum required set of API commands.
-    pub async fn collect(&mut self, fields: &[DataField]) -> HashMap<DataField, &Value> {
+    pub async fn collect(&mut self, fields: &[DataField]) -> HashMap<DataField, Value> {
         let mut results = HashMap::new();
         let required_commands = self.get_required_commands(fields);
 
         for command in required_commands {
-            if let Ok(response) = self.api_client.send_command(command).await {
-                self.cache.insert(command.to_string(), response);
+            if let Ok(response) = self.api_client.get_api_result(&command).await {
+                self.cache.insert(command, response);
             }
         }
 
@@ -293,28 +295,55 @@ impl<'a> DataCollector<'a> {
         results
     }
 
+    fn merge(&self, a: &mut Value, b: Value) {
+        match (a, b) {
+            (Value::Object(a_map), Value::Object(b_map)) => {
+                for (k, v) in b_map {
+                    self.merge(a_map.entry(k).or_insert(Value::Null), v);
+                }
+            }
+            (Value::Array(a_array), Value::Array(b_array)) => {
+                // Combine arrays by extending
+                a_array.extend(b_array);
+            }
+            (a_slot, b_val) => {
+                // For everything else (including mismatched types), overwrite
+                *a_slot = b_val;
+            }
+        }
+    }
+
     /// Determines the unique set of API commands needed for the requested fields.
     ///
     /// Uses the backend's location mappings to identify required commands.
-    fn get_required_commands(&self, fields: &[DataField]) -> HashSet<&'static str> {
+    fn get_required_commands(&self, fields: &[DataField]) -> HashSet<MinerCommand> {
         fields
             .iter()
             .flat_map(|&field| self.miner.get_locations(field))
-            .map(|(cmd, _)| *cmd)
+            .map(|(cmd, _)| cmd.clone())
             .collect()
     }
 
     /// Attempts to extract the value for a specific field from the cached command responses.
     ///
     /// Uses the extractor function and key associated with the field for parsing.
-    fn extract_field(&self, field: DataField) -> Option<&Value> {
+    fn extract_field(&self, field: DataField) -> Option<Value> {
+        let mut success: Vec<&Value> = Vec::new();
         for (command, extractor) in self.miner.get_locations(field) {
-            if let Some(response_data) = self.cache.get(*command) {
+            if let Some(response_data) = self.cache.get(&command) {
                 if let Some(value) = (extractor.func)(response_data, extractor.key) {
-                    return Some(value); // Return the first successful extraction.
+                    success.push(value);
                 }
             }
         }
-        None
+        if success.is_empty() {
+            None
+        } else {
+            let mut response = json!({});
+            for value in success {
+                self.merge(&mut response, value.clone())
+            }
+            Some(response)
+        }
     }
 }
