@@ -93,10 +93,10 @@ impl GetMinerData for ESPMiner290 {
         let uptime = data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs);
 
         // Determine if the miner is actively mining based on hashrate
-        let is_mining = hashrate.as_ref().map_or(false, |hr| hr.value > 0.0);
+        let is_mining = hashrate.as_ref().is_some_and(|hr| hr.value > 0.0);
 
         // Get hardware specifications based on the miner model
-        let miner_hardware = self.device_info.hardware.clone();
+        let miner_hardware = self.device_info.hardware;
 
         let hashboards = {
             // Extract nested values with type conversion

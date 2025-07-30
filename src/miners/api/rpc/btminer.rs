@@ -98,7 +98,7 @@ impl SendRPCCommand for BTMinerV3RPC {
         let length = json_bytes.len() as u32;
 
         stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(&json_bytes).await?;
+        stream.write_all(json_bytes).await?;
 
         let mut len_buf = [0u8; 4];
         stream.read_exact(&mut len_buf).await?;

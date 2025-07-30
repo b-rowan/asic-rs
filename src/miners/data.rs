@@ -192,7 +192,7 @@ pub trait DataExtensions {
     ) -> U;
 }
 
-impl<'a> DataExtensions for HashMap<DataField, Value> {
+impl DataExtensions for HashMap<DataField, Value> {
     fn extract<T: FromValue>(&self, field: DataField) -> Option<T> {
         self.get(&field).and_then(|v| T::from_value(v))
     }
@@ -296,10 +296,14 @@ impl<'a> DataCollector<'a> {
     }
 
     fn merge(&self, a: &mut Value, b: Value) {
+        Self::merge_values(a, b);
+    }
+
+    fn merge_values(a: &mut Value, b: Value) {
         match (a, b) {
             (Value::Object(a_map), Value::Object(b_map)) => {
                 for (k, v) in b_map {
-                    self.merge(a_map.entry(k).or_insert(Value::Null), v);
+                    Self::merge_values(a_map.entry(k).or_insert(Value::Null), v);
                 }
             }
             (Value::Array(a_array), Value::Array(b_array)) => {
@@ -312,6 +316,7 @@ impl<'a> DataCollector<'a> {
             }
         }
     }
+
 
     /// Determines the unique set of API commands needed for the requested fields.
     ///

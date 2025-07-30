@@ -35,9 +35,7 @@ pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Option<MinerModel> {
     match response {
         Some(json_data) => {
             let fw_version: Option<&str> = json_data["Msg"]["fw_ver"].as_str();
-            if fw_version.is_none() {
-                return None;
-            }
+            fw_version?;
 
             let fw_version = fw_version.unwrap();
 
@@ -64,7 +62,7 @@ pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Option<MinerModel> {
                     get_model_whatsminer_v2(ip).await
                 }
             } else {
-                return None;
+                None
             }
         }
         None => None,
@@ -77,9 +75,7 @@ pub(crate) async fn get_version_whatsminer(ip: IpAddr) -> Option<semver::Version
     match response {
         Some(json_data) => {
             let fw_version: Option<&str> = json_data["Msg"]["fw_ver"].as_str();
-            if fw_version.is_none() {
-                return None;
-            }
+            fw_version?;
 
             let fw_version = fw_version.unwrap();
 
@@ -98,7 +94,7 @@ pub(crate) async fn get_version_whatsminer(ip: IpAddr) -> Option<semver::Version
                 let version = semver::Version::new(year as u64, month as u64, day as u64);
                 Some(version)
             } else {
-                return None;
+                None
             }
         }
         None => None,
@@ -138,9 +134,7 @@ pub(crate) async fn get_model_luxos(ip: IpAddr) -> Option<MinerModel> {
     match response {
         Some(json_data) => {
             let model = json_data["VERSION"][0]["Type"].as_str();
-            if model.is_none() {
-                return None;
-            }
+            model?;
             let model = model.unwrap().to_uppercase();
 
             MinerModelFactory::new()
@@ -156,9 +150,7 @@ pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Option<MinerModel> {
     match response {
         Some(json_data) => {
             let model = json_data["DEVDETAILS"][0]["Model"].as_str();
-            if model.is_none() {
-                return None;
-            }
+            model?;
             let model = model
                 .unwrap()
                 .to_uppercase()

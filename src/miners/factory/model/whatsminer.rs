@@ -10,9 +10,7 @@ pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
     match response {
         Some(json_data) => {
             let model = json_data["DEVDETAILS"][0]["Model"].as_str();
-            if model.is_none() {
-                return None;
-            }
+            model?;
             let mut model = model.unwrap().to_uppercase().replace("_", "");
             model.pop();
             model.push('0');
@@ -35,9 +33,7 @@ pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Option<MinerModel> {
         Ok(json_data) => {
             let model = json_data["msg"]["miner"]["type"].as_str();
 
-            if model.is_none() {
-                return None;
-            }
+            model?;
 
             let mut model = model.unwrap().to_uppercase().replace("_", "");
             model.pop();

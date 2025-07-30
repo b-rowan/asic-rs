@@ -54,9 +54,7 @@ impl ModelSelection for MinerFirmware {
 }
 impl VersionSelection for MinerFirmware {
     async fn get_version(&self, _ip: IpAddr) -> Option<semver::Version> {
-        match self {
-            _ => None,
-        }
+        None
     }
 }
 

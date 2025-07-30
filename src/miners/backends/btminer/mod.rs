@@ -8,7 +8,7 @@ use crate::miners::backends::traits::GetMinerData;
 
 pub mod btminer_3;
 
-pub struct BTMiner {}
+pub struct BTMiner;
 
 impl BTMiner {
     pub fn new(

@@ -108,16 +108,16 @@ impl ESPMinerWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> Result<Response, ESPMinerError> {
-        let request_builder = match method {
-            &Method::GET => self.client.get(url),
-            &Method::POST => {
+        let request_builder = match *method {
+            Method::GET => self.client.get(url),
+            Method::POST => {
                 let mut builder = self.client.post(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
-            &Method::PATCH => {
+            Method::PATCH => {
                 let mut builder = self.client.patch(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
@@ -140,7 +140,6 @@ impl ESPMinerWebAPI {
     }
 
     /// Execute multiple commands simultaneously
-
     /// Get system information
     pub async fn system_info(&self) -> Result<Value, ESPMinerError> {
         self.send_command("system/info", false, None, Method::GET)

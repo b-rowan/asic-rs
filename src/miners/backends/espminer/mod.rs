@@ -10,7 +10,7 @@ use crate::miners::backends::traits::GetMinerData;
 pub mod espminer_2_0_0;
 pub mod espminer_2_9_0;
 
-pub struct ESPMiner {}
+pub struct ESPMiner;
 
 impl ESPMiner {
     pub fn new(

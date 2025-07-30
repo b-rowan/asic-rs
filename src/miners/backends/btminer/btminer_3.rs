@@ -125,56 +125,45 @@ impl GetMinerData for BTMiner3 {
                 let hashrate = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/hash-average", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| {
-                        Some(HashRate {
+                    .and_then(|val| val.as_f64()).map(|f| HashRate {
                             value: f,
                             unit: HashRateUnit::TeraHash,
                             algo: String::from("SHA256"),
-                        })
-                    });
+                        });
                 let expected_hashrate = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/factory-hash", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| {
-                        Some(HashRate {
+                    .and_then(|val| val.as_f64()).map(|f| HashRate {
                             value: f,
                             unit: HashRateUnit::TeraHash,
                             algo: String::from("SHA256"),
-                        })
-                    });
+                        });
                 let board_temperature = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                    .and_then(|val| val.as_f64()).map(Temperature::from_celsius);
                 let intake_temperature = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                    .and_then(|val| val.as_f64()).map(Temperature::from_celsius);
                 let outlet_temperature = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-max", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                    .and_then(|val| val.as_f64()).map(Temperature::from_celsius);
                 let serial_number =
                     data.extract_nested::<String>(DataField::Hashboards, &format!("pcdsn{}", idx));
 
                 let working_chips = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/effective-chips", idx)))
-                    .and_then(|val| val.as_u64())
-                    .and_then(|u| Some(u as u16));
+                    .and_then(|val| val.as_u64()).map(|u| u as u16);
                 let frequency = data
                     .get(&DataField::Hashboards)
                     .and_then(|val| val.pointer(&format!("/edevs/{}/freq", idx)))
-                    .and_then(|val| val.as_f64())
-                    .and_then(|f| Some(Frequency::from_megahertz(f)));
+                    .and_then(|val| val.as_f64()).map(Frequency::from_megahertz);
 
                 let active =
-                    Some(hashrate.clone().and_then(|h| Some(h.value)).unwrap_or(0f64) > 0f64);
+                    Some(hashrate.clone().map(|h| h.value).unwrap_or(0f64) > 0f64);
                 hashboards.push(BoardData {
                     hashrate,
                     position: idx,
@@ -207,14 +196,11 @@ impl GetMinerData for BTMiner3 {
                 {
                     let user = data
                         .get(&DataField::Pools)
-                        .and_then(|val| val.pointer(&format!("/{}/account", idx)))
-                        .and_then(|val| Some(String::from(val.as_str().unwrap_or(""))));
+                        .and_then(|val| val.pointer(&format!("/{}/account", idx))).map(|val| String::from(val.as_str().unwrap_or("")));
 
                     let alive = data
                         .get(&DataField::Pools)
-                        .and_then(|val| val.pointer(&format!("/{}/status", idx)))
-                        .and_then(|val| Some(val.as_str()))
-                        .and_then(|val| Some(val == Some("alive")));
+                        .and_then(|val| val.pointer(&format!("/{}/status", idx))).map(|val| val.as_str()).map(|val| val == Some("alive"));
 
                     let active = data
                         .get(&DataField::Pools)
@@ -223,10 +209,7 @@ impl GetMinerData for BTMiner3 {
 
                     let url = data
                         .get(&DataField::Pools)
-                        .and_then(|val| val.pointer(&format!("/{}/url", idx)))
-                        .and_then(|val| {
-                            Some(PoolURL::from(String::from(val.as_str().unwrap_or(""))))
-                        });
+                        .and_then(|val| val.pointer(&format!("/{}/url", idx))).map(|val| PoolURL::from(String::from(val.as_str().unwrap_or(""))));
 
                     pools.push(PoolData {
                         position: Some(idx as u16),
@@ -251,7 +234,7 @@ impl GetMinerData for BTMiner3 {
                 .filter(|x| x.is_some())
                 .map(|x| x.unwrap().as_celsius())
                 .collect::<Vec<f64>>();
-            if board_temps.len() > 0 {
+            if !board_temps.is_empty() {
                 Some(Temperature::from_celsius(
                     board_temps.iter().sum::<f64>() / hashboards.len() as f64,
                 ))
@@ -267,7 +250,7 @@ impl GetMinerData for BTMiner3 {
             data.extract_map::<String, _>(DataField::LightFlashing, |l| l != "auto");
 
         // Get hardware specifications based on the miner model
-        let miner_hardware = self.device_info.hardware.clone();
+        let miner_hardware = self.device_info.hardware;
 
         MinerData {
             // Version information
@@ -311,7 +294,7 @@ impl GetMinerData for BTMiner3 {
             efficiency,
 
             // Status information
-            light_flashing: light_flashing,
+            light_flashing,
             messages: vec![], // TODO
             uptime,
             is_mining: true, // TODO

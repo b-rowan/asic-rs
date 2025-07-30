@@ -127,6 +127,12 @@ pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
 }
+impl Default for MinerFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MinerFactory {
     pub async fn get_miner(
         self,

@@ -83,17 +83,11 @@ impl MinerModelFactory {
         match self.make {
             Some(MinerMake::AntMiner) => {
                 let model = AntMinerModel::from_str(model_str).ok();
-                match model {
-                    Some(model) => Some(MinerModel::AntMiner(model)),
-                    None => None,
-                }
+                model.map(MinerModel::AntMiner)
             }
             Some(MinerMake::WhatsMiner) => {
                 let model = WhatsMinerModel::from_str(model_str).ok();
-                match model {
-                    Some(model) => Some(MinerModel::WhatsMiner(model)),
-                    None => None,
-                }
+                model.map(MinerModel::WhatsMiner)
             }
             None => match self.firmware {
                 Some(MinerFirmware::BraiinsOS) => {
