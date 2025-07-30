@@ -1,22 +1,19 @@
-use std::collections::HashMap;
 use std::net::IpAddr;
-use std::ops::Deref;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::{Value, json};
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::json;
 
-use crate::data::board::{BoardData, ChipData};
+use crate::data::board::BoardData;
 use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::message::{MessageSeverity, MinerMessage};
 use crate::data::miner::MinerData;
-use crate::data::pool::{PoolData, PoolScheme, PoolURL};
+use crate::data::pool::{PoolData, PoolURL};
 use crate::miners::api::rpc::btminer::BTMinerV3RPC;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::commands::MinerCommand;
@@ -95,6 +92,32 @@ impl GetMinerData for BTMiner3 {
             _ => None,
         };
 
+        let mut fans: Vec<FanData> = Vec::new();
+
+        for (idx, direction) in ["in", "out"].iter().enumerate() {
+            let fan = data.extract_nested_map::<f64, _>(
+                DataField::Fans,
+                &format!("fan-speed-{}", direction),
+                |rpm| FanData {
+                    position: idx as i16,
+                    rpm: Some(AngularVelocity::from_rpm(rpm)),
+                },
+            );
+            if fan.is_some() {
+                fans.push(fan.unwrap());
+            }
+        }
+
+        let mut psu_fans: Vec<FanData> = Vec::new();
+
+        let psu_fan = data.extract_map::<f64, _>(DataField::Fans, |rpm| FanData {
+            position: 0i16,
+            rpm: Some(AngularVelocity::from_rpm(rpm)),
+        });
+        if psu_fan.is_some() {
+            psu_fans.push(psu_fan.unwrap());
+        }
+
         let hashboards: Vec<BoardData> = {
             let mut hashboards: Vec<BoardData> = Vec::new();
             let board_count = self.device_info.hardware.boards.unwrap_or(3);
@@ -136,8 +159,8 @@ impl GetMinerData for BTMiner3 {
                     .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-max", idx)))
                     .and_then(|val| val.as_f64())
                     .and_then(|f| Some(Temperature::from_celsius(f)));
-                let serial_number = data
-                    .extract_nested::<String>(DataField::Hashboards, &format!("chipdata{}", idx));
+                let serial_number =
+                    data.extract_nested::<String>(DataField::Hashboards, &format!("pcdsn{}", idx));
 
                 let working_chips = data
                     .get(&DataField::Hashboards)
@@ -149,6 +172,9 @@ impl GetMinerData for BTMiner3 {
                     .and_then(|val| val.pointer(&format!("/edevs/{}/freq", idx)))
                     .and_then(|val| val.as_f64())
                     .and_then(|f| Some(Frequency::from_megahertz(f)));
+
+                let active =
+                    Some(hashrate.clone().and_then(|h| Some(h.value)).unwrap_or(0f64) > 0f64);
                 hashboards.push(BoardData {
                     hashrate,
                     position: idx,
@@ -160,14 +186,85 @@ impl GetMinerData for BTMiner3 {
                     working_chips,
                     serial_number,
                     chips: vec![],
-                    voltage: None,
+                    voltage: None, // TODO
                     frequency,
                     tuned: Some(true),
-                    active: Some(true),
+                    active,
                 });
             }
             hashboards
         };
+        let pools: Vec<PoolData> = {
+            let mut pools: Vec<PoolData> = Vec::new();
+            let pools_raw = data.get(&DataField::Pools);
+            if pools_raw.is_some() {
+                let pools_response = pools_raw.unwrap();
+                for (idx, _) in pools_response
+                    .as_array()
+                    .unwrap_or(&Vec::new())
+                    .iter()
+                    .enumerate()
+                {
+                    let user = data
+                        .get(&DataField::Pools)
+                        .and_then(|val| val.pointer(&format!("/{}/account", idx)))
+                        .and_then(|val| Some(String::from(val.as_str().unwrap_or(""))));
+
+                    let alive = data
+                        .get(&DataField::Pools)
+                        .and_then(|val| val.pointer(&format!("/{}/status", idx)))
+                        .and_then(|val| Some(val.as_str()))
+                        .and_then(|val| Some(val == Some("alive")));
+
+                    let active = data
+                        .get(&DataField::Pools)
+                        .and_then(|val| val.pointer(&format!("/{}/stratum-active", idx)))
+                        .and_then(|val| val.as_bool());
+
+                    let url = data
+                        .get(&DataField::Pools)
+                        .and_then(|val| val.pointer(&format!("/{}/url", idx)))
+                        .and_then(|val| {
+                            Some(PoolURL::from(String::from(val.as_str().unwrap_or(""))))
+                        });
+
+                    pools.push(PoolData {
+                        position: Some(idx as u16),
+                        url,
+                        accepted_shares: None,
+                        rejected_shares: None,
+                        active,
+                        alive,
+                        user,
+                    });
+                }
+            }
+            pools
+        };
+
+        let total_chips = hashboards.clone().iter().map(|b| b.working_chips).sum();
+
+        let average_temperature = {
+            let board_temps = hashboards
+                .iter()
+                .map(|b| b.board_temperature)
+                .filter(|x| x.is_some())
+                .map(|x| x.unwrap().as_celsius())
+                .collect::<Vec<f64>>();
+            if board_temps.len() > 0 {
+                Some(Temperature::from_celsius(
+                    board_temps.iter().sum::<f64>() / hashboards.len() as f64,
+                ))
+            } else {
+                None
+            }
+        };
+
+        let wattage_limit =
+            data.extract_map::<f64, _>(DataField::FluidTemperature, Power::from_watts);
+
+        let light_flashing =
+            data.extract_map::<String, _>(DataField::LightFlashing, |l| l != "auto");
 
         // Get hardware specifications based on the miner model
         let miner_hardware = self.device_info.hardware.clone();
@@ -199,27 +296,27 @@ impl GetMinerData for BTMiner3 {
 
             // Chip information
             expected_chips: miner_hardware.chips,
-            total_chips: miner_hardware.chips, // TODO
+            total_chips,
 
             // Cooling information
             expected_fans: miner_hardware.fans,
-            fans: vec![], // TODO
-            psu_fans: vec![],
-            average_temperature: None, // TODO
+            fans,
+            psu_fans,
+            average_temperature,
             fluid_temperature,
 
             // Power information
             wattage,
-            wattage_limit: None,
+            wattage_limit,
             efficiency,
 
             // Status information
-            light_flashing: None,
+            light_flashing: light_flashing,
             messages: vec![], // TODO
             uptime,
             is_mining: true, // TODO
 
-            pools: vec![], // TODO
+            pools,
         }
     }
 
