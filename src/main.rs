@@ -7,7 +7,10 @@ async fn main() {
 
     let miner = get_miner(miner_ip).await.unwrap();
     if miner.is_some() {
-        println!("{:?}", miner.unwrap().get_data().await);
+        println!(
+            "{:?}",
+            serde_json::to_string(&miner.unwrap().get_data().await).unwrap()
+        );
     } else {
         println!("No miner found");
     }

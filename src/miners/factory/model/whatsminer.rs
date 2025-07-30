@@ -2,7 +2,7 @@ use crate::data::device::models::MinerModelFactory;
 use crate::data::device::{MinerMake, MinerModel};
 use crate::miners::api::rpc::{btminer::BTMinerV3RPC, traits::SendRPCCommand};
 use crate::miners::util;
-use serde_json::Value;
+use serde_json::json;
 use std::net::IpAddr;
 
 pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
@@ -26,9 +26,9 @@ pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
 }
 
 pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Option<MinerModel> {
-    let rpc = BTMinerV3RPC::new(ip.to_string(), None);
+    let rpc = BTMinerV3RPC::new(ip, None);
     let response = rpc
-        .send_command::<Value, &str>("get.device.info", Some("miner"))
+        .send_command("get.device.info", Some(json!("miner")))
         .await;
 
     match response {

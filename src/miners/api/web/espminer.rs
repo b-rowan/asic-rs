@@ -6,6 +6,7 @@ use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
 
 /// ESPMiner WebAPI client for communicating with BitAxe and similar miners
+#[derive(Debug)]
 pub struct ESPMinerWebAPI {
     client: Client,
     pub ip: IpAddr,
@@ -22,7 +23,7 @@ impl ApiClient for ESPMinerWebAPI {
                 command,
                 parameters,
             } => self
-                .send_command(command.clone(), false, parameters.clone(), Method::GET)
+                .send_command(command, false, parameters.clone(), Method::GET)
                 .await
                 .map_err(|e| e.to_string()),
             _ => Result::Err("Cannot send non web command to web API".to_string()),

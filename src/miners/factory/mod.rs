@@ -28,11 +28,17 @@ async fn get_miner_type_from_command(
     command: MinerCommand,
 ) -> Option<(Option<MinerMake>, Option<MinerFirmware>)> {
     match command {
-        MinerCommand::RPC { command } => {
+        MinerCommand::RPC {
+            command,
+            parameters: _,
+        } => {
             let response = send_rpc_command(&ip, command).await?;
             parse_type_from_socket(response)
         }
-        MinerCommand::WebAPI { command } => {
+        MinerCommand::WebAPI {
+            command,
+            parameters: _,
+        } => {
             let response = send_web_command(&ip, command).await?;
             parse_type_from_web(response)
         }

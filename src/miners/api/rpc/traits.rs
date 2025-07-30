@@ -1,20 +1,14 @@
 use crate::miners::api::rpc::errors::RPCError;
 use async_trait::async_trait;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
+use serde_json::Value;
 
 #[async_trait]
 pub trait SendRPCCommand {
-    async fn send_command<T, P>(
+    async fn send_command(
         &self,
         command: &'static str,
-        param: Option<P>,
-    ) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned,
-        P: Serialize + Send;
+        parameters: Option<Value>,
+    ) -> Result<Value, RPCError>;
 
-    fn parse_rpc_result<T>(&self, response: &str) -> Result<T, RPCError>
-    where
-        T: DeserializeOwned;
+    fn parse_rpc_result(&self, response: &str) -> Result<Value, RPCError>;
 }
