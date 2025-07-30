@@ -13,6 +13,7 @@ pub mod espminer_2_9_0;
 pub struct ESPMiner;
 
 impl ESPMiner {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(
         ip: IpAddr,
         model: MinerModel,

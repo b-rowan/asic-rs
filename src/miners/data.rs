@@ -317,7 +317,6 @@ impl<'a> DataCollector<'a> {
         }
     }
 
-
     /// Determines the unique set of API commands needed for the requested fields.
     ///
     /// Uses the backend's location mappings to identify required commands.
