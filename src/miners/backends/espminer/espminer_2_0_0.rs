@@ -14,8 +14,9 @@ use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
 use crate::data::miner::MinerData;
 use crate::data::pool::{PoolData, PoolScheme, PoolURL};
-use crate::miners::api::web::esp_web_api::EspWebApi;
+use crate::miners::api::web::espminer::ESPMinerWebAPI;
 use crate::miners::backends::traits::GetMinerData;
+use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
@@ -23,7 +24,7 @@ use crate::miners::data::{
 
 pub struct ESPMiner200 {
     ip: IpAddr,
-    web: EspWebApi,
+    web: ESPMinerWebAPI,
     device_info: DeviceInfo,
 }
 
@@ -31,7 +32,7 @@ impl ESPMiner200 {
     pub fn new(ip: IpAddr, model: MinerModel, firmware: MinerFirmware) -> Self {
         ESPMiner200 {
             ip,
-            web: EspWebApi::new(ip.to_string(), 80),
+            web: ESPMinerWebAPI::new(ip, 80),
             device_info: DeviceInfo::new(MinerMake::BitAxe, model, firmware, HashAlgorithm::SHA256),
         }
     }
@@ -285,7 +286,10 @@ impl GetMinerData for ESPMiner200 {
     }
 
     fn get_locations(&self, data_field: DataField) -> &'static [DataLocation] {
-        const SYSTEM_INFO_CMD: &str = "system/info";
+        const SYSTEM_INFO_CMD: MinerCommand = MinerCommand::WebAPI {
+            command: "system/info",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => &[(

@@ -1,8 +1,23 @@
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+use serde::Serialize;
+use serde_json::Value;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum MinerCommand {
-    RPC { command: &'static str },
-    GRPC { command: &'static str },
-    WebAPI { command: &'static str },
-    GraphQL { command: &'static str },
-    SSH { command: &'static str },
+    RPC {
+        command: &'static str,
+        parameters: Option<Value>,
+    },
+    GRPC {
+        command: &'static str,
+    },
+    WebAPI {
+        command: &'static str,
+        parameters: Option<Value>,
+    },
+    GraphQL {
+        command: &'static str,
+    },
+    SSH {
+        command: &'static str,
+    },
 }

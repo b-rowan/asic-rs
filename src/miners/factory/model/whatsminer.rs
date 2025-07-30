@@ -26,7 +26,7 @@ pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
 }
 
 pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Option<MinerModel> {
-    let rpc = BTMinerV3RPC::new(ip, None);
+    let rpc = BTMinerV3RPC::new(ip.to_string(), None);
     let response = rpc
         .send_command::<Value, &str>("get.device.info", Some("miner"))
         .await;

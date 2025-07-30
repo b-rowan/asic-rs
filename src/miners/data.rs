@@ -1,5 +1,5 @@
-use crate::miners::api::ApiClient;
 use crate::miners::backends::traits::GetMinerData;
+use crate::miners::{api::ApiClient, commands::MinerCommand};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator};
@@ -81,7 +81,7 @@ pub struct DataExtractor {
 }
 
 /// Alias for a tuple describing the API command and the extractor used to parse its result.
-pub type DataLocation = (&'static str, DataExtractor);
+pub type DataLocation = (MinerCommand, DataExtractor);
 
 /// Extracts a value from a JSON object using a key (flat lookup).
 ///
@@ -251,7 +251,7 @@ pub struct DataCollector<'a> {
     /// API client used to send commands to the miner.
     api_client: &'a dyn ApiClient,
     /// Cache of command responses keyed by command string.
-    cache: HashMap<String, Value>,
+    cache: HashMap<MinerCommand, Value>,
 }
 
 impl<'a> DataCollector<'a> {
@@ -278,8 +278,8 @@ impl<'a> DataCollector<'a> {
         let required_commands = self.get_required_commands(fields);
 
         for command in required_commands {
-            if let Ok(response) = self.api_client.send_command(command).await {
-                self.cache.insert(command.to_string(), response);
+            if let Ok(response) = self.api_client.get_api_result(&command).await {
+                self.cache.insert(command, response);
             }
         }
 
@@ -296,11 +296,11 @@ impl<'a> DataCollector<'a> {
     /// Determines the unique set of API commands needed for the requested fields.
     ///
     /// Uses the backend's location mappings to identify required commands.
-    fn get_required_commands(&self, fields: &[DataField]) -> HashSet<&'static str> {
+    fn get_required_commands(&self, fields: &[DataField]) -> HashSet<MinerCommand> {
         fields
             .iter()
             .flat_map(|&field| self.miner.get_locations(field))
-            .map(|(cmd, _)| *cmd)
+            .map(|(cmd, _)| cmd.clone())
             .collect()
     }
 
@@ -309,7 +309,7 @@ impl<'a> DataCollector<'a> {
     /// Uses the extractor function and key associated with the field for parsing.
     fn extract_field(&self, field: DataField) -> Option<&Value> {
         for (command, extractor) in self.miner.get_locations(field) {
-            if let Some(response_data) = self.cache.get(*command) {
+            if let Some(response_data) = self.cache.get(command) {
                 if let Some(value) = (extractor.func)(response_data, extractor.key) {
                     return Some(value); // Return the first successful extraction.
                 }

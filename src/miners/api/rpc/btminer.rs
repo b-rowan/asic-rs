@@ -1,10 +1,11 @@
-use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::api::rpc::traits::SendRPCCommand;
+use crate::miners::api::{ApiClient, rpc::errors::RPCError};
+use crate::miners::commands::MinerCommand;
 use async_trait::async_trait;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -18,6 +19,22 @@ impl BTMinerV3RPC {
         Self {
             ip,
             port: port.unwrap_or(4433),
+        }
+    }
+}
+
+#[async_trait]
+impl ApiClient for BTMinerV3RPC {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value, String> {
+        match command {
+            MinerCommand::RPC {
+                command,
+                parameters,
+            } => self
+                .send_command(command.clone(), parameters.clone())
+                .await
+                .map_err(|e| e.to_string()),
+            _ => Result::Err("Cannot send non web command to web API".to_string()),
         }
     }
 }
@@ -56,7 +73,7 @@ impl SendRPCCommand for BTMinerV3RPC {
     async fn send_command<T, P>(
         &self,
         command: &'static str,
-        param: Option<P>,
+        parameters: Option<P>,
     ) -> Result<T, RPCError>
     where
         T: DeserializeOwned,
@@ -66,7 +83,7 @@ impl SendRPCCommand for BTMinerV3RPC {
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
-        let request = match param {
+        let request = match parameters {
             Some(p) => {
                 json!({ "cmd": command, "param": p })
             }

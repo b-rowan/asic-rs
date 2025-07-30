@@ -1,31 +1,38 @@
-use crate::miners::api::ApiClient;
+use crate::miners::{api::ApiClient, commands::MinerCommand};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
 
 /// ESPMiner WebAPI client for communicating with BitAxe and similar miners
-pub struct EspWebApi {
+pub struct ESPMinerWebAPI {
     client: Client,
-    pub ip: String,
+    pub ip: IpAddr,
     port: u16,
     timeout: Duration,
     retries: u32,
 }
 
 #[async_trait]
-impl ApiClient for EspWebApi {
-    async fn send_command(&self, command: &'static str) -> Result<Value, String> {
-        self.send_command(command, false, None, Method::GET)
-            .await
-            .map_err(|e| e.to_string())
+impl ApiClient for ESPMinerWebAPI {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value, String> {
+        match command {
+            MinerCommand::WebAPI {
+                command,
+                parameters,
+            } => self
+                .send_command(command.clone(), false, parameters.clone(), Method::GET)
+                .await
+                .map_err(|e| e.to_string()),
+            _ => Result::Err("Cannot send non web command to web API".to_string()),
+        }
     }
 }
 
-impl EspWebApi {
+impl ESPMinerWebAPI {
     /// Create a new ESPMiner WebAPI client
-    pub fn new(ip: String, port: u16) -> Self {
+    pub fn new(ip: IpAddr, port: u16) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()

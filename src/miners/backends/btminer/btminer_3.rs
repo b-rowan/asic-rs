@@ -16,6 +16,7 @@ use crate::data::miner::MinerData;
 use crate::data::pool::{PoolData, PoolScheme, PoolURL};
 use crate::miners::api::rpc::btminer::BTMinerV3RPC;
 use crate::miners::backends::traits::GetMinerData;
+use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
@@ -59,8 +60,14 @@ impl GetMinerData for BTMiner3 {
     }
 
     fn get_locations(&self, data_field: DataField) -> &'static [DataLocation] {
-        const GET_DEVICE_INFO_CMD: &str = "get.device.info";
-        const GET_MINER_STATUS_CMD: &str = "get.miner.status";
+        const GET_DEVICE_INFO_CMD: MinerCommand = MinerCommand::RPC {
+            command: "get.device.info",
+            parameters: None,
+        };
+        const GET_MINER_STATUS_CMD: MinerCommand = MinerCommand::RPC {
+            command: "get.miner.status",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => &[(
