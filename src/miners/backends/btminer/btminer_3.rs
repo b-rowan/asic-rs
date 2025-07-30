@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -95,11 +96,77 @@ impl GetMinerData for BTMiner3 {
         };
 
         let hashboards: Vec<BoardData> = {
-            dbg!(data.get(&DataField::Hashboards));
             let mut hashboards: Vec<BoardData> = Vec::new();
             let board_count = self.device_info.hardware.boards.unwrap_or(3);
-            for idx in 0..board_count {}
-            vec![]
+            for idx in 0..board_count {
+                let hashrate = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/hash-average", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| {
+                        Some(HashRate {
+                            value: f,
+                            unit: HashRateUnit::TeraHash,
+                            algo: String::from("SHA256"),
+                        })
+                    });
+                let expected_hashrate = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/factory-hash", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| {
+                        Some(HashRate {
+                            value: f,
+                            unit: HashRateUnit::TeraHash,
+                            algo: String::from("SHA256"),
+                        })
+                    });
+                let board_temperature = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                let intake_temperature = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                let outlet_temperature = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-max", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| Some(Temperature::from_celsius(f)));
+                let serial_number = data
+                    .extract_nested::<String>(DataField::Hashboards, &format!("chipdata{}", idx));
+
+                let working_chips = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/effective-chips", idx)))
+                    .and_then(|val| val.as_u64())
+                    .and_then(|u| Some(u as u16));
+                let frequency = data
+                    .get(&DataField::Hashboards)
+                    .and_then(|val| val.pointer(&format!("/edevs/{}/freq", idx)))
+                    .and_then(|val| val.as_f64())
+                    .and_then(|f| Some(Frequency::from_megahertz(f)));
+                hashboards.push(BoardData {
+                    hashrate,
+                    position: idx,
+                    expected_hashrate,
+                    board_temperature,
+                    intake_temperature,
+                    outlet_temperature,
+                    expected_chips: self.device_info.hardware.chips,
+                    working_chips,
+                    serial_number,
+                    chips: vec![],
+                    voltage: None,
+                    frequency,
+                    tuned: Some(true),
+                    active: Some(true),
+                });
+            }
+            hashboards
         };
 
         // Get hardware specifications based on the miner model
