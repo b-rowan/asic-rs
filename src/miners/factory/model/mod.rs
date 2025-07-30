@@ -128,7 +128,7 @@ pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     let response: serde_json::Value = serde_json::from_str(&raw_json).ok()?;
 
     match response["version"].as_str() {
-        Some(v) => Some(semver::Version::parse(v).unwrap()),
+        Some(v) => Some(semver::Version::parse(v.strip_prefix("v")).unwrap()),
         _ => None,
     }
 }
