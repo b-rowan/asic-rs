@@ -1,12 +1,12 @@
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::api::rpc::traits::SendRPCCommand;
-use crate::miners::api::{ApiClient, rpc::errors::RPCError};
+use crate::miners::api::{APIClient, rpc::errors::RPCError};
 use crate::miners::commands::MinerCommand;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
 #[derive(Debug)]
 pub struct BTMinerV3RPC {
     ip: IpAddr,
@@ -23,8 +23,8 @@ impl BTMinerV3RPC {
 }
 
 #[async_trait]
-impl ApiClient for BTMinerV3RPC {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value, String> {
+impl APIClient for BTMinerV3RPC {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -32,8 +32,8 @@ impl ApiClient for BTMinerV3RPC {
             } => self
                 .send_command(command, parameters.clone())
                 .await
-                .map_err(|e| e.to_string()),
-            _ => Result::Err("Cannot send non RPC command to RPC API".to_string()),
+                .map_err(|e| anyhow!(e.to_string())),
+            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }

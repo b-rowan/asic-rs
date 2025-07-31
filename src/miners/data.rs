@@ -1,5 +1,5 @@
 use crate::miners::backends::traits::GetMinerData;
-use crate::miners::{api::ApiClient, commands::MinerCommand};
+use crate::miners::{api::APIClient, commands::MinerCommand};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator};
@@ -251,14 +251,14 @@ pub struct DataCollector<'a> {
     /// Backend-specific data mapping logic.
     miner: &'a dyn GetMinerData,
     /// API client used to send commands to the miner.
-    api_client: &'a dyn ApiClient,
+    api_client: &'a dyn APIClient,
     /// Cache of command responses keyed by command string.
     cache: HashMap<MinerCommand, Value>,
 }
 
 impl<'a> DataCollector<'a> {
     /// Constructs a new `DataCollector` with the given backend and API client.
-    pub fn new(miner: &'a dyn GetMinerData, api_client: &'a dyn ApiClient) -> Self {
+    pub fn new(miner: &'a dyn GetMinerData, api_client: &'a dyn APIClient) -> Self {
         Self {
             miner,
             api_client,

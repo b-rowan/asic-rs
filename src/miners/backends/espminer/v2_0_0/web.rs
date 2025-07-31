@@ -1,4 +1,8 @@
-use crate::miners::{api::ApiClient, commands::MinerCommand};
+use crate::miners::{
+    api::{APIClient, WebAPIClient},
+    commands::MinerCommand,
+};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
@@ -16,8 +20,35 @@ pub struct ESPMinerWebAPI {
 }
 
 #[async_trait]
-impl ApiClient for ESPMinerWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value, String> {
+trait ESPMiner200WebAPI: WebAPIClient {
+    /// Get system information
+    async fn system_info(&self) -> Result<Value> {
+        self.send_command("system/info", false, None, Method::GET)
+            .await
+    }
+
+    /// Get swarm information
+    async fn swarm_info(&self) -> Result<Value> {
+        self.send_command("swarm/info", false, None, Method::GET)
+            .await
+    }
+
+    /// Restart the system
+    async fn restart(&self) -> Result<Value> {
+        self.send_command("system/restart", false, None, Method::POST)
+            .await
+    }
+
+    /// Update system settings
+    async fn update_settings(&self, config: Value) -> Result<Value> {
+        self.send_command("system", false, Some(config), Method::PATCH)
+            .await
+    }
+}
+
+#[async_trait]
+impl APIClient for ESPMinerWebAPI {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -25,11 +56,57 @@ impl ApiClient for ESPMinerWebAPI {
             } => self
                 .send_command(command, false, parameters.clone(), Method::GET)
                 .await
-                .map_err(|e| e.to_string()),
-            _ => Result::Err("Cannot send non web command to web API".to_string()),
+                .map_err(|e| anyhow!(e.to_string())),
+            _ => Err(anyhow!("Cannot send non web command to web API")),
         }
     }
 }
+
+#[async_trait]
+impl WebAPIClient for ESPMinerWebAPI {
+    /// Send a command to the miner
+    async fn send_command(
+        &self,
+        command: &str,
+        _privileged: bool,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<Value> {
+        let url = format!("http://{}:{}/api/{}", self.ip, self.port, command);
+
+        for attempt in 0..=self.retries {
+            let result = self
+                .execute_request(&url, &method, parameters.clone())
+                .await;
+
+            match result {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        match response.json().await {
+                            Ok(json_data) => return Ok(json_data),
+                            Err(e) => {
+                                if attempt == self.retries {
+                                    return Err(ESPMinerError::ParseError(e.to_string()))?;
+                                }
+                            }
+                        }
+                    } else if attempt == self.retries {
+                        return Err(ESPMinerError::HttpError(response.status().as_u16()))?;
+                    }
+                }
+                Err(e) => {
+                    if attempt == self.retries {
+                        return Err(e)?;
+                    }
+                }
+            }
+        }
+
+        Err(ESPMinerError::MaxRetriesExceeded)?
+    }
+}
+
+impl ESPMiner200WebAPI for ESPMinerWebAPI {}
 
 impl ESPMinerWebAPI {
     /// Create a new ESPMiner WebAPI client
@@ -58,47 +135,6 @@ impl ESPMinerWebAPI {
     pub fn with_retries(mut self, retries: u32) -> Self {
         self.retries = retries;
         self
-    }
-
-    /// Send a command to the miner
-    pub async fn send_command(
-        &self,
-        command: &str,
-        _privileged: bool,
-        parameters: Option<Value>,
-        method: Method,
-    ) -> Result<Value, ESPMinerError> {
-        let url = format!("http://{}:{}/api/{}", self.ip, self.port, command);
-
-        for attempt in 0..=self.retries {
-            let result = self
-                .execute_request(&url, &method, parameters.clone())
-                .await;
-
-            match result {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        match response.json().await {
-                            Ok(json_data) => return Ok(json_data),
-                            Err(e) => {
-                                if attempt == self.retries {
-                                    return Err(ESPMinerError::ParseError(e.to_string()));
-                                }
-                            }
-                        }
-                    } else if attempt == self.retries {
-                        return Err(ESPMinerError::HttpError(response.status().as_u16()));
-                    }
-                }
-                Err(e) => {
-                    if attempt == self.retries {
-                        return Err(e);
-                    }
-                }
-            }
-        }
-
-        Err(ESPMinerError::MaxRetriesExceeded)
     }
 
     /// Execute the actual HTTP request
@@ -137,37 +173,6 @@ impl ESPMinerWebAPI {
             .map_err(|_| ESPMinerError::Timeout)?
             .map_err(|e| ESPMinerError::NetworkError(e.to_string()))?;
         Ok(response)
-    }
-
-    /// Execute multiple commands simultaneously
-    /// Get system information
-    pub async fn system_info(&self) -> Result<Value, ESPMinerError> {
-        self.send_command("system/info", false, None, Method::GET)
-            .await
-    }
-
-    /// Get swarm information
-    pub async fn swarm_info(&self) -> Result<Value, ESPMinerError> {
-        self.send_command("swarm/info", false, None, Method::GET)
-            .await
-    }
-
-    /// Restart the system
-    pub async fn restart(&self) -> Result<Value, ESPMinerError> {
-        self.send_command("system/restart", false, None, Method::POST)
-            .await
-    }
-
-    /// Update system settings
-    pub async fn update_settings(&self, config: Value) -> Result<Value, ESPMinerError> {
-        self.send_command("system", false, Some(config), Method::PATCH)
-            .await
-    }
-
-    /// Get ASIC information
-    pub async fn asic_info(&self) -> Result<Value, ESPMinerError> {
-        self.send_command("system/asic", false, None, Method::GET)
-            .await
     }
 }
 

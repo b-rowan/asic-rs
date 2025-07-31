@@ -14,13 +14,14 @@ use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
 use crate::data::miner::MinerData;
 use crate::data::pool::{PoolData, PoolScheme, PoolURL};
-use crate::miners::api::web::espminer::ESPMinerWebAPI;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
 };
+use web::ESPMinerWebAPI;
+pub mod web;
 
 #[derive(Debug)]
 pub struct ESPMiner290 {

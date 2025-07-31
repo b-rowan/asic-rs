@@ -1,14 +1,14 @@
 use std::net::IpAddr;
 
-pub use espminer_2_0_0::ESPMiner200;
-pub use espminer_2_9_0::ESPMiner290;
 use semver;
+pub use v2_0_0::ESPMiner200;
+pub use v2_9_0::ESPMiner290;
 
 use crate::data::device::{MinerFirmware, MinerModel};
 use crate::miners::backends::traits::GetMinerData;
 
-pub mod espminer_2_0_0;
-pub mod espminer_2_9_0;
+pub mod v2_0_0;
+pub mod v2_9_0;
 
 pub struct ESPMiner;
 

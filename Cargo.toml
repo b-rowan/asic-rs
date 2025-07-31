@@ -18,3 +18,5 @@ url = "2.5.4"
 async-trait = "0.1.88"
 strum = { version = "0.27", features = ["derive"] }
 semver = "1.0.26"
+anyhow = "1.0.98"
+thiserror = "2.0.12"
