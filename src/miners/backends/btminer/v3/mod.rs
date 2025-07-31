@@ -14,18 +14,20 @@ use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::miner::MinerData;
 use crate::data::pool::{PoolData, PoolURL};
-use crate::miners::api::rpc::btminer::BTMinerV3RPC;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
 };
+pub use rpc::BTMinerRPCAPI;
+
+mod rpc;
 
 #[derive(Debug)]
 pub struct BTMiner3 {
     pub ip: IpAddr,
-    pub rpc: BTMinerV3RPC,
+    pub rpc: BTMinerRPCAPI,
     pub device_info: DeviceInfo,
 }
 
@@ -33,7 +35,7 @@ impl BTMiner3 {
     pub fn new(ip: IpAddr, model: MinerModel, firmware: MinerFirmware) -> Self {
         BTMiner3 {
             ip,
-            rpc: BTMinerV3RPC::new(ip, None),
+            rpc: BTMinerRPCAPI::new(ip, None),
             device_info: DeviceInfo::new(
                 MinerMake::WhatsMiner,
                 model,

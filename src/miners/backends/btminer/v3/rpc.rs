@@ -1,5 +1,5 @@
+use crate::miners::api::RPCAPIClient;
 use crate::miners::api::rpc::status::RPCCommandStatus;
-use crate::miners::api::rpc::traits::SendRPCCommand;
 use crate::miners::api::{APIClient, rpc::errors::RPCError};
 use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow};
@@ -7,30 +7,22 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 #[derive(Debug)]
-pub struct BTMinerV3RPC {
+pub struct BTMinerRPCAPI {
     ip: IpAddr,
     port: u16,
 }
 
-impl BTMinerV3RPC {
-    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
-        Self {
-            ip,
-            port: port.unwrap_or(4433),
-        }
-    }
-}
-
 #[async_trait]
-impl APIClient for BTMinerV3RPC {
+impl APIClient for BTMinerRPCAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
                 parameters,
             } => self
-                .send_command(command, parameters.clone())
+                .send_command(command, false, parameters.clone())
                 .await
                 .map_err(|e| anyhow!(e.to_string())),
             _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
@@ -68,12 +60,13 @@ impl RPCCommandStatus {
 }
 
 #[async_trait]
-impl SendRPCCommand for BTMinerV3RPC {
+impl RPCAPIClient for BTMinerRPCAPI {
     async fn send_command(
         &self,
-        command: &'static str,
+        command: &str,
+        _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value, RPCError> {
+    ) -> Result<Value> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -111,12 +104,21 @@ impl SendRPCCommand for BTMinerV3RPC {
 
         self.parse_rpc_result(&response_str)
     }
+}
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value, RPCError> {
+impl BTMinerRPCAPI {
+    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
+        Self {
+            ip,
+            port: port.unwrap_or(4433),
+        }
+    }
+
+    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
         let status = RPCCommandStatus::from_btminer_v3(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
-            Err(e) => Err(e),
+            Err(e) => Err(e)?,
         }
     }
 }

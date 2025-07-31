@@ -7,7 +7,8 @@ use serde_json::Value;
 pub use super::super::v2_0_0::web::ESPMinerWebAPI;
 
 #[async_trait]
-trait ESPMiner200WebAPI: WebAPIClient {
+#[allow(dead_code)]
+trait ESPMiner290WebAPI: WebAPIClient {
     /// Get ASIC information
     async fn asic_info(&self) -> Result<Value> {
         self.send_command("system/asic", false, None, Method::GET)
@@ -15,4 +16,4 @@ trait ESPMiner200WebAPI: WebAPIClient {
     }
 }
 
-impl ESPMiner200WebAPI for ESPMinerWebAPI {}
+impl ESPMiner290WebAPI for ESPMinerWebAPI {}

@@ -20,6 +20,7 @@ pub struct ESPMinerWebAPI {
 }
 
 #[async_trait]
+#[allow(dead_code)]
 trait ESPMiner200WebAPI: WebAPIClient {
     /// Get system information
     async fn system_info(&self) -> Result<Value> {

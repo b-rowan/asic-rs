@@ -1,12 +1,12 @@
 use std::net::IpAddr;
 
-pub use btminer_3::BTMiner3;
 use semver;
+pub use v3::BTMiner3;
 
 use crate::data::device::{MinerFirmware, MinerModel};
 use crate::miners::backends::traits::GetMinerData;
 
-pub mod btminer_3;
+pub mod v3;
 
 pub struct BTMiner;
 
