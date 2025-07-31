@@ -380,7 +380,7 @@ impl GetWattage for BTMiner3 {
 impl GetWattageLimit for BTMiner3 {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<String, _>(DataField::WattageLimit, |p| p.parse::<f64>().ok())?
-            .map(|p| Power::from_watts(p))
+            .map(Power::from_watts)
     }
 }
 impl GetLightFlashing for BTMiner3 {
