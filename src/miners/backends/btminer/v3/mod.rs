@@ -121,6 +121,13 @@ impl GetDataLocations for BTMiner3 {
                     key: Some("/msg/miner/power-limit-set"),
                 },
             )],
+            DataField::Fans => vec![(
+                get_miner_status_summary_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/msg/summary"),
+                },
+            )],
             DataField::PsuFans => vec![(
                 get_device_info_cmd,
                 DataExtractor {
@@ -275,7 +282,7 @@ impl GetHashboards for BTMiner3 {
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
             let serial_number =
-                data.extract_nested::<String>(DataField::Hashboards, &format!("pcdsn{}", idx));
+                data.extract_nested::<String>(DataField::Hashboards, &format!("pcbsn{}", idx));
 
             let working_chips = data
                 .get(&DataField::Hashboards)
@@ -330,7 +337,6 @@ impl GetExpectedHashrate for BTMiner3 {
 impl GetFans for BTMiner3 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
-
         for (idx, direction) in ["in", "out"].iter().enumerate() {
             let fan = data.extract_nested_map::<f64, _>(
                 DataField::Fans,
@@ -351,7 +357,7 @@ impl GetPsuFans for BTMiner3 {
     fn parse_psu_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut psu_fans: Vec<FanData> = Vec::new();
 
-        let psu_fan = data.extract_map::<f64, _>(DataField::Fans, |rpm| FanData {
+        let psu_fan = data.extract_map::<f64, _>(DataField::PsuFans, |rpm| FanData {
             position: 0i16,
             rpm: Some(AngularVelocity::from_rpm(rpm)),
         });
@@ -373,7 +379,8 @@ impl GetWattage for BTMiner3 {
 }
 impl GetWattageLimit for BTMiner3 {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<String, _>(DataField::WattageLimit, |p| p.parse::<f64>().ok())?
+            .map(|p| Power::from_watts(p))
     }
 }
 impl GetLightFlashing for BTMiner3 {
