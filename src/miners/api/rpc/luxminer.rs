@@ -1,24 +1,35 @@
 use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
-use crate::miners::api::rpc::traits::SendRPCCommand;
+use crate::miners::backends::traits::{APIClient, RPCAPIClient};
+use crate::miners::commands::MinerCommand;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-pub struct LUXMinerRPC {
+#[derive(Debug)]
+pub struct LUXMinerRPCAPI {
     ip: IpAddr,
     port: u16,
 }
 
-impl LUXMinerRPC {
-    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
-        Self {
-            ip,
-            port: port.unwrap_or(4028),
+#[async_trait]
+impl APIClient for LUXMinerRPCAPI {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::RPC {
+                command,
+                parameters,
+            } => self
+                .send_command(command, false, parameters.clone())
+                .await
+                .map_err(|e| anyhow!(e.to_string())),
+            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }
+
 impl RPCCommandStatus {
     fn from_luxminer(response: &str) -> Result<Self, RPCError> {
         let value: serde_json::Value = serde_json::from_str(response)?;
@@ -36,12 +47,13 @@ impl RPCCommandStatus {
 }
 
 #[async_trait]
-impl SendRPCCommand for LUXMinerRPC {
+impl RPCAPIClient for LUXMinerRPCAPI {
     async fn send_command(
         &self,
-        command: &'static str,
+        command: &str,
+        _privileged: bool,
         param: Option<Value>,
-    ) -> Result<Value, RPCError> {
+    ) -> Result<Value> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -62,13 +74,21 @@ impl SendRPCCommand for LUXMinerRPC {
 
         self.parse_rpc_result(&response)
     }
+}
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value, RPCError> {
+impl LUXMinerRPCAPI {
+    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
+        Self {
+            ip,
+            port: port.unwrap_or(4028),
+        }
+    }
+
+    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
         let status = RPCCommandStatus::from_luxminer(response)?;
-
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
-            Err(e) => Err(e),
+            Err(e) => Err(e)?,
         }
     }
 }
