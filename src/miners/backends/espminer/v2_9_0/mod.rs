@@ -229,7 +229,7 @@ impl GetHashboards for ESPMiner290 {
 
         let chip_temperature = data.extract_nested_map::<f64, _>(
             DataField::Hashboards,
-            "asicCount",
+            "temp",
             Temperature::from_celsius,
         );
 
@@ -246,7 +246,7 @@ impl GetHashboards for ESPMiner290 {
         });
 
         let total_chips =
-            data.extract_nested_map::<u64, _>(DataField::Hashboards, "temp", |u| u as u16);
+            data.extract_nested_map::<u64, _>(DataField::Hashboards, "asicCount", |u| u as u16);
 
         let chip_info = ChipData {
             position: 0,

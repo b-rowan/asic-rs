@@ -99,6 +99,13 @@ impl GetDataLocations for ESPMiner200 {
                     key: Some("hashRate"),
                 },
             )],
+            DataField::ExpectedHashrate => vec![(
+                system_info_command,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                },
+            )],
             DataField::Fans => vec![(
                 system_info_command,
                 DataExtractor {
@@ -209,15 +216,9 @@ impl GetHashboards for ESPMiner200 {
 
         let chip_temperature = data.extract_nested_map::<f64, _>(
             DataField::Hashboards,
-            "asicCount",
+            "temp",
             Temperature::from_celsius,
         );
-
-        let expected_hashrate = Some(HashRate {
-            value: data.extract_nested_or::<f64>(DataField::Hashboards, "expectedHashrate", 0.0),
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
-        });
 
         let board_hashrate = Some(HashRate {
             value: data.extract_nested_or::<f64>(DataField::Hashboards, "hashRate", 0.0),
@@ -226,7 +227,20 @@ impl GetHashboards for ESPMiner200 {
         });
 
         let total_chips =
-            data.extract_nested_map::<u64, _>(DataField::Hashboards, "temp", |u| u as u16);
+            data.extract_nested_map::<u64, _>(DataField::Hashboards, "asicCount", |u| u as u16);
+
+        let core_count =
+            data.extract_nested_or::<u64>(DataField::Hashboards, "smallCoreCount", 0u64);
+
+        let expected_hashrate = Some(HashRate {
+            value: core_count as f64
+                * total_chips.unwrap_or(0) as f64
+                * board_frequency
+                    .unwrap_or(Frequency::from_megahertz(0f64))
+                    .as_gigahertz(),
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        });
 
         let chip_info = ChipData {
             position: 0,
@@ -267,7 +281,33 @@ impl GetHashrate for ESPMiner200 {
         })
     }
 }
-impl GetExpectedHashrate for ESPMiner200 {} // TODO
+impl GetExpectedHashrate for ESPMiner200 {
+    fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
+        let total_chips =
+            data.extract_nested_map::<u64, _>(DataField::ExpectedHashrate, "asicCount", |u| {
+                u as u16
+            });
+
+        let core_count =
+            data.extract_nested_or::<u64>(DataField::ExpectedHashrate, "smallCoreCount", 0u64);
+
+        let board_frequency = data.extract_nested_map::<f64, _>(
+            DataField::Hashboards,
+            "frequency",
+            Frequency::from_megahertz,
+        );
+
+        Some(HashRate {
+            value: core_count as f64
+                * total_chips.unwrap_or(0) as f64
+                * board_frequency
+                    .unwrap_or(Frequency::from_megahertz(0f64))
+                    .as_gigahertz(),
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        })
+    }
+}
 impl GetFans for ESPMiner200 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         data.extract_map_or::<f64, _>(DataField::Fans, Vec::new(), |f| {
