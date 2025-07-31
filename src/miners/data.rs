@@ -1,4 +1,4 @@
-use crate::miners::backends::traits::GetMinerData;
+use crate::miners::backends::traits::GetDataLocations;
 use crate::miners::{api::APIClient, commands::MinerCommand};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
@@ -37,8 +37,6 @@ pub enum DataField {
     ExpectedHashrate,
     /// Expected number of chips across all hashboards.
     ExpectedChips,
-    /// Total number of chips detected.
-    TotalChips,
     /// Expected number of fans.
     ExpectedFans,
     /// Fan speed or fan configuration.
@@ -249,7 +247,7 @@ impl DataExtensions for HashMap<DataField, Value> {
 /// A utility for collecting structured miner data from an API backend.
 pub struct DataCollector<'a> {
     /// Backend-specific data mapping logic.
-    miner: &'a dyn GetMinerData,
+    miner: &'a dyn GetDataLocations,
     /// API client used to send commands to the miner.
     api_client: &'a dyn APIClient,
     /// Cache of command responses keyed by command string.
@@ -258,7 +256,7 @@ pub struct DataCollector<'a> {
 
 impl<'a> DataCollector<'a> {
     /// Constructs a new `DataCollector` with the given backend and API client.
-    pub fn new(miner: &'a dyn GetMinerData, api_client: &'a dyn APIClient) -> Self {
+    pub fn new(miner: &'a dyn GetDataLocations, api_client: &'a dyn APIClient) -> Self {
         Self {
             miner,
             api_client,
