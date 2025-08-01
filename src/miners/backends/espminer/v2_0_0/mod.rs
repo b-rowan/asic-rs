@@ -422,3 +422,115 @@ impl GetPools for ESPMiner200 {
         vec![main_pool_data, fallback_pool_data]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::device::models::bitaxe::BitaxeModel;
+    use crate::test::api::MockAPIClient;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_espminer_200_data_parsers() {
+        let miner = ESPMiner200::new(
+            IpAddr::from([127, 0, 0, 1]),
+            MinerModel::Bitaxe(BitaxeModel::Supra),
+            MinerFirmware::Stock,
+        );
+        let mut results = HashMap::new();
+        let system_info_command: MinerCommand = MinerCommand::WebAPI {
+            command: "system/info",
+            parameters: None,
+        };
+        results.insert(
+            system_info_command,
+            json!({
+                "power":2.65000009536743,
+                "voltage":5175,
+                "current":521.25,
+                "temp":27,
+                "vrTemp":0,
+                "hashRate":0,
+                "bestDiff":"483k",
+                "bestSessionDiff":"0",
+                "stratumDiff":0,
+                "isUsingFallbackStratum":0,
+                "freeHeap":8443612,
+                "coreVoltage":1166,
+                "coreVoltageActual":1172,
+                "frequency":490,
+                "ssid":"Test",
+                "macAddr":"AA:BB:CC:DD:EE:FF",
+                "hostname":"bitaxe",
+                "wifiStatus":"Connected!",
+                "sharesAccepted":0,
+                "sharesRejected":0,
+                "uptimeSeconds":4,
+                "asicCount":1,
+                "smallCoreCount":1276,
+                "ASICModel":"BM1368",
+                "stratumURL":"btc.example.pool",
+                "fallbackStratumURL":"btc2.example.pool",
+                "stratumPort":3333,
+                "fallbackStratumPort":3333,
+                "stratumUser":"asic-rs.test",
+                "fallbackStratumUser":"asic-rs.test",
+                "version":"v2.4.5-3-gb5d1e36-dirty",
+                "idfVersion":"v5.4",
+                "boardVersion":"401",
+                "runningPartition":"factory",
+                "flipscreen":1,
+                "overheat_mode":0,
+                "invertscreen":0,
+                "invertfanpolarity":1,
+                "autofanspeed":1,
+                "fanspeed":35,
+                "fanrpm":3517
+            }),
+        );
+        let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        dbg!(&miner_data);
+        assert_eq!(&miner_data.ip, &miner.ip);
+        assert_eq!(
+            &miner_data.mac.unwrap(),
+            &MacAddr::from_str("AA:BB:CC:DD:EE:FF").unwrap()
+        );
+        assert_eq!(&miner_data.device_info, &miner.device_info);
+        assert_eq!(&miner_data.hostname, &Some("bitaxe".to_string()));
+        assert_eq!(
+            &miner_data.api_version,
+            &Some("v2.4.5-3-gb5d1e36-dirty".to_string())
+        );
+        assert_eq!(
+            &miner_data.firmware_version,
+            &Some("v2.4.5-3-gb5d1e36-dirty".to_string())
+        );
+        assert_eq!(&miner_data.control_board_version, &Some("401".to_string()));
+        assert_eq!(
+            &miner_data.hashrate,
+            &Some(HashRate {
+                value: 0f64,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            })
+        );
+        assert_eq!(&miner_data.total_chips, &Some(1u16));
+        assert_eq!(
+            &miner_data.fans,
+            &vec![FanData {
+                position: 0,
+                rpm: Some(AngularVelocity::from_rpm(3517f64)),
+            }]
+        );
+        assert_eq!(
+            &miner_data.wattage,
+            &Some(Power::from_watts(2.65000009536743))
+        )
+    }
+}
