@@ -26,6 +26,7 @@ pub trait GetMinerData: CollectData {
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.
     async fn get_data(&self) -> MinerData;
+    fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData;
 }
 
 pub trait CollectData: GetDataLocations {
@@ -76,7 +77,9 @@ impl<
     async fn get_data(&self) -> MinerData {
         let mut collector = self.get_collector();
         let data = collector.collect_all().await;
-
+        self.parse_data(data)
+    }
+    fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData {
         let schema_version = env!("CARGO_PKG_VERSION").to_string();
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
