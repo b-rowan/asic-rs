@@ -22,7 +22,34 @@ use crate::miners::data::{DataCollector, DataField, DataLocation};
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
-pub trait GetMinerData: CollectData {
+pub trait GetMinerData:
+    CollectData
+    + GetIP
+    + GetDeviceInfo
+    + GetExpectedHashboards
+    + GetExpectedChips
+    + GetExpectedFans
+    + GetMAC
+    + GetSerialNumber
+    + GetHostname
+    + GetApiVersion
+    + GetFirmwareVersion
+    + GetControlBoardVersion
+    + GetHashboards
+    + GetHashrate
+    + GetExpectedHashrate
+    + GetFans
+    + GetPsuFans
+    + GetFluidTemperature
+    + GetWattage
+    + GetWattageLimit
+    + GetLightFlashing
+    + GetMessages
+    + GetUptime
+    + GetIsMining
+    + GetPools
+    + GetDeviceInfo
+{
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.
     async fn get_data(&self) -> MinerData;
@@ -219,7 +246,7 @@ pub trait GetDeviceInfo: Send + Sync {
     fn get_device_info(&self) -> DeviceInfo;
 }
 
-trait GetExpectedHashboards: GetDeviceInfo {
+pub trait GetExpectedHashboards: GetDeviceInfo {
     #[allow(dead_code)]
     fn get_expected_hashboards(&self) -> Option<u8> {
         self.get_device_info().hardware.boards
@@ -227,7 +254,7 @@ trait GetExpectedHashboards: GetDeviceInfo {
 }
 impl<T: GetDeviceInfo> GetExpectedHashboards for T {}
 
-trait GetExpectedChips: GetDeviceInfo {
+pub trait GetExpectedChips: GetDeviceInfo {
     #[allow(dead_code)]
     fn get_expected_chips(&self) -> Option<u16> {
         self.get_device_info().hardware.chips
@@ -235,7 +262,7 @@ trait GetExpectedChips: GetDeviceInfo {
 }
 impl<T: GetDeviceInfo> GetExpectedChips for T {}
 
-trait GetExpectedFans: GetDeviceInfo {
+pub trait GetExpectedFans: GetDeviceInfo {
     #[allow(dead_code)]
     fn get_expected_fans(&self) -> Option<u8> {
         self.get_device_info().hardware.fans
