@@ -3,13 +3,17 @@ mod hardware;
 mod model;
 mod traits;
 
+use anyhow::Result;
 use futures::future::FutureExt;
-use futures::pin_mut;
+use futures::{StreamExt, pin_mut, stream};
+use ipnet::IpNet;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
+use std::collections::HashSet;
 use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 use std::time::Duration;
-use std::{collections::HashSet, error::Error};
 use tokio::task::JoinSet;
 
 use super::commands::MinerCommand;
@@ -126,7 +130,9 @@ fn select_backend(
 pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
+    ips: Vec<IpAddr>,
 }
+
 impl Default for MinerFactory {
     fn default() -> Self {
         Self::new()
@@ -134,10 +140,7 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
-    pub async fn get_miner(
-        self,
-        ip: IpAddr,
-    ) -> Result<Option<Box<dyn GetMinerData>>, Box<dyn Error>> {
+    pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -227,54 +230,201 @@ impl MinerFactory {
         MinerFactory {
             search_makes: None,
             search_firmwares: None,
+            ips: Vec::new(),
         }
     }
 
-    pub fn with_search_makes(&mut self, search_makes: Vec<MinerMake>) -> &Self {
+    pub fn with_search_makes(mut self, search_makes: Vec<MinerMake>) -> Self {
         self.search_makes = Some(search_makes);
         self
     }
-    pub fn with_search_firmwares(&mut self, search_firmwares: Vec<MinerFirmware>) -> &Self {
+
+    pub fn with_makes(mut self, makes: Vec<MinerMake>) -> Self {
+        self.search_makes = Some(makes);
+        self
+    }
+
+    /// Calculate IPs from a subnet string
+    fn calculate_ips_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
+        let network = IpNet::from_str(subnet)?;
+        Ok(network.hosts().collect())
+    }
+
+    /// Set the subnet and calculate all IPs in that subnet
+    pub fn with_subnet(mut self, subnet: &str) -> Result<Self> {
+        let ips = self.calculate_ips_from_subnet(subnet)?;
+        self.ips = ips;
+        Ok(self)
+    }
+    pub fn with_search_firmwares(mut self, search_firmwares: Vec<MinerFirmware>) -> Self {
         self.search_firmwares = Some(search_firmwares);
         self
     }
-    pub fn add_search_make(&mut self, search_make: MinerMake) -> &Self {
+
+    /// Calculate IPs from octet ranges
+    fn generate_ips_from_octets(
+        &self,
+        octet1: &str,
+        octet2: &str,
+        octet3: &str,
+        octet4: &str,
+    ) -> Result<Vec<IpAddr>> {
+        let octet1_range = parse_octet_range(octet1)?;
+        let octet2_range = parse_octet_range(octet2)?;
+        let octet3_range = parse_octet_range(octet3)?;
+        let octet4_range = parse_octet_range(octet4)?;
+
+        Ok(generate_ips_from_ranges(
+            &octet1_range,
+            &octet2_range,
+            &octet3_range,
+            &octet4_range,
+        ))
+    }
+
+    /// Set IPs from octet ranges
+    pub fn with_octets(
+        mut self,
+        octet1: &str,
+        octet2: &str,
+        octet3: &str,
+        octet4: &str,
+    ) -> Result<Self> {
+        let ips = self.generate_ips_from_octets(octet1, octet2, octet3, octet4)?;
+        self.ips = ips;
+        Ok(self)
+    }
+
+    /// Set IPs from a range string in the format "10.1-199.0.1-199"
+    pub fn with_range(self, range_str: &str) -> Result<Self> {
+        let parts: Vec<&str> = range_str.split('.').collect();
+        if parts.len() != 4 {
+            return Err(anyhow::anyhow!(
+                "Invalid IP range format. Expected format: 10.1-199.0.1-199"
+            ));
+        }
+
+        self.with_octets(parts[0], parts[1], parts[2], parts[3])
+    }
+    pub fn add_search_make(mut self, search_make: MinerMake) -> Self {
         if self.search_makes.is_none() {
             self.search_makes = Some(vec![search_make]);
+        } else {
+            self.search_makes.as_mut().unwrap().push(search_make);
         }
-        self.search_makes.as_mut().unwrap().push(search_make);
         self
     }
-    pub fn add_search_firmware(&mut self, search_firmware: MinerFirmware) -> &Self {
+
+    pub fn add_search_firmware(mut self, search_firmware: MinerFirmware) -> Self {
         if self.search_firmwares.is_none() {
             self.search_firmwares = Some(vec![search_firmware]);
+        } else {
+            self.search_firmwares
+                .as_mut()
+                .unwrap()
+                .push(search_firmware);
         }
-        self.search_firmwares
-            .as_mut()
-            .unwrap()
-            .push(search_firmware);
         self
     }
-    pub fn remove_search_make(&mut self, search_make: MinerMake) -> &Self {
-        if self.search_makes.is_none() {
-            return self;
+
+    pub fn remove_search_make(mut self, search_make: MinerMake) -> Self {
+        if let Some(makes) = self.search_makes.as_mut() {
+            makes.retain(|val| *val != search_make);
         }
-        self.search_makes
-            .as_mut()
-            .unwrap()
-            .retain(|val| *val != search_make);
         self
     }
-    pub fn remove_search_firmware(&mut self, search_firmware: MinerFirmware) -> &Self {
-        if self.search_firmwares.is_none() {
-            return self;
+
+    pub fn remove_search_firmware(mut self, search_firmware: MinerFirmware) -> Self {
+        if let Some(firmwares) = self.search_firmwares.as_mut() {
+            firmwares.retain(|val| *val != search_firmware);
         }
-        self.search_firmwares
-            .as_mut()
-            .unwrap()
-            .retain(|val| *val != search_firmware);
         self
     }
+
+    pub async fn scan(&self) -> Result<Vec<Box<dyn GetMinerData>>> {
+        const MAX_CONCURRENT_TASKS: usize = 250;
+
+        if self.ips.is_empty() {
+            return Err(anyhow::anyhow!(
+                "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
+            ));
+        }
+
+        let miners: Vec<Box<dyn GetMinerData>> = stream::iter(self.ips.iter().copied())
+            .map(|ip| async move { self.get_miner(ip).await.ok().flatten() })
+            .buffer_unordered(MAX_CONCURRENT_TASKS)
+            .filter_map(|miner_opt| async move { miner_opt })
+            .collect()
+            .await;
+
+        Ok(miners)
+    }
+
+    /// Scan for miners by specific octets
+    pub async fn scan_by_octets(
+        self,
+        octet1: &str,
+        octet2: &str,
+        octet3: &str,
+        octet4: &str,
+    ) -> Result<Vec<Box<dyn GetMinerData>>> {
+        self.with_octets(octet1, octet2, octet3, octet4)?
+            .scan()
+            .await
+    }
+
+    /// Scan for miners by IP range in the format "10.1-199.0.1-199"
+    pub async fn scan_by_range(self, range_str: &str) -> Result<Vec<Box<dyn GetMinerData>>> {
+        self.with_range(range_str)?.scan().await
+    }
+}
+
+/// Helper function to parse an octet range string like "1-199" into a vector of u8 values
+fn parse_octet_range(range_str: &str) -> Result<Vec<u8>> {
+    if range_str.contains('-') {
+        let parts: Vec<&str> = range_str.split('-').collect();
+        if parts.len() != 2 {
+            return Err(anyhow::anyhow!("Invalid range format: {}", range_str));
+        }
+
+        let start: u8 = parts[0].parse()?;
+        let end: u8 = parts[1].parse()?;
+
+        if start > end {
+            return Err(anyhow::anyhow!(
+                "Invalid range: start > end in {}",
+                range_str
+            ));
+        }
+
+        Ok((start..=end).collect())
+    } else {
+        // Single value
+        let value: u8 = range_str.parse()?;
+        Ok(vec![value])
+    }
+}
+
+/// Generate all IPv4 addresses from octet ranges
+fn generate_ips_from_ranges(
+    octet1_range: &[u8],
+    octet2_range: &[u8],
+    octet3_range: &[u8],
+    octet4_range: &[u8],
+) -> Vec<IpAddr> {
+    let mut ips = Vec::new();
+
+    for &o1 in octet1_range {
+        for &o2 in octet2_range {
+            for &o3 in octet3_range {
+                for &o4 in octet4_range {
+                    ips.push(IpAddr::V4(Ipv4Addr::new(o1, o2, o3, o4)));
+                }
+            }
+        }
+    }
+
+    ips
 }
 
 #[cfg(test)]
@@ -291,6 +441,7 @@ mod tests {
             Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
         )
     }
+
     #[test]
     fn test_parse_type_from_web_whatsminer_2024_09_30() {
         let mut headers = HeaderMap::new();
@@ -303,5 +454,46 @@ mod tests {
             result,
             Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
         )
+    }
+
+    #[test]
+    fn test_parse_octet_range() {
+        // Test single value
+        let result = parse_octet_range("10").unwrap();
+        assert_eq!(result, vec![10]);
+
+        // Test range
+        let result = parse_octet_range("1-5").unwrap();
+        assert_eq!(result, vec![1, 2, 3, 4, 5]);
+
+        // Test larger range
+        let result = parse_octet_range("200-255").unwrap();
+        assert_eq!(result, (200..=255).collect::<Vec<u8>>());
+
+        // Test invalid range (start > end)
+        let result = parse_octet_range("200-100");
+        assert!(result.is_err());
+
+        // Test invalid format
+        let result = parse_octet_range("1-5-10");
+        assert!(result.is_err());
+
+        // Test invalid value
+        let result = parse_octet_range("300");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_generate_ips_from_ranges() {
+        let octet1 = vec![192];
+        let octet2 = vec![168];
+        let octet3 = vec![1];
+        let octet4 = vec![1, 2];
+
+        let ips = generate_ips_from_ranges(&octet1, &octet2, &octet3, &octet4);
+
+        assert_eq!(ips.len(), 2);
+        assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
+        assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2))));
     }
 }
