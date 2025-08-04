@@ -428,10 +428,11 @@ mod tests {
     use super::*;
     use crate::data::device::models::bitaxe::BitaxeModel;
     use crate::test::api::MockAPIClient;
-    use serde_json::json;
+    use crate::test::json::bitaxe::v2_0_0::SYSTEM_INFO_COMMAND;
 
     #[tokio::test]
     async fn test_espminer_200_data_parsers() {
+        dbg!(SYSTEM_INFO_COMMAND);
         let miner = ESPMiner200::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::Bitaxe(BitaxeModel::Supra),
@@ -444,49 +445,7 @@ mod tests {
         };
         results.insert(
             system_info_command,
-            json!({
-                "power":2.65000009536743,
-                "voltage":5175,
-                "current":521.25,
-                "temp":27,
-                "vrTemp":0,
-                "hashRate":0,
-                "bestDiff":"483k",
-                "bestSessionDiff":"0",
-                "stratumDiff":0,
-                "isUsingFallbackStratum":0,
-                "freeHeap":8443612,
-                "coreVoltage":1166,
-                "coreVoltageActual":1172,
-                "frequency":490,
-                "ssid":"Test",
-                "macAddr":"AA:BB:CC:DD:EE:FF",
-                "hostname":"bitaxe",
-                "wifiStatus":"Connected!",
-                "sharesAccepted":0,
-                "sharesRejected":0,
-                "uptimeSeconds":4,
-                "asicCount":1,
-                "smallCoreCount":1276,
-                "ASICModel":"BM1368",
-                "stratumURL":"btc.example.pool",
-                "fallbackStratumURL":"btc2.example.pool",
-                "stratumPort":3333,
-                "fallbackStratumPort":3333,
-                "stratumUser":"asic-rs.test",
-                "fallbackStratumUser":"asic-rs.test",
-                "version":"v2.4.5-3-gb5d1e36-dirty",
-                "idfVersion":"v5.4",
-                "boardVersion":"401",
-                "runningPartition":"factory",
-                "flipscreen":1,
-                "overheat_mode":0,
-                "invertscreen":0,
-                "invertfanpolarity":1,
-                "autofanspeed":1,
-                "fanspeed":35,
-                "fanrpm":3517
-            }),
+            Value::from_str(SYSTEM_INFO_COMMAND).unwrap(),
         );
         let mock_api = MockAPIClient::new(results);
 
@@ -495,7 +454,6 @@ mod tests {
 
         let miner_data = miner.parse_data(data);
 
-        dbg!(&miner_data);
         assert_eq!(&miner_data.ip, &miner.ip);
         assert_eq!(
             &miner_data.mac.unwrap(),
