@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 pub mod rpc;
 
-use crate::data::board::{BoardData, ChipData};
+use crate::data::board::BoardData;
 use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
@@ -13,6 +13,9 @@ use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
 
+use crate::miners::api::RPCAPIClient;
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature};
 use regex::Regex;
@@ -22,9 +25,6 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-use crate::miners::api::RPCAPIClient;
-use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 
 #[derive(Debug)]
 pub struct AvalonMiner {
@@ -38,10 +38,14 @@ impl AvalonMiner {
         Self {
             ip,
             rpc: CGMinerRPC::new(ip),
-            device_info: DeviceInfo::new(MinerMake::AvalonMiner, model, miner_firmware, HashAlgorithm::SHA256),
+            device_info: DeviceInfo::new(
+                MinerMake::AvalonMiner,
+                model,
+                miner_firmware,
+                HashAlgorithm::SHA256,
+            ),
         }
     }
-
 
     /// Turn on the fault light
     pub async fn fault_light_on(&self) -> Result<()> {
@@ -54,7 +58,7 @@ impl AvalonMiner {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
                     if msg == "ASC 0 set OK" {
-                        return Ok(())
+                        return Ok(());
                     }
                 }
             }
@@ -74,7 +78,7 @@ impl AvalonMiner {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
                     if msg == "ASC 0 set OK" {
-                        return Ok(())
+                        return Ok(());
                     }
                 }
             }
@@ -82,7 +86,6 @@ impl AvalonMiner {
 
         Err(anyhow!("Failed to turn off fault light"))
     }
-
 
     /// Reboot the miner
     pub async fn reboot(&self) -> Result<bool> {
@@ -94,8 +97,6 @@ impl AvalonMiner {
 
         Ok(false)
     }
-
-
 
     /// Schedule soft power on at a specific timestamp
     pub async fn soft_power_on(&self, timestamp: u64) -> Result<bool> {
@@ -200,12 +201,8 @@ impl Resume for AvalonMiner {
 impl SetFaultLight for AvalonMiner {
     async fn set_fault_light(&self, fault: bool) -> Result<()> {
         match fault {
-            true => {
-                self.fault_light_on().await
-            }
-            false => {
-                self.fault_light_off().await
-            }
+            true => self.fault_light_on().await,
+            false => self.fault_light_off().await,
         }
     }
 }
@@ -226,9 +223,8 @@ impl SetPowerLimit for AvalonMiner {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
                     if msg == "ASC 0 set OK" {
-                        return Ok(())
+                        return Ok(());
                     }
-
                 }
             }
         }
@@ -477,8 +473,8 @@ impl GetHashboards for AvalonMiner {
                 position: i,
                 expected_chips: device_info.hardware.chips,
                 working_chips,
-                board_temperature: board_temperature.clone(),
-                intake_temperature: intake_temperature.clone(),
+                board_temperature,
+                intake_temperature,
                 hashrate: hashrate.clone(),
                 active: Some(is_active),
                 outlet_temperature: None,
@@ -690,7 +686,7 @@ impl GetPools for AvalonMiner {
                             alive,
                             active,
                             accepted_shares,
-                            rejected_shares
+                            rejected_shares,
                         });
                     }
                 }
@@ -700,7 +696,6 @@ impl GetPools for AvalonMiner {
         pools
     }
 }
-
 
 #[cfg(test)]
 mod tests {
