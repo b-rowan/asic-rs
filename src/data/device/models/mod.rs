@@ -1,4 +1,5 @@
 use super::{MinerFirmware, MinerMake};
+use crate::data::device::models::avalon::AvalonMinerModel;
 use antminer::AntMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
@@ -6,14 +7,13 @@ use epic::EPicModel;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
-use crate::data::device::models::avalon::AvalonMinerModel;
 
 pub mod antminer;
+pub mod avalon;
 pub mod bitaxe;
 pub mod braiins;
 pub mod epic;
 pub mod whatsminer;
-pub mod avalon;
 
 #[derive(Debug, Clone)]
 pub struct ModelParseError;

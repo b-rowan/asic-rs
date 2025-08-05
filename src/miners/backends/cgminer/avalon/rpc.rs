@@ -2,9 +2,9 @@ use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::backends::traits::{APIClient, RPCAPIClient};
 use crate::miners::commands::MinerCommand;
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use anyhow::{anyhow, bail, Result};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -54,7 +54,6 @@ impl RPCAPIClient for CGMinerRPC {
         _privileged: bool,
         param: Option<Value>,
     ) -> anyhow::Result<Value> {
-
         let cmd = match param {
             Some(params) => json!({
                 "command": command,

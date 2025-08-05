@@ -1,10 +1,10 @@
 use crate::data::device::MinerHardware;
 use crate::data::device::models::antminer::AntMinerModel;
+use crate::data::device::models::avalon::AvalonMinerModel;
 use crate::data::device::models::bitaxe::BitaxeModel;
 use crate::data::device::models::braiins::BraiinsModel;
 use crate::data::device::models::epic::EPicModel;
 use crate::data::device::models::whatsminer::WhatsMinerModel;
-use crate::data::device::models::avalon::AvalonMinerModel;
 
 impl From<&AvalonMinerModel> for MinerHardware {
     fn from(value: &AvalonMinerModel) -> Self {

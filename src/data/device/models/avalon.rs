@@ -10,7 +10,7 @@ pub enum AvalonMinerModel {
     Avalon761,
     #[serde(alias = "Avalon 821")]
     Avalon821,
-    #[serde(alias = "Avalon 841")]  
+    #[serde(alias = "Avalon 841")]
     Avalon841,
     #[serde(alias = "Avalon 851")]
     Avalon851,
