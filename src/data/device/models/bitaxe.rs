@@ -1,5 +1,5 @@
-use serde::Serialize;
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+use serde::{Deserialize, Serialize};
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BitaxeModel {
     #[serde(alias = "BM1368")]
     Supra,
