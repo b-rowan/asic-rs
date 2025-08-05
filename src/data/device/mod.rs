@@ -52,7 +52,7 @@ pub enum HashAlgorithm {
     Kadena,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub make: MinerMake,
     pub model: MinerModel,
@@ -78,7 +78,7 @@ impl DeviceInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize)]
 pub struct MinerHardware {
     pub chips: Option<u16>,
     pub fans: Option<u8>,

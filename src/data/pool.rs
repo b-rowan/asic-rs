@@ -1,7 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PoolScheme {
     StratumV1,
     StratumV1SSL,
@@ -19,7 +19,7 @@ impl From<String> for PoolScheme {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolURL {
     /// The scheme being used to connect to this pool
     pub scheme: PoolScheme,
@@ -52,7 +52,7 @@ impl From<String> for PoolURL {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolData {
     pub position: Option<u16>,
     pub url: Option<PoolURL>,

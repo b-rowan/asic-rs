@@ -2,7 +2,7 @@ use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
@@ -56,7 +56,7 @@ impl FromStr for BraiinsModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),

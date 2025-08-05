@@ -1,3 +1,4 @@
+use crate::data::deserialize::deserialize_macaddr;
 use crate::data::serialize::serialize_macaddr;
 use crate::data::serialize::serialize_power;
 use crate::data::serialize::serialize_temperature;
@@ -9,9 +10,9 @@ use super::{
 };
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
     pub schema_version: String,
@@ -20,7 +21,10 @@ pub struct MinerData {
     /// The IP address of the miner this data is for
     pub ip: IpAddr,
     /// The MAC address of the miner this data is for
-    #[serde(serialize_with = "serialize_macaddr")]
+    #[serde(
+        serialize_with = "serialize_macaddr",
+        deserialize_with = "deserialize_macaddr"
+    )]
     pub mac: Option<MacAddr>,
     /// Hardware information about this miner
     pub device_info: DeviceInfo,

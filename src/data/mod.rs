@@ -1,4 +1,5 @@
 pub mod board;
+pub(crate) mod deserialize;
 pub mod device;
 pub mod fan;
 pub mod hashrate;

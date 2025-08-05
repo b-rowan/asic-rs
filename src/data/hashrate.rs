@@ -1,11 +1,11 @@
 use measurements::Power;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
     ops::Div,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HashRateUnit {
     Hash,
     KiloHash,
@@ -34,7 +34,7 @@ impl Display for HashRateUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HashRate {
     /// The current amount of hashes being computed
     pub value: f64,

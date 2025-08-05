@@ -8,7 +8,7 @@ license = "LICENSE.txt"
 diqwest = "3.1.0"
 futures = "0.3.31"
 macaddr = { version = "1.0.1", features = ["serde_std"] }
-measurements = "0.11.0"
+measurements = { version = "0.11.0", features = ["serde"] }
 reqwest = { version = "0.12.12", features = ["json", "gzip"] }
 serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.140"
@@ -19,8 +19,6 @@ strum = { version = "0.27", features = ["derive"] }
 semver = "1.0.26"
 anyhow = "1.0.98"
 ipnet = "2.11.0"
-
-
 
 
 [profile.release]

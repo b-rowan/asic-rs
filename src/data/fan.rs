@@ -1,9 +1,9 @@
 use crate::data::serialize;
 use measurements::AngularVelocity;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serialize::serialize_angular_velocity;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FanData {
     /// The position or index of the fan as seen by the device
     /// Usually dependent on where to fan is connected to the control board
