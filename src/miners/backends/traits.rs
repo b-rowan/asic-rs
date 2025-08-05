@@ -458,27 +458,27 @@ pub trait GetLightFlashing: CollectData {
 // Setters
 #[async_trait]
 pub trait SetFaultLight {
-    async fn set_fault_light(&self, fault: bool) -> Result<()>;
+    async fn set_fault_light(&self, fault: bool) -> Result<bool>;
 }
 
 #[async_trait]
 pub trait SetPowerLimit {
-    async fn set_power_limit(&self, limit: Power) -> Result<()>;
+    async fn set_power_limit(&self, limit: Power) -> Result<bool>;
 }
 
 #[async_trait]
 pub trait Restart {
-    async fn restart(&self) -> Result<()>;
+    async fn restart(&self) -> Result<bool>;
 }
 
 #[async_trait]
 pub trait Pause {
-    async fn pause(&self, at_time: Option<u64>) -> Result<()>;
+    async fn pause(&self, at_time: Option<u64>) -> Result<bool>;
 }
 
 #[async_trait]
 pub trait Resume {
-    async fn resume(&self, at_time: Option<u64>) -> Result<()>;
+    async fn resume(&self, at_time: Option<u64>) -> Result<bool>;
 }
 
 // Messages

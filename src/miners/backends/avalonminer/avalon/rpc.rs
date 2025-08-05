@@ -49,7 +49,7 @@ impl RPCAPIClient for CGMinerRPC {
         command: &str,
         _privileged: bool,
         param: Option<Value>,
-    ) -> anyhow::Result<Value> {
+    ) -> Result<Value> {
         let cmd = match param {
             Some(params) => json!({
                 "command": command,

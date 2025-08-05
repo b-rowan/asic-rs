@@ -48,7 +48,7 @@ impl AvalonMiner {
     }
 
     /// Turn on the fault light
-    pub async fn fault_light_on(&self) -> Result<()> {
+    pub async fn fault_light_on(&self) -> Result<bool> {
         let data = self
             .rpc
             .send_command("ascset", false, Some(json!(["0", "led", "1-1"])))
@@ -57,9 +57,7 @@ impl AvalonMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    if msg == "ASC 0 set OK" {
-                        return Ok(());
-                    }
+                        return Ok(msg == "ASC 0 set OK");
                 }
             }
         }
@@ -68,7 +66,7 @@ impl AvalonMiner {
     }
 
     /// Turn off the fault light
-    pub async fn fault_light_off(&self) -> Result<()> {
+    pub async fn fault_light_off(&self) -> Result<bool> {
         let data = self
             .rpc
             .send_command("ascset", false, Some(json!(["0", "led", "1-0"])))
@@ -77,9 +75,7 @@ impl AvalonMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    if msg == "ASC 0 set OK" {
-                        return Ok(());
-                    }
+                        return Ok(msg == "ASC 0 set OK");
                 }
             }
         }
@@ -177,29 +173,29 @@ impl AvalonMiner {
 }
 #[async_trait]
 impl Pause for AvalonMiner {
-    async fn pause(&self, at_time: Option<u64>) -> Result<()> {
+    async fn pause(&self, at_time: Option<u64>) -> Result<bool> {
         if let Some(time) = at_time {
             self.soft_power_off(time).await?;
         } else {
             self.soft_power_off(0).await?;
         }
-        Ok(())
+        Ok(true)
     }
 }
 #[async_trait]
 impl Resume for AvalonMiner {
-    async fn resume(&self, at_time: Option<u64>) -> Result<()> {
+    async fn resume(&self, at_time: Option<u64>) -> Result<bool> {
         if let Some(time) = at_time {
             self.soft_power_on(time).await?;
         } else {
             self.soft_power_on(0).await?;
         }
-        Ok(())
+        Ok(true)
     }
 }
 #[async_trait]
 impl SetFaultLight for AvalonMiner {
-    async fn set_fault_light(&self, fault: bool) -> Result<()> {
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
         match fault {
             true => self.fault_light_on().await,
             false => self.fault_light_off().await,
@@ -209,7 +205,7 @@ impl SetFaultLight for AvalonMiner {
 
 #[async_trait]
 impl SetPowerLimit for AvalonMiner {
-    async fn set_power_limit(&self, limit: Power) -> Result<()> {
+    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -222,9 +218,7 @@ impl SetPowerLimit for AvalonMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    if msg == "ASC 0 set OK" {
-                        return Ok(());
-                    }
+                        return Ok(msg == "ASC 0 set OK");
                 }
             }
         }
