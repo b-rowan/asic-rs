@@ -1,20 +1,18 @@
 #![allow(dead_code)]
-mod rpc;
+pub mod rpc;
 
-use crate::data::board::BoardData;
+use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
-use crate::miners::api;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
 
-use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature};
 use regex::Regex;
@@ -24,27 +22,29 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
+use crate::miners::api::RPCAPIClient;
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 
 #[derive(Debug)]
 pub struct AvalonMiner {
-    model: MinerModel,
-    rpc: CGMinerRPC,
     ip: IpAddr,
-    miner_firmware: MinerFirmware,
+    rpc: CGMinerRPC,
+    device_info: DeviceInfo,
 }
 
 impl AvalonMiner {
     pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
         Self {
-            model,
-            rpc: CGMinerRPC::new(ip),
             ip,
-            miner_firmware,
+            rpc: CGMinerRPC::new(ip),
+            device_info: DeviceInfo::new(MinerMake::AvalonMiner, model, miner_firmware, HashAlgorithm::SHA256),
         }
     }
 
+
     /// Turn on the fault light
-    pub async fn fault_light_on(&self) -> anyhow::Result<bool> {
+    pub async fn fault_light_on(&self) -> Result<()> {
         let data = self
             .rpc
             .send_command("ascset", false, Some(json!(["0", "led", "1-1"])))
@@ -53,16 +53,18 @@ impl AvalonMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
+                    if msg == "ASC 0 set OK" {
+                        return Ok(())
+                    }
                 }
             }
         }
 
-        Ok(false)
+        Err(anyhow!("Failed to turn on fault light"))
     }
 
     /// Turn off the fault light
-    pub async fn fault_light_off(&self) -> anyhow::Result<bool> {
+    pub async fn fault_light_off(&self) -> Result<()> {
         let data = self
             .rpc
             .send_command("ascset", false, Some(json!(["0", "led", "1-0"])))
@@ -71,48 +73,19 @@ impl AvalonMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if !status.is_empty() {
                 if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
+                    if msg == "ASC 0 set OK" {
+                        return Ok(())
+                    }
                 }
             }
         }
 
-        Ok(false)
+        Err(anyhow!("Failed to turn off fault light"))
     }
 
-    /// Set power limit
-    pub async fn set_power_limit(&self, wattage: i32) -> anyhow::Result<bool> {
-        let limit = if wattage < 3 {
-            wattage
-        } else if wattage > 100 {
-            2
-        } else if wattage > 80 {
-            1
-        } else {
-            0
-        };
-
-        let data = self
-            .rpc
-            .send_command(
-                "ascset",
-                false,
-                Some(json!(["0", "worklevel,set", limit.to_string()])),
-            )
-            .await?;
-
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
-                }
-            }
-        }
-
-        Ok(false)
-    }
 
     /// Reboot the miner
-    pub async fn reboot(&self) -> anyhow::Result<bool> {
+    pub async fn reboot(&self) -> Result<bool> {
         let data = self.rpc.send_command("restart", false, None).await?;
 
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_str()) {
@@ -122,37 +95,10 @@ impl AvalonMiner {
         Ok(false)
     }
 
-    /// Set work mode
-    ///
-    /// Mode 0: Normal mode
-    /// Mode 1: Sleep mode
-    pub async fn set_work_mode(&self, mode: u8) -> anyhow::Result<bool> {
-        if mode > 1 {
-            return Err(anyhow::anyhow!("Invalid work mode: {}", mode));
-        }
 
-        let data = self
-            .rpc
-            .send_command(
-                "ascset",
-                false,
-                Some(json!(["0", format!("workmode,set,{}", mode)])),
-            )
-            .await?;
-
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
-                }
-            }
-        }
-
-        Ok(false)
-    }
 
     /// Schedule soft power on at a specific timestamp
-    pub async fn soft_power_on(&self, timestamp: u64) -> anyhow::Result<bool> {
+    pub async fn soft_power_on(&self, timestamp: u64) -> Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -178,7 +124,7 @@ impl AvalonMiner {
     }
 
     /// Schedule soft power off at a specific timestamp
-    pub async fn soft_power_off(&self, timestamp: u64) -> anyhow::Result<bool> {
+    pub async fn soft_power_off(&self, timestamp: u64) -> Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -201,30 +147,6 @@ impl AvalonMiner {
         }
 
         Ok(false)
-    }
-
-    /// Schedule soft power on after a delay in seconds
-    pub async fn soft_power_on_after(&self, delay_seconds: u64) -> anyhow::Result<bool> {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
-        self.soft_power_on(now + delay_seconds).await
-    }
-
-    /// Schedule soft power off after a delay in seconds
-    pub async fn soft_power_off_after(&self, delay_seconds: u64) -> anyhow::Result<bool> {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
-        self.soft_power_off(now + delay_seconds).await
     }
 
     /// Parse stats from the miner
@@ -250,6 +172,68 @@ impl AvalonMiner {
         }
 
         stats_dict
+    }
+}
+#[async_trait]
+impl Pause for AvalonMiner {
+    async fn pause(&self, at_time: Option<u64>) -> Result<()> {
+        if let Some(time) = at_time {
+            self.soft_power_off(time).await?;
+        } else {
+            self.soft_power_off(0).await?;
+        }
+        Ok(())
+    }
+}
+#[async_trait]
+impl Resume for AvalonMiner {
+    async fn resume(&self, at_time: Option<u64>) -> Result<()> {
+        if let Some(time) = at_time {
+            self.soft_power_on(time).await?;
+        } else {
+            self.soft_power_on(0).await?;
+        }
+        Ok(())
+    }
+}
+#[async_trait]
+impl SetFaultLight for AvalonMiner {
+    async fn set_fault_light(&self, fault: bool) -> Result<()> {
+        match fault {
+            true => {
+                self.fault_light_on().await
+            }
+            false => {
+                self.fault_light_off().await
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for AvalonMiner {
+    async fn set_power_limit(&self, limit: Power) -> Result<()> {
+        let data = self
+            .rpc
+            .send_command(
+                "ascset",
+                false,
+                Some(json!(["0", "worklevel,set", limit.to_string()])),
+            )
+            .await?;
+
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
+            if !status.is_empty() {
+                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
+                    if msg == "ASC 0 set OK" {
+                        return Ok(())
+                    }
+
+                }
+            }
+        }
+
+        Err(anyhow!("Failed to set power limit"))
     }
 }
 
@@ -377,12 +361,7 @@ impl GetIP for AvalonMiner {
 
 impl GetDeviceInfo for AvalonMiner {
     fn get_device_info(&self) -> DeviceInfo {
-        DeviceInfo::new(
-            MinerMake::AvalonMiner,
-            self.model.clone(),
-            self.miner_firmware,
-            HashAlgorithm::SHA256,
-        )
+        self.device_info.clone()
     }
 }
 
@@ -395,25 +374,15 @@ impl CollectData for AvalonMiner {
 impl GetMAC for AvalonMiner {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract(DataField::Mac).and_then(|mac: String| {
-            // Format MAC address with colons if needed
             let mac = mac.to_uppercase();
-            if mac.contains(':') {
-                MacAddr::from_str(&mac).ok()
-            } else {
-                // Insert colons every 2 characters
-                let formatted = (0..mac.len())
-                    .step_by(2)
-                    .map(|i| {
-                        if i + 2 <= mac.len() {
-                            mac[i..i + 2].to_string()
-                        } else {
-                            mac[i..].to_string()
-                        }
-                    })
-                    .collect::<Vec<String>>()
-                    .join(":");
-                MacAddr::from_str(&formatted).ok()
-            }
+
+            let mac = (0..mac.len())
+                .step_by(2)
+                .map(|i| &mac[i..i + 2])
+                .collect::<Vec<_>>()
+                .join(":");
+
+            MacAddr::from_str(&mac).ok()
         })
     }
 }
@@ -438,99 +407,89 @@ impl GetControlBoardVersion for AvalonMiner {}
 
 impl GetHashboards for AvalonMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards = Vec::new();
+        let stats_array = match data.get(&DataField::Hashboards).and_then(|v| v.as_array()) {
+            Some(array) => array,
+            None => return Vec::new(),
+        };
 
-        let expected_hashboards = self.get_device_info().hardware.boards.unwrap_or(1);
+        let stat = match stats_array
+            .iter()
+            .find(|s| s.get("ID").and_then(|v| v.as_str()) == Some("AVALON0"))
+        {
+            Some(s) => s,
+            None => return Vec::new(),
+        };
+
+        let mm_stats = stat
+            .get("MM ID0:Summary")
+            .and_then(|v| v.as_str())
+            .map(|s| self.parse_stats(s));
+
+        let hb_stats = stat
+            .get("HBinfo")
+            .and_then(|v| v.as_str())
+            .map(|s| self.parse_stats(s));
+
+        let hashrate = mm_stats.as_ref().and_then(|stats| {
+            stats
+                .get("MGHS")
+                .and_then(|v| v.first())
+                .and_then(|rate_str| rate_str.parse::<f64>().ok())
+                .map(|rate| HashRate {
+                    value: rate,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".to_string(),
+                })
+        });
+
+        let intake_temperature = mm_stats.as_ref().and_then(|stats| {
+            stats
+                .get("ITemp")
+                .and_then(|v| v.first())
+                .and_then(|temp_str| temp_str.parse::<f64>().ok())
+                .map(Temperature::from_celsius)
+        });
+
+        let board_temperature = mm_stats.as_ref().and_then(|stats| {
+            stats
+                .get("HBITemp")
+                .and_then(|v| v.first())
+                .and_then(|temp_str| temp_str.parse::<f64>().ok())
+                .map(Temperature::from_celsius)
+        });
+
+        let working_chips_board0 = hb_stats.as_ref().and_then(|stats| {
+            stats
+                .get("PVT_T0")
+                .map(|temps| temps.iter().filter(|temp| *temp != "0").count() as u16)
+        });
+
+        let mut hashboards = Vec::new();
+        let device_info = self.get_device_info();
+        let expected_hashboards = device_info.hardware.boards.unwrap_or(1);
 
         for i in 0..expected_hashboards {
-            hashboards.push(BoardData {
+            let working_chips = if i == 0 { working_chips_board0 } else { None };
+            let is_active =
+                hashrate.is_some() || (working_chips.is_some() && working_chips != Some(0));
+
+            let board = BoardData {
                 position: i,
-                expected_chips: self.get_device_info().hardware.chips,
-                working_chips: None,
-                board_temperature: None,
-                intake_temperature: None,
+                expected_chips: device_info.hardware.chips,
+                working_chips,
+                board_temperature: board_temperature.clone(),
+                intake_temperature: intake_temperature.clone(),
+                hashrate: hashrate.clone(),
+                active: Some(is_active),
                 outlet_temperature: None,
-                hashrate: None,
                 expected_hashrate: None,
                 serial_number: None,
                 chips: Vec::new(),
                 voltage: None,
                 frequency: None,
                 tuned: None,
-                active: Some(false),
-            });
-        }
-
-        if let Some(stats_value) = data.get(&DataField::Hashboards) {
-            if let Some(stats_array) = stats_value.as_array() {
-                for stat in stats_array {
-                    if let Some(id) = stat.get("ID").and_then(|v| v.as_str()) {
-                        if id == "AVALON0" {
-                            if let Some(mm_summary) =
-                                stat.get("MM ID0:Summary").and_then(|v| v.as_str())
-                            {
-                                let mm_stats = self.parse_stats(mm_summary);
-
-                                for board in 0..expected_hashboards {
-                                    let board_idx = board as usize;
-
-                                    if let Some(mghs) = mm_stats.get("MGHS").and_then(|v| v.first())
-                                    {
-                                        if let Ok(rate) = mghs.parse::<f64>() {
-                                            hashboards[board_idx].hashrate = Some(HashRate {
-                                                value: rate,
-                                                unit: HashRateUnit::GigaHash,
-                                                algo: String::from("SHA256"),
-                                            });
-                                        }
-                                    }
-
-                                    if let Some(itemp) =
-                                        mm_stats.get("ITemp").and_then(|v| v.first())
-                                    {
-                                        if let Ok(temp) = itemp.parse::<f64>() {
-                                            hashboards[board_idx].intake_temperature =
-                                                Some(Temperature::from_celsius(temp));
-                                        }
-                                    }
-
-                                    if let Some(hbi_temp) =
-                                        mm_stats.get("HBITemp").and_then(|v| v.first())
-                                    {
-                                        if let Ok(temp) = hbi_temp.parse::<f64>() {
-                                            hashboards[board_idx].board_temperature =
-                                                Some(Temperature::from_celsius(temp));
-                                        }
-                                    }
-
-                                    if hashboards[board_idx].hashrate.is_some() {
-                                        hashboards[board_idx].active = Some(true);
-                                    }
-                                }
-                            }
-
-                            if let Some(hb_info) = stat.get("HBinfo").and_then(|v| v.as_str()) {
-                                let hb_stats = self.parse_stats(hb_info);
-
-                                if let Some(pvt_temps) = hb_stats.get("PVT_T0") {
-                                    if !pvt_temps.is_empty() {
-                                        let working_chips =
-                                            pvt_temps.iter().filter(|temp| *temp != "0").count();
-
-                                        if let Some(board) = hashboards.get_mut(0) {
-                                            board.working_chips = Some(working_chips as u16);
-                                            if working_chips > 0 {
-                                                board.active = Some(true);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
+            };
+            hashboards.push(board);
         }
 
         hashboards
@@ -719,6 +678,9 @@ impl GetPools for AvalonMiner {
                         .and_then(|v| v.as_str())
                         .map(|s| s == "Alive");
                     let position = Some(idx as u16);
+                    let active = pool.get("Stratum Active").and_then(|v| v.as_bool());
+                    let accepted_shares = pool.get("Accepted").and_then(|v| v.as_u64());
+                    let rejected_shares = pool.get("Rejected").and_then(|v| v.as_u64());
 
                     if let Some(url_str) = url {
                         pools.push(PoolData {
@@ -726,9 +688,9 @@ impl GetPools for AvalonMiner {
                             user,
                             position,
                             alive,
-                            active: None,
-                            accepted_shares: None,
-                            rejected_shares: None,
+                            active,
+                            accepted_shares,
+                            rejected_shares
                         });
                     }
                 }
@@ -739,12 +701,6 @@ impl GetPools for AvalonMiner {
     }
 }
 
-#[async_trait]
-impl api::APIClient for CGMinerRPC {
-    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
-        <CGMinerRPC as APIClient>::get_api_result(self, command).await
-    }
-}
 
 #[cfg(test)]
 mod tests {

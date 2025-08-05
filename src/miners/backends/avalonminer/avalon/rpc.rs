@@ -1,6 +1,6 @@
 use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
-use crate::miners::backends::traits::{APIClient, RPCAPIClient};
+use crate::miners::api::{APIClient, RPCAPIClient};
 use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
@@ -17,10 +17,6 @@ pub struct CGMinerRPC {
 impl CGMinerRPC {
     pub fn new(ip: IpAddr) -> Self {
         Self { ip, port: 4028 }
-    }
-
-    pub fn with_port(ip: IpAddr, port: u16) -> Self {
-        Self { ip, port }
     }
 
     fn parse_rpc_result(&self, response: &str) -> Result<Value> {

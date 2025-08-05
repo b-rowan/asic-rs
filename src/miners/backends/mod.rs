@@ -1,6 +1,6 @@
 pub mod btminer;
+pub mod avalonminer;
 pub mod epic;
-mod cgminer;
 pub mod espminer;
 pub mod traits;
 pub mod vnish;
