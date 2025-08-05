@@ -38,6 +38,14 @@ impl FromStr for AntMinerModel {
             .map_err(|_| ModelParseError)
     }
 }
+impl FromStr for BitaxeModel {
+    type Err = ModelParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelParseError)
+    }
+}
 
 impl FromStr for BraiinsModel {
     type Err = ModelParseError;
@@ -88,6 +96,10 @@ impl MinerModelFactory {
             Some(MinerMake::WhatsMiner) => {
                 let model = WhatsMinerModel::from_str(model_str).ok();
                 model.map(MinerModel::WhatsMiner)
+            }
+            Some(MinerMake::BitAxe) => {
+                let model = BitaxeModel::from_str(model_str).ok();
+                model.map(MinerModel::Bitaxe)
             }
             None => match self.firmware {
                 Some(MinerFirmware::BraiinsOS) => {

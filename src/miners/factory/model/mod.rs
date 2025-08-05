@@ -1,5 +1,4 @@
 use crate::data::device::models::MinerModelFactory;
-use crate::data::device::models::bitaxe::BitaxeModel::*;
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::factory::model::whatsminer::{get_model_whatsminer_v2, get_model_whatsminer_v3};
 use crate::miners::util;
@@ -108,13 +107,11 @@ pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> Option<MinerModel> {
         .0;
     let response: serde_json::Value = serde_json::from_str(&raw_json).ok()?;
 
-    match response["ASICModel"].as_str() {
-        Some("BM1366") => Some(MinerModel::Bitaxe(Ultra)),
-        Some("BM1368") => Some(MinerModel::Bitaxe(Supra)),
-        Some("BM1370") => Some(MinerModel::Bitaxe(Gamma)),
-        Some("BM1387") => Some(MinerModel::Bitaxe(Max)),
-        _ => None,
-    }
+    let model = response["ASICModel"].as_str()?;
+
+    MinerModelFactory::new()
+        .with_make(MinerMake::BitAxe)
+        .parse_model(model)
 }
 pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     let raw_json = util::send_web_command(&ip, "/api/system/info")
