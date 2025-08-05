@@ -1,3 +1,4 @@
+#![cfg(test)]
 pub(crate) const COIN_COMMAND: &str = include_str!("coin.json");
 pub(crate) const ASCSET_HELP_COMMAND: &str = include_str!("ascset_help.json");
 pub(crate) const SUMMARY_COMMAND: &str = include_str!("summary.json");

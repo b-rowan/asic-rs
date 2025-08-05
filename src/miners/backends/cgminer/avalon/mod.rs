@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod rpc;
 
 use crate::data::board::BoardData;
