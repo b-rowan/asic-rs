@@ -5,7 +5,7 @@ mod traits;
 
 use anyhow::Result;
 use futures::future::FutureExt;
-use futures::{StreamExt, pin_mut, stream};
+use futures::{Stream, StreamExt, pin_mut, stream};
 use ipnet::IpNet;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
@@ -358,6 +358,27 @@ impl MinerFactory {
             .await;
 
         Ok(miners)
+    }
+
+    pub fn scan_stream(&self) -> Result<impl Stream<Item = Box<dyn GetMinerData>>> {
+        const MAX_CONCURRENT_TASKS: usize = 1024;
+
+        if self.ips.is_empty() {
+            return Err(anyhow::anyhow!(
+                "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
+            ));
+        }
+
+        let stream = stream::iter(
+            self.ips
+                .iter()
+                .copied()
+                .map(move |ip| async move { self.get_miner(ip).await.ok().flatten() }),
+        )
+        .buffer_unordered(MAX_CONCURRENT_TASKS)
+        .filter_map(|miner_opt| async move { miner_opt });
+
+        Ok(Box::pin(stream))
     }
 
     /// Scan for miners by specific octets
