@@ -94,6 +94,7 @@ impl From<&MinerModel> for MinerHardware {
             MinerModel::Braiins(model_name) => Self::from(model_name),
             MinerModel::Bitaxe(model_name) => Self::from(model_name),
             MinerModel::EPic(model_name) => Self::from(model_name),
+            MinerModel::Avalon(model_name) => Self::from(model_name),
         }
     }
 }

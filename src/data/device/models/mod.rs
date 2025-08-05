@@ -6,12 +6,14 @@ use epic::EPicModel;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
+use crate::data::device::models::avalon::AvalonMinerModel;
 
 pub mod antminer;
 pub mod bitaxe;
 pub mod braiins;
 pub mod epic;
 pub mod whatsminer;
+pub mod avalon;
 
 #[derive(Debug, Clone)]
 pub struct ModelParseError;
@@ -74,6 +76,7 @@ pub enum MinerModel {
     WhatsMiner(WhatsMinerModel),
     Braiins(BraiinsModel),
     Bitaxe(BitaxeModel),
+    Avalon(AvalonMinerModel),
     EPic(EPicModel),
 }
 

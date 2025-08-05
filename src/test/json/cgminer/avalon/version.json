@@ -1,0 +1,27 @@
+{
+    "STATUS": [{
+            "STATUS": "S",
+            "When": 1753432244,
+            "Code": 22,
+            "Msg": "CGMiner versions",
+            "Description": "cgminer 4.11.1"
+        }
+    ],
+    "VERSION": [{
+            "CGMiner": "4.11.1",
+            "API": "3.7",
+            "PROD": "Avalon Q",
+            "MODEL": "Q",
+            "HWTYPE": "Q_MM1v1_X1",
+            "SWTYPE": "MM319",
+            "LVERSION": "25052801_14a19a2",
+            "BVERSION": "25052801_14a19a2",
+            "CGVERSION": "25052801_14a19a2",
+            "HBMCUVERSION": "Q_hb_v1.1",
+            "FANMCUVERSION": "Q_fb_v1.2",
+            "DNA": "01234567890123456789012345678901",
+            "MAC": "AA:BB:CC:DD:EE:FF"
+        }
+    ],
+    "id": 1
+}
