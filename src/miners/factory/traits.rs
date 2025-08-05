@@ -70,6 +70,7 @@ impl ModelSelection for MinerMake {
             MinerMake::AntMiner => model::get_model_antminer(ip).await,
             MinerMake::WhatsMiner => model::get_model_whatsminer(ip).await,
             MinerMake::BitAxe => model::get_model_bitaxe(ip).await,
+            MinerMake::AvalonMiner => model::get_model_avalonminer(ip).await,
             _ => None,
         }
     }
