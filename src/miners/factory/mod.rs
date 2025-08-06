@@ -282,6 +282,11 @@ impl MinerFactory {
         ))
     }
 
+    /// Return IPs count
+    pub fn ip_count(self) -> usize {
+        self.ips.len()
+    }
+
     /// Set IPs from octet ranges
     pub fn with_octets(
         mut self,
@@ -306,6 +311,7 @@ impl MinerFactory {
 
         self.with_octets(parts[0], parts[1], parts[2], parts[3])
     }
+
     pub fn add_search_make(mut self, search_make: MinerMake) -> Self {
         if self.search_makes.is_none() {
             self.search_makes = Some(vec![search_make]);
