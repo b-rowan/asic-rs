@@ -83,6 +83,30 @@ impl AvalonMiner {
         Err(anyhow!("Failed to turn off fault light"))
     }
 
+    fn parse_stats(&self, stats: &str) -> HashMap<String, Vec<String>> {
+        let mut stats_dict = HashMap::new();
+
+        let re = Regex::new(r"(\w+)\[([^\]]+)\]").unwrap();
+
+        for cap in re.captures_iter(stats) {
+            let key = cap[1].to_string();
+            let value_str = &cap[2];
+
+            let values: Vec<String> = if value_str.contains(' ') {
+                value_str
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect()
+            } else {
+                vec![value_str.to_string()]
+            };
+
+            stats_dict.insert(key, values);
+        }
+
+        stats_dict
+    }
+
     /// Reboot the miner
     pub async fn reboot(&self) -> Result<bool> {
         let data = self.rpc.send_command("restart", false, None).await?;
@@ -146,30 +170,6 @@ impl AvalonMiner {
         Ok(false)
     }
 
-    /// Parse stats from the miner
-    fn parse_stats(&self, stats: &str) -> HashMap<String, Vec<String>> {
-        let mut stats_dict = HashMap::new();
-
-        let re = Regex::new(r"(\w+)\[([^\]]+)\]").unwrap();
-
-        for cap in re.captures_iter(stats) {
-            let key = cap[1].to_string();
-            let value_str = &cap[2];
-
-            let values: Vec<String> = if value_str.contains(' ') {
-                value_str
-                    .split_whitespace()
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                vec![value_str.to_string()]
-            };
-
-            stats_dict.insert(key, values);
-        }
-
-        stats_dict
-    }
 }
 #[async_trait]
 impl Pause for AvalonMiner {
@@ -272,42 +272,42 @@ impl GetDataLocations for AvalonMiner {
                 devs_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/DEVS/0/MHS 5m"),
+                    key: Some("/DEVS/0/MHS 1m"),
                 },
             )],
             DataField::ExpectedHashrate => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm/0"),
                 },
             )],
             DataField::Hashboards => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
                 },
             )],
-            DataField::FluidTemperature => vec![(
+            DataField::AverageTemperature => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/Temp/0"),
                 },
             )],
             DataField::WattageLimit => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/MPO/0"),
                 },
             )],
             DataField::Wattage => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER/0"),
                 },
             )],
             DataField::Fans => vec![(
@@ -321,7 +321,7 @@ impl GetDataLocations for AvalonMiner {
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/Led/0"),
                 },
             )],
             DataField::Uptime => vec![(

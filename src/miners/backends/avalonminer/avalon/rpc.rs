@@ -167,7 +167,7 @@ impl APIClient for CGMinerRPC {
 mod parse_rpc_result_nested_tests {
     use super::*;
     use std::net::{Ipv4Addr, IpAddr};
-    use crate::test::json::cgminer::avalon::STATS_COMMAND;
+    use crate::test::json::cgminer::avalon::{STATS_COMMAND, VERSION_COMMAND};
 
     fn test_rpc() -> CGMinerRPC {
         CGMinerRPC::new(IpAddr::V4(Ipv4Addr::LOCALHOST))
@@ -250,4 +250,13 @@ mod parse_rpc_result_nested_tests {
         let val = test_rpc().parse_rpc_result(resp).unwrap();
         assert_eq!(val.pointer("/STATS/0/HBinfo/HB0"), Some(&json!({})));
     }
+
+    #[test]
+    fn version_command_returns_version() {
+        let val = test_rpc().parse_rpc_result(VERSION_COMMAND).unwrap();
+
+        assert_eq!(val.pointer("/VERSION/0/API"), Some(&json!("3.7")));
+
+    }
+
 }
