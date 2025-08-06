@@ -27,6 +27,17 @@ use traits::{DiscoveryCommands, ModelSelection};
 
 const MAX_WAIT_TIME: Duration = Duration::from_secs(5);
 
+fn calculate_optimal_concurrency(ip_count: usize) -> usize {
+    // Adaptive concurrency based on scale
+    match ip_count {
+        0..=100 => 25,       // Small networks - conservative
+        101..=1000 => 50,    // Medium networks - moderate
+        1001..=5000 => 100,  // Large networks - aggressive
+        5001..=10000 => 150, // Very large networks - high throughput
+        _ => 200,            // Massive mining operations - maximum throughput
+    }
+}
+
 async fn get_miner_type_from_command(
     ip: IpAddr,
     command: MinerCommand,
@@ -131,6 +142,8 @@ pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
     ips: Vec<IpAddr>,
+    max_concurrent: usize,
+    discovery_timeout: Duration,
 }
 
 impl Default for MinerFactory {
@@ -177,7 +190,7 @@ impl MinerFactory {
             let _ = discovery_tasks.spawn(get_miner_type_from_command(ip, command));
         }
 
-        let timeout = tokio::time::sleep(MAX_WAIT_TIME).fuse();
+        let timeout = tokio::time::sleep(self.discovery_timeout).fuse();
         let tasks = tokio::spawn(async move {
             loop {
                 if discovery_tasks.is_empty() {
@@ -231,6 +244,34 @@ impl MinerFactory {
             search_makes: None,
             search_firmwares: None,
             ips: Vec::new(),
+            max_concurrent: 0, // Will be calculated adaptively when IPs are set
+            discovery_timeout: MAX_WAIT_TIME, // Default to 5 seconds
+        }
+    }
+
+    pub fn with_concurrent_limit(mut self, max_concurrent: usize) -> Self {
+        self.max_concurrent = max_concurrent;
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.discovery_timeout = timeout;
+        self
+    }
+
+    pub fn with_timeout_secs(mut self, timeout_secs: u64) -> Self {
+        self.discovery_timeout = Duration::from_secs(timeout_secs);
+        self
+    }
+
+    pub fn with_adaptive_concurrency(mut self) -> Self {
+        self.max_concurrent = calculate_optimal_concurrency(self.ips.len());
+        self
+    }
+
+    fn update_adaptive_concurrency(&mut self) {
+        if self.max_concurrent == 0 {
+            self.max_concurrent = calculate_optimal_concurrency(self.ips.len());
         }
     }
 
@@ -254,8 +295,10 @@ impl MinerFactory {
     pub fn with_subnet(mut self, subnet: &str) -> Result<Self> {
         let ips = self.calculate_ips_from_subnet(subnet)?;
         self.ips = ips;
+        self.update_adaptive_concurrency();
         Ok(self)
     }
+
     pub fn with_search_firmwares(mut self, search_firmwares: Vec<MinerFirmware>) -> Self {
         self.search_firmwares = Some(search_firmwares);
         self
@@ -297,6 +340,7 @@ impl MinerFactory {
     ) -> Result<Self> {
         let ips = self.generate_ips_from_octets(octet1, octet2, octet3, octet4)?;
         self.ips = ips;
+        self.update_adaptive_concurrency();
         Ok(self)
     }
 
@@ -348,17 +392,21 @@ impl MinerFactory {
     }
 
     pub async fn scan(&self) -> Result<Vec<Box<dyn GetMinerData>>> {
-        const MAX_CONCURRENT_TASKS: usize = 250;
-
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
                 "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
             ));
         }
 
+        let concurrent_limit = if self.max_concurrent == 0 {
+            calculate_optimal_concurrency(self.ips.len())
+        } else {
+            self.max_concurrent
+        };
+
         let miners: Vec<Box<dyn GetMinerData>> = stream::iter(self.ips.iter().copied())
             .map(|ip| async move { self.get_miner(ip).await.ok().flatten() })
-            .buffer_unordered(MAX_CONCURRENT_TASKS)
+            .buffer_unordered(concurrent_limit)
             .filter_map(|miner_opt| async move { miner_opt })
             .collect()
             .await;
@@ -367,13 +415,17 @@ impl MinerFactory {
     }
 
     pub fn scan_stream(&self) -> Result<impl Stream<Item = Box<dyn GetMinerData>>> {
-        const MAX_CONCURRENT_TASKS: usize = 1024;
-
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
                 "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
             ));
         }
+
+        let concurrent_limit = if self.max_concurrent == 0 {
+            calculate_optimal_concurrency(self.ips.len())
+        } else {
+            self.max_concurrent
+        };
 
         let stream = stream::iter(
             self.ips
@@ -381,7 +433,7 @@ impl MinerFactory {
                 .copied()
                 .map(move |ip| async move { self.get_miner(ip).await.ok().flatten() }),
         )
-        .buffer_unordered(MAX_CONCURRENT_TASKS)
+        .buffer_unordered(concurrent_limit)
         .filter_map(|miner_opt| async move { miner_opt });
 
         Ok(Box::pin(stream))
