@@ -394,8 +394,8 @@ impl MinerFactory {
     }
 
     /// Return current scan IPs
-    pub fn hosts(self) -> Vec<IpAddr> {
-        self.ips
+    pub fn hosts(&self) -> Vec<IpAddr> {
+        self.ips.clone()
     }
 
     /// Get current count of scan IPs
