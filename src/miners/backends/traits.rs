@@ -70,7 +70,7 @@ impl<
         + GetMessages
         + GetUptime
         + GetIsMining
-        + GetPools
+        + GetPools,
 > GetMinerData for T
 {
     async fn get_data(&self) -> MinerData {

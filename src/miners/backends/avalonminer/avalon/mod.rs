@@ -144,7 +144,6 @@ impl AvalonMiner {
 
         Ok(false)
     }
-
 }
 #[async_trait]
 impl Pause for AvalonMiner {
@@ -372,14 +371,13 @@ impl GetFirmwareVersion for AvalonMiner {
     }
 }
 
-
 impl GetControlBoardVersion for AvalonMiner {}
 
 impl GetHashboards for AvalonMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let hw = &self.device_info.hardware;
         let board_cnt = hw.boards.unwrap_or(1) as usize;
-        let chips_per = hw.chips.unwrap_or(0) as u16;
+        let chips_per = hw.chips.unwrap_or(0);
 
         let stats = match data.get(&DataField::Hashboards) {
             Some(v) => v,
@@ -414,15 +412,30 @@ impl GetHashboards for AvalonMiner {
                 // per-chip arrays
                 let temps: Vec<String> = hb_info[&key]["PVT_T0"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(str::to_owned)
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let volts: Vec<String> = hb_info[&key]["PVT_V0"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(str::to_owned)
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let works: Vec<String> = hb_info[&key]["MW0"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(str::to_owned)
+                            .collect()
+                    })
                     .unwrap_or_default();
 
                 let chips: Vec<ChipData> = temps
@@ -526,7 +539,6 @@ impl GetWattageLimit for AvalonMiner {
     }
 }
 
-
 impl GetLightFlashing for AvalonMiner {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
@@ -549,14 +561,20 @@ impl GetPools for AvalonMiner {
         data.get(&DataField::Pools)
             .and_then(|v| v.as_array())
             .map(|slice| slice.to_vec())
-            .unwrap_or_else(Vec::new)
+            .unwrap_or_default()
             .into_iter()
             .enumerate()
             .map(|(idx, pool)| PoolData {
-                url:  pool.get("URL").and_then(|v| v.as_str()).map(|x| PoolURL::from(x.to_owned())),
+                url: pool
+                    .get("URL")
+                    .and_then(|v| v.as_str())
+                    .map(|x| PoolURL::from(x.to_owned())),
                 user: pool.get("User").and_then(|v| v.as_str()).map(|s| s.into()),
                 position: Some(idx as u16),
-                alive:  pool.get("Status").and_then(|v| v.as_str()).map(|s| s == "Alive"),
+                alive: pool
+                    .get("Status")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s == "Alive"),
                 active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
@@ -564,5 +582,3 @@ impl GetPools for AvalonMiner {
             .collect()
     }
 }
-
-

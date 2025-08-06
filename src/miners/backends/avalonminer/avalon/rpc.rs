@@ -1,13 +1,13 @@
-use std::collections::HashMap;
 use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::api::{APIClient, RPCAPIClient};
 use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
-use serde_json::{Value, json};
-use std::net::IpAddr;
 use regex::Regex;
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl CGMinerRPC {
             .ok_or_else(|| anyhow!("Missing STATUS field"))?;
 
         let message = status_array[0].get("Msg").and_then(|v| v.as_str());
-        let status   = RPCCommandStatus::from_str(status_str, message);
+        let status = RPCCommandStatus::from_str(status_str, message);
 
         status.into_result().map_err(|e| {
             dbg!("{}: API Command Error: {}", self.ip, &e);
@@ -166,8 +166,8 @@ impl APIClient for CGMinerRPC {
 #[cfg(test)]
 mod parse_rpc_result_nested_tests {
     use super::*;
-    use std::net::{Ipv4Addr, IpAddr};
     use crate::test::json::cgminer::avalon::{STATS_COMMAND, VERSION_COMMAND};
+    use std::net::{IpAddr, Ipv4Addr};
 
     fn test_rpc() -> CGMinerRPC {
         CGMinerRPC::new(IpAddr::V4(Ipv4Addr::LOCALHOST))
@@ -216,9 +216,18 @@ mod parse_rpc_result_nested_tests {
           }]
         }"#;
         let val = test_rpc().parse_rpc_result(resp).unwrap();
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB0/TEMP/0"), Some(&json!("55")));
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB1/TEMP/1"), Some(&json!("78")));
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB1/VOLT/0"), Some(&json!("12.3")));
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB0/TEMP/0"),
+            Some(&json!("55"))
+        );
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB1/TEMP/1"),
+            Some(&json!("78"))
+        );
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB1/VOLT/0"),
+            Some(&json!("12.3"))
+        );
     }
 
     #[test]
@@ -232,10 +241,22 @@ mod parse_rpc_result_nested_tests {
             }}"#
         );
         let val = test_rpc().parse_rpc_result(&resp).unwrap();
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/2"), Some(&json!("60")));
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB0/MW0/1"), Some(&json!("200")));
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB1/PVT_T0/0"), Some(&json!("99")));
-        assert_eq!(val.pointer("/STATS/0/HBinfo/HB1/MW0/1"), Some(&json!("400")));
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/2"),
+            Some(&json!("60"))
+        );
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB0/MW0/1"),
+            Some(&json!("200"))
+        );
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB1/PVT_T0/0"),
+            Some(&json!("99"))
+        );
+        assert_eq!(
+            val.pointer("/STATS/0/HBinfo/HB1/MW0/1"),
+            Some(&json!("400"))
+        );
     }
 
     #[test]
@@ -256,7 +277,5 @@ mod parse_rpc_result_nested_tests {
         let val = test_rpc().parse_rpc_result(VERSION_COMMAND).unwrap();
 
         assert_eq!(val.pointer("/VERSION/0/API"), Some(&json!("3.7")));
-
     }
-
 }
