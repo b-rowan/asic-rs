@@ -1,5 +1,4 @@
 use asic_rs::MinerFactory;
-use futures::StreamExt;
 use std::net::IpAddr;
 
 #[tokio::main]

@@ -294,7 +294,7 @@ impl GetHashboards for BTMiner2 {
                 .get(&DataField::Hashboards)
                 .and_then(|val| val.pointer(&format!("/DEVS/{}/PCB SN", idx)))
                 .and_then(|val| val.as_str())
-                .and_then(|val| Some(String::from(val)));
+                .map(String::from);
             let working_chips = data
                 .get(&DataField::Hashboards)
                 .and_then(|val| val.pointer(&format!("/DEVS/{}/Effective Chips", idx)))
