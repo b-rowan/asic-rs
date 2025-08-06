@@ -386,8 +386,8 @@ impl GetHashboards for AvalonMiner {
             _ => return Vec::new(),
         };
 
-        let summary = &stats["STATS"][0]["MM ID0:Summary"]["STATS"];
-        let hb_info = &stats["STATS"][0]["HBinfo"];
+        let summary = &stats;
+        let hb_info = &stats["HBinfo"];
 
         (0..board_cnt)
             .map(|idx| {
