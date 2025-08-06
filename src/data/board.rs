@@ -3,7 +3,7 @@ use super::serialize::{serialize_frequency, serialize_temperature, serialize_vol
 use measurements::{Frequency, Temperature, Voltage};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChipData {
     /// The position of the chip on the board, indexed from 0
     pub position: u16,
@@ -27,7 +27,7 @@ pub struct ChipData {
     pub working: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BoardData {
     /// The board position in the miner, indexed from 0
     pub position: u8,

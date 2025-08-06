@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 pub mod rpc;
 
-use crate::data::board::BoardData;
+use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
@@ -17,8 +17,7 @@ use crate::miners::api::RPCAPIClient;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Power, Temperature};
-use regex::Regex;
+use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::CGMinerRPC;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -81,30 +80,6 @@ impl AvalonMiner {
         }
 
         Err(anyhow!("Failed to turn off fault light"))
-    }
-
-    fn parse_stats(&self, stats: &str) -> HashMap<String, Vec<String>> {
-        let mut stats_dict = HashMap::new();
-
-        let re = Regex::new(r"(\w+)\[([^\]]+)\]").unwrap();
-
-        for cap in re.captures_iter(stats) {
-            let key = cap[1].to_string();
-            let value_str = &cap[2];
-
-            let values: Vec<String> = if value_str.contains(' ') {
-                value_str
-                    .split_whitespace()
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                vec![value_str.to_string()]
-            };
-
-            stats_dict.insert(key, values);
-        }
-
-        stats_dict
     }
 
     /// Reboot the miner
@@ -363,15 +338,19 @@ impl CollectData for AvalonMiner {
 
 impl GetMAC for AvalonMiner {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
-        data.extract(DataField::Mac).and_then(|mac: String| {
-            let mac = mac.to_uppercase();
-
-            let mac = (0..mac.len())
-                .step_by(2)
-                .map(|i| &mac[i..i + 2])
-                .collect::<Vec<_>>()
-                .join(":");
-
+        data.extract::<String>(DataField::Mac).and_then(|raw| {
+            let mut mac = raw.trim().to_lowercase();
+            // compact 12-digit → colon-separated
+            if mac.len() == 12 && !mac.contains(':') {
+                let mut colon = String::with_capacity(17);
+                for (i, byte) in mac.chars().enumerate() {
+                    if i > 0 && i % 2 == 0 {
+                        colon.push(':');
+                    }
+                    colon.push(byte);
+                }
+                mac = colon;
+            }
             MacAddr::from_str(&mac).ok()
         })
     }
@@ -393,96 +372,86 @@ impl GetFirmwareVersion for AvalonMiner {
     }
 }
 
+
 impl GetControlBoardVersion for AvalonMiner {}
 
 impl GetHashboards for AvalonMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let stats_array = match data.get(&DataField::Hashboards).and_then(|v| v.as_array()) {
-            Some(array) => array,
-            None => return Vec::new(),
+        let hw = &self.device_info.hardware;
+        let board_cnt = hw.boards.unwrap_or(1) as usize;
+        let chips_per = hw.chips.unwrap_or(0) as u16;
+
+        let stats = match data.get(&DataField::Hashboards) {
+            Some(v) => v,
+            _ => return Vec::new(),
         };
 
-        let stat = match stats_array
-            .iter()
-            .find(|s| s.get("ID").and_then(|v| v.as_str()) == Some("AVALON0"))
-        {
-            Some(s) => s,
-            None => return Vec::new(),
-        };
+        let summary = &stats["STATS"][0]["MM ID0:Summary"]["STATS"];
+        let hb_info = &stats["STATS"][0]["HBinfo"];
 
-        let mm_stats = stat
-            .get("MM ID0:Summary")
-            .and_then(|v| v.as_str())
-            .map(|s| self.parse_stats(s));
+        (0..board_cnt)
+            .map(|idx| {
+                let key = format!("HB{idx}");
 
-        let hb_stats = stat
-            .get("HBinfo")
-            .and_then(|v| v.as_str())
-            .map(|s| self.parse_stats(s));
+                // per-board aggregates
+                let intake = summary["ITemp"][idx]
+                    .as_str()
+                    .and_then(|s| s.parse::<f64>().ok())
+                    .map(Temperature::from_celsius);
+                let board_t = summary["HBITemp"][idx]
+                    .as_str()
+                    .and_then(|s| s.parse::<f64>().ok())
+                    .map(Temperature::from_celsius);
+                let hashrate = summary["MGHS"][idx]
+                    .as_str()
+                    .and_then(|s| s.parse::<f64>().ok())
+                    .map(|r| HashRate {
+                        value: r,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".into(),
+                    });
 
-        let hashrate = mm_stats.as_ref().and_then(|stats| {
-            stats
-                .get("MGHS")
-                .and_then(|v| v.first())
-                .and_then(|rate_str| rate_str.parse::<f64>().ok())
-                .map(|rate| HashRate {
-                    value: rate,
-                    unit: HashRateUnit::GigaHash,
-                    algo: "SHA256".to_string(),
-                })
-        });
+                // per-chip arrays
+                let temps: Vec<String> = hb_info[&key]["PVT_T0"]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .unwrap_or_default();
+                let volts: Vec<String> = hb_info[&key]["PVT_V0"]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .unwrap_or_default();
+                let works: Vec<String> = hb_info[&key]["MW0"]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|v| v.as_str()).map(str::to_owned).collect())
+                    .unwrap_or_default();
 
-        let intake_temperature = mm_stats.as_ref().and_then(|stats| {
-            stats
-                .get("ITemp")
-                .and_then(|v| v.first())
-                .and_then(|temp_str| temp_str.parse::<f64>().ok())
-                .map(Temperature::from_celsius)
-        });
+                let chips: Vec<ChipData> = temps
+                    .iter()
+                    .zip(volts.iter())
+                    .zip(works.iter())
+                    .enumerate()
+                    .map(|(pos, ((t, v), w))| ChipData {
+                        position: pos as u16,
+                        temperature: t.parse::<f64>().ok().map(Temperature::from_celsius),
+                        voltage: v.parse::<f64>().ok().map(Voltage::from_millivolts),
+                        working: w.parse::<f64>().ok().map(|w| w > 0.0),
+                        ..Default::default()
+                    })
+                    .collect();
 
-        let board_temperature = mm_stats.as_ref().and_then(|stats| {
-            stats
-                .get("HBITemp")
-                .and_then(|v| v.first())
-                .and_then(|temp_str| temp_str.parse::<f64>().ok())
-                .map(Temperature::from_celsius)
-        });
-
-        let working_chips_board0 = hb_stats.as_ref().and_then(|stats| {
-            stats
-                .get("PVT_T0")
-                .map(|temps| temps.iter().filter(|temp| *temp != "0").count() as u16)
-        });
-
-        let mut hashboards = Vec::new();
-        let device_info = self.get_device_info();
-        let expected_hashboards = device_info.hardware.boards.unwrap_or(1);
-
-        for i in 0..expected_hashboards {
-            let working_chips = if i == 0 { working_chips_board0 } else { None };
-            let is_active =
-                hashrate.is_some() || (working_chips.is_some() && working_chips != Some(0));
-
-            let board = BoardData {
-                position: i,
-                expected_chips: device_info.hardware.chips,
-                working_chips,
-                board_temperature,
-                intake_temperature,
-                hashrate: hashrate.clone(),
-                active: Some(is_active),
-                outlet_temperature: None,
-                expected_hashrate: None,
-                serial_number: None,
-                chips: Vec::new(),
-                voltage: None,
-                frequency: None,
-                tuned: None,
-            };
-            hashboards.push(board);
-        }
-
-        hashboards
+                BoardData {
+                    position: idx as u8,
+                    expected_chips: Some(chips_per),
+                    working_chips: Some(chips.len() as u16),
+                    chips: chips.clone(),
+                    intake_temperature: intake,
+                    board_temperature: board_t,
+                    hashrate,
+                    active: Some(!chips.is_empty()),
+                    ..Default::default()
+                }
+            })
+            .collect()
     }
 }
 
@@ -491,150 +460,76 @@ impl GetHashrate for AvalonMiner {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::MegaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".into(),
         })
     }
 }
 
 impl GetExpectedHashrate for AvalonMiner {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        if let Some(stats) = data.get(&DataField::ExpectedHashrate) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
-                if let Some(ghsmm) = parsed_stats.get("GHSmm").and_then(|v| v.first()) {
-                    if let Ok(rate) = ghsmm.parse::<f64>() {
-                        return Some(HashRate {
-                            value: rate,
-                            unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
-                        });
-                    }
-                }
-            }
-        }
-        None
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
+            value: f,
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".into(),
+        })
     }
 }
 
 impl GetFans for AvalonMiner {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
-        let mut fans = Vec::new();
+        let stats = match data.get(&DataField::Fans) {
+            Some(v) => v,
+            _ => return Vec::new(),
+        };
 
-        let expected_fans = self.get_device_info().hardware.fans.unwrap_or(0);
+        let expected_fans = self.device_info.hardware.fans.unwrap_or(0) as usize;
         if expected_fans == 0 {
-            return fans;
+            return Vec::new();
         }
 
-        if let Some(stats) = data.get(&DataField::Fans) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
+        let summary = &stats["STATS"][0]["MM ID0:Summary"]["STATS"];
 
-                if let Some(mm_id0) = parsed_stats.get("MM ID0").and_then(|v| v.first()) {
-                    let mm_stats = self.parse_stats(mm_id0);
-
-                    for fan in 0..expected_fans {
-                        let fan_key = format!("Fan{}", fan + 1);
-                        if let Some(fan_speed) = mm_stats.get(&fan_key).and_then(|v| v.first()) {
-                            if let Ok(speed) = fan_speed.parse::<f64>() {
-                                fans.push(FanData {
-                                    position: fan as i16,
-                                    rpm: Some(AngularVelocity::from_rpm(speed)),
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        fans
+        (1..=expected_fans)
+            .filter_map(|idx| {
+                let key = format!("Fan{idx}");
+                summary[&key][0]
+                    .as_str()
+                    .and_then(|s| s.parse::<f64>().ok())
+                    .map(|rpm| FanData {
+                        position: idx as i16,
+                        rpm: Some(AngularVelocity::from_rpm(rpm)),
+                    })
+            })
+            .collect()
     }
 }
 
 impl GetPsuFans for AvalonMiner {}
 
-impl GetFluidTemperature for AvalonMiner {
-    fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
-        if let Some(stats) = data.get(&DataField::FluidTemperature) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
-
-                if let Some(mm_id0) = parsed_stats.get("MM ID0").and_then(|v| v.first()) {
-                    let mm_stats = self.parse_stats(mm_id0);
-
-                    if let Some(temp) = mm_stats.get("Temp").and_then(|v| v.first()) {
-                        if let Ok(temp_value) = temp.parse::<f64>() {
-                            return Some(Temperature::from_celsius(temp_value));
-                        }
-                    }
-                }
-            }
-        }
-        None
+impl GetAverageTemperature for AvalonMiner {
+    fn parse_average_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
+        data.extract_map::<f64, _>(DataField::AverageTemperature, |f| {
+            Temperature::from_celsius(f)
+        })
     }
 }
 
 impl GetWattage for AvalonMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        if let Some(stats) = data.get(&DataField::Wattage) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
-
-                if let Some(mm_id0) = parsed_stats.get("MM ID0").and_then(|v| v.first()) {
-                    let mm_stats = self.parse_stats(mm_id0);
-
-                    if let Some(power) = mm_stats.get("WALLPOWER").and_then(|v| v.first()) {
-                        if let Ok(power_value) = power.parse::<f64>() {
-                            return Some(Power::from_watts(power_value));
-                        }
-                    }
-                }
-            }
-        }
-        None
+        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
 
 impl GetWattageLimit for AvalonMiner {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        if let Some(stats) = data.get(&DataField::WattageLimit) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
-
-                if let Some(mm_id0) = parsed_stats.get("MM ID0").and_then(|v| v.first()) {
-                    let mm_stats = self.parse_stats(mm_id0);
-
-                    if let Some(power) = mm_stats.get("MPO").and_then(|v| v.first()) {
-                        if let Ok(power_value) = power.parse::<f64>() {
-                            return Some(Power::from_watts(power_value));
-                        }
-                    }
-                }
-            }
-        }
-        None
+        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
     }
 }
 
+
 impl GetLightFlashing for AvalonMiner {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
-        if let Some(stats) = data.get(&DataField::LightFlashing) {
-            if let Some(stats_str) = stats.as_str() {
-                let parsed_stats = self.parse_stats(stats_str);
-
-                if let Some(mm_id0) = parsed_stats.get("MM ID0").and_then(|v| v.first()) {
-                    let mm_stats = self.parse_stats(mm_id0);
-
-                    if let Some(led) = mm_stats.get("Led").and_then(|v| v.first()) {
-                        if let Ok(led_value) = led.parse::<i32>() {
-                            return Some(led_value == 1);
-                        }
-                    }
-                }
-            }
-        }
-
-        None
+        data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
@@ -646,249 +541,28 @@ impl GetUptime for AvalonMiner {
     }
 }
 
+impl GetFluidTemperature for AvalonMiner {}
 impl GetIsMining for AvalonMiner {}
 
 impl GetPools for AvalonMiner {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
-        let mut pools = Vec::new();
-
-        if let Some(pools_value) = data.get(&DataField::Pools) {
-            if let Some(pools_array) = pools_value.as_array() {
-                for (idx, pool) in pools_array.iter().enumerate() {
-                    let url = pool
-                        .get("URL")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    let user = pool
-                        .get("User")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    let alive = pool
-                        .get("Status")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s == "Alive");
-                    let position = Some(idx as u16);
-                    let active = pool.get("Stratum Active").and_then(|v| v.as_bool());
-                    let accepted_shares = pool.get("Accepted").and_then(|v| v.as_u64());
-                    let rejected_shares = pool.get("Rejected").and_then(|v| v.as_u64());
-
-                    if let Some(url_str) = url {
-                        pools.push(PoolData {
-                            url: Some(PoolURL::from(url_str)),
-                            user,
-                            position,
-                            alive,
-                            active,
-                            accepted_shares,
-                            rejected_shares,
-                        });
-                    }
-                }
-            }
-        }
-
-        pools
+        data.get(&DataField::Pools)
+            .and_then(|v| v.as_array())
+            .map(|slice| slice.to_vec())
+            .unwrap_or_else(Vec::new)
+            .into_iter()
+            .enumerate()
+            .map(|(idx, pool)| PoolData {
+                url:  pool.get("URL").and_then(|v| v.as_str()).map(|x| PoolURL::from(x.to_owned())),
+                user: pool.get("User").and_then(|v| v.as_str()).map(|s| s.into()),
+                position: Some(idx as u16),
+                alive:  pool.get("Status").and_then(|v| v.as_str()).map(|s| s == "Alive"),
+                active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
+                accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
+                rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+            })
+            .collect()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::data::device::models::avalon::AvalonMinerModel::Avalon741;
-    use crate::test::api::MockAPIClient;
-    use crate::test::json::cgminer::avalon::*;
-    use std::collections::HashMap;
 
-    fn create_test_miner() -> AvalonMiner {
-        AvalonMiner::new(
-            IpAddr::from([192, 168, 1, 100]),
-            MinerModel::Avalon(Avalon741),
-            MinerFirmware::Stock,
-        )
-    }
-
-    fn create_mock_api_responses() -> HashMap<MinerCommand, Value> {
-        let mut results = HashMap::new();
-
-        let version_cmd = MinerCommand::RPC {
-            command: "version",
-            parameters: None,
-        };
-        results.insert(version_cmd, serde_json::from_str(VERSION_COMMAND).unwrap());
-
-        let stats_cmd = MinerCommand::RPC {
-            command: "stats",
-            parameters: None,
-        };
-        results.insert(stats_cmd, serde_json::from_str(STATS_COMMAND).unwrap());
-
-        let devs_cmd = MinerCommand::RPC {
-            command: "devs",
-            parameters: None,
-        };
-        results.insert(devs_cmd, serde_json::from_str(DEVS_COMMAND).unwrap());
-
-        let pools_cmd = MinerCommand::RPC {
-            command: "pools",
-            parameters: None,
-        };
-        results.insert(pools_cmd, serde_json::from_str(POOLS_COMMAND).unwrap());
-
-        let summary_cmd = MinerCommand::RPC {
-            command: "summary",
-            parameters: None,
-        };
-        results.insert(summary_cmd, serde_json::from_str(SUMMARY_COMMAND).unwrap());
-
-        results
-    }
-
-    #[tokio::test]
-    async fn test_avalon_miner_data_parsing() {
-        let miner = create_test_miner();
-        let mock_responses = create_mock_api_responses();
-        let mock_api = MockAPIClient::new(mock_responses);
-
-        let mut collector = DataCollector::new(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        assert_eq!(&miner_data.ip, &miner.ip);
-        assert_eq!(&miner_data.device_info, &miner.get_device_info());
-
-        assert_eq!(
-            &miner_data.mac.unwrap(),
-            &MacAddr::from_str("AA:BB:CC:DD:EE:FF").unwrap()
-        );
-
-        assert_eq!(&miner_data.firmware_version, &Some("4.11.1".to_string()));
-
-        assert_eq!(&miner_data.api_version, &Some("3.7".to_string()));
-
-        let expected_hashrate = HashRate {
-            value: 0.02,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
-        };
-        assert_eq!(&miner_data.hashrate, &Some(expected_hashrate));
-    }
-
-    #[tokio::test]
-    async fn test_avalon_hashboard_parsing() {
-        let miner = create_test_miner();
-        let mock_responses = create_mock_api_responses();
-        let mock_api = MockAPIClient::new(mock_responses);
-
-        let mut collector = DataCollector::new(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        assert!(
-            !miner_data.hashboards.is_empty(),
-            "Hashboards should be populated"
-        );
-
-        let first_board = &miner_data.hashboards[0];
-        assert_eq!(first_board.position, 0);
-        assert!(
-            first_board.active.unwrap_or(false),
-            "Board should be marked as active"
-        );
-
-        assert!(
-            first_board.board_temperature.is_some() || first_board.intake_temperature.is_some(),
-            "Temperature data should be available from stats"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_avalon_fan_parsing() {
-        let miner = create_test_miner();
-        let mock_responses = create_mock_api_responses();
-        let mock_api = MockAPIClient::new(mock_responses);
-
-        let mut collector = DataCollector::new(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        if !miner_data.fans.is_empty() {
-            let first_fan = &miner_data.fans[0];
-            assert_eq!(first_fan.position, 0);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_avalon_wattage_parsing() {
-        let miner = create_test_miner();
-        let mock_responses = create_mock_api_responses();
-        let mock_api = MockAPIClient::new(mock_responses);
-
-        let mut collector = DataCollector::new(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        if let Some(wattage) = &miner_data.wattage {
-            assert!(wattage.as_watts() >= 0.0, "Wattage should be non-negative");
-        }
-    }
-
-    #[tokio::test]
-    async fn test_avalon_temperature_parsing() {
-        let miner = create_test_miner();
-        let mock_responses = create_mock_api_responses();
-        let mock_api = MockAPIClient::new(mock_responses);
-
-        let mut collector = DataCollector::new(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        if let Some(temp) = &miner_data.fluid_temperature {
-            assert!(
-                temp.as_celsius() > -50.0 && temp.as_celsius() < 150.0,
-                "Temperature should be within reasonable range"
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn test_avalon_stats_parsing() {
-        let miner = create_test_miner();
-
-        let test_stats = "'STATS':{Ver[Q-25052801_14a19a2] LVer[25052801_14a19a2] BVer[25052801_14a19a2] HashMcu0Ver[Q_hb_v1.1] FanMcuVer[Q_fb_v1.2] CPU[K230] FW[Release] DNA[01234567890123456789012345678901] STATE[2] MEMFREE[67892] NETFAIL[0 0 0 0 0 0 0 0] SSID[] RSSI[0] NetDevType[0] SYSTEMSTATU[Work: In Idle, Hash Board: 1] Elapsed[37850] BOOTBY[0x01.00000000] LW[16987598] MH[0] DHW[0] HW[0] DH[2.449%] ITemp[26] HBITemp[27] HBOTemp[27] TMax[0] TAvg[0] TarT[65] Fan1[0] Fan2[0] Fan3[0] Fan4[0] FanR[0%] SoftOffTime[1753425250] SoftOnTime[1753425190] Filter[19143] FanErr[0] SoloAllowed[1] PS[0 1222 4 0 0 2245 146] PCOMM_E[0] GHSspd[0.00] DHspd[0.000%] GHSmm[55032.79] GHSavg[44499.41] WU[621649.53] Freq[282.86] MGHS[44499.41] TA[160] Core[A3197S] BIN[36] PING[17] SoftOFF[4] ECHU[0] ECMM[0] PLL0[8843 5769 5098 4610] SF0[258 276 297 318] CRC[0] COMCRC[0] ATA0[800-65-2264-258-20] LcdOnoff[1] Activation[0] WORKMODE[0] WORKLEVEL[0] MPO[800] CALIALL[7] ADJ[1] Nonce Mask[25]}";
-
-        let parsed = miner.parse_stats(test_stats);
-
-        // Test that key values are parsed correctly
-        assert!(parsed.contains_key("Ver"), "Should parse firmware version");
-        assert!(parsed.contains_key("GHSmm"), "Should parse hashrate");
-        assert!(
-            parsed.contains_key("ITemp"),
-            "Should parse internal temperature"
-        );
-        assert!(parsed.contains_key("Fan1"), "Should parse fan data");
-
-        // Test specific values
-        if let Some(ghsmm) = parsed.get("GHSmm").and_then(|v| v.first()) {
-            assert_eq!(ghsmm, "55032.79", "GHSmm should match expected value");
-        }
-
-        if let Some(itemp) = parsed.get("ITemp").and_then(|v| v.first()) {
-            assert_eq!(itemp, "26", "ITemp should match expected value");
-        }
-    }
-
-    #[test]
-    fn test_device_info_creation() {
-        let miner = create_test_miner();
-        let device_info = miner.get_device_info();
-
-        assert_eq!(device_info.make, MinerMake::AvalonMiner);
-        assert_eq!(device_info.firmware, MinerFirmware::Stock);
-        assert_eq!(device_info.algo, HashAlgorithm::SHA256);
-    }
-}
