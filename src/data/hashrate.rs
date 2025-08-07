@@ -18,6 +18,22 @@ pub enum HashRateUnit {
     YottaHash,
 }
 
+impl HashRateUnit {
+    fn to_multiplier(self) -> f64 {
+        match self {
+            HashRateUnit::Hash => 1e0,
+            HashRateUnit::KiloHash => 1e3,
+            HashRateUnit::MegaHash => 1e6,
+            HashRateUnit::GigaHash => 1e9,
+            HashRateUnit::TeraHash => 1e12,
+            HashRateUnit::PetaHash => 1e15,
+            HashRateUnit::ExaHash => 1e18,
+            HashRateUnit::ZettaHash => 1e21,
+            HashRateUnit::YottaHash => 1e24,
+        }
+    }
+}
+
 impl Display for HashRateUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -42,6 +58,18 @@ pub struct HashRate {
     pub unit: HashRateUnit,
     /// The algorithm of the computed hashes
     pub algo: String,
+}
+
+impl HashRate {
+    pub fn as_unit(self, unit: HashRateUnit) -> Self {
+        let base = self.value * self.unit.to_multiplier(); // Convert to base unit (e.g., bytes)
+
+        Self {
+            value: base / &unit.clone().to_multiplier(),
+            unit,
+            algo: self.algo,
+        }
+    }
 }
 
 impl Display for HashRate {

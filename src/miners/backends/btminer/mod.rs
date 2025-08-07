@@ -1,11 +1,13 @@
 use std::net::IpAddr;
 
 use semver;
+pub use v2::BTMiner2;
 pub use v3::BTMiner3;
 
 use crate::data::device::{MinerFirmware, MinerModel};
 use crate::miners::backends::traits::GetMinerData;
 
+pub mod v2;
 pub mod v3;
 
 pub struct BTMiner;
@@ -24,7 +26,7 @@ impl BTMiner {
         {
             Box::new(BTMiner3::new(ip, model, firmware))
         } else {
-            panic!("Unsupported BTMiner version")
+            Box::new(BTMiner2::new(ip, model, firmware))
         }
     }
 }
