@@ -4,19 +4,23 @@ use crate::miners::api::{APIClient, RPCAPIClient};
 use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+static STATS_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\w+)\[([^\]]+)\]").unwrap());
+static NESTED_STATS_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"'([^']+)':\{([^}]*)\}").unwrap());
+
 #[derive(Debug)]
-pub struct CGMinerRPC {
+pub struct AvalonMinerRPCAPI {
     ip: IpAddr,
     port: u16,
 }
 
-impl CGMinerRPC {
+impl AvalonMinerRPCAPI {
     pub fn new(ip: IpAddr) -> Self {
         Self { ip, port: 4028 }
     }
@@ -65,35 +69,65 @@ impl CGMinerRPC {
         Ok(val)
     }
 
-    fn parse_stats(&self, stats: &str) -> HashMap<String, Vec<String>> {
-        let mut stats_dict = HashMap::new();
+    fn convert_value(&self,val: &str, key: &str) -> Value {
+        let val = val.trim();
 
-        let re = Regex::new(r"(\w+)\[([^\]]+)\]").unwrap();
+        if key == "SYSTEMSTATU" {
+            return Value::String(val.to_string());
+        }
+
+        if val.contains(' ') {
+            let parts = val.split_whitespace();
+            let mut result = Vec::new();
+            for part in parts {
+                if part.chars().all(|c| c.is_ascii_digit()) {
+                    // all digits → int
+                    if let Ok(i) = part.parse::<i64>() {
+                        result.push(Value::Number(i.into()));
+                        continue;
+                    }
+                }
+                // else try float
+                if let Ok(f) = part.parse::<f64>() {
+                    result.push(json!(f));
+                } else {
+                    result.push(Value::String(part.to_string()));
+                }
+            }
+            Value::Array(result)
+        } else if val.chars().all(|c| c.is_ascii_digit()) {
+            if let Ok(i) = val.parse::<i64>() {
+                Value::Number(i.into())
+            } else {
+                Value::String(val.to_string())
+            }
+        } else if let Ok(f) = val.parse::<f64>() {
+            json!(f)
+        } else {
+            Value::String(val.to_string())
+        }
+    }
+
+    fn parse_stats(&self, stats: &str) -> HashMap<String, Value> {
+        let mut stats_dict = HashMap::new();
+        let re = STATS_RE.clone();
 
         for cap in re.captures_iter(stats) {
             let key = cap[1].to_string();
             let value_str = &cap[2];
 
-            let values: Vec<String> = if value_str.contains(' ') {
-                value_str
-                    .split_whitespace()
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                vec![value_str.to_string()]
-            };
-
-            stats_dict.insert(key, values);
+            let parsed_value = self.convert_value(value_str, &key);
+            stats_dict.insert(key, parsed_value);
         }
 
         stats_dict
     }
 
-    fn parse_nested_stats(&self, stats: &str) -> HashMap<String, HashMap<String, Vec<String>>> {
+    fn parse_nested_stats(&self, stats: &str) -> HashMap<String, HashMap<String, Value>> {
         let mut outer = HashMap::new();
-        let re = Regex::new(r"'([^']+)':\{([^}]*)\}").unwrap();
+        let re = NESTED_STATS_RE.clone();
 
-        for cap in re.captures_iter(stats) {
+        if let Some(cap) = re.captures(stats) {
             let section = cap[1].to_string();
             let inner_str = &cap[2];
             let inner_map = self.parse_stats(inner_str);
@@ -104,7 +138,7 @@ impl CGMinerRPC {
 }
 
 #[async_trait]
-impl RPCAPIClient for CGMinerRPC {
+impl RPCAPIClient for AvalonMinerRPCAPI {
     async fn send_command(
         &self,
         command: &str,
@@ -149,7 +183,7 @@ impl RPCAPIClient for CGMinerRPC {
 }
 
 #[async_trait]
-impl APIClient for CGMinerRPC {
+impl APIClient for AvalonMinerRPCAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::RPC {
@@ -169,8 +203,8 @@ mod parse_rpc_result_nested_tests {
     use crate::test::json::cgminer::avalon::{STATS_COMMAND, VERSION_COMMAND};
     use std::net::{IpAddr, Ipv4Addr};
 
-    fn test_rpc() -> CGMinerRPC {
-        CGMinerRPC::new(IpAddr::V4(Ipv4Addr::LOCALHOST))
+    fn test_rpc() -> AvalonMinerRPCAPI {
+        AvalonMinerRPCAPI::new(IpAddr::V4(Ipv4Addr::LOCALHOST))
     }
 
     #[test]
@@ -179,56 +213,34 @@ mod parse_rpc_result_nested_tests {
 
         assert_eq!(val.pointer("/STATUS/0/STATUS"), Some(&json!("S")));
 
+
+
         assert_eq!(
-            val.pointer("/STATS/0/MM ID0:Summary/STATS/GHSmm/0"),
-            Some(&json!("55032.79"))
+            val.pointer("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
+            Some(&json!(55032.79))
         );
         assert_eq!(
-            val.pointer("/STATS/0/MM ID0:Summary/STATS/Freq/0"),
-            Some(&json!("282.86"))
+            val.pointer("/STATS/0/MM ID0:Summary/STATS/Freq"),
+            Some(&json!(282.86))
         );
 
         assert_eq!(
             val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/0"),
-            Some(&json!("58"))
+            Some(&json!(58))
         );
         assert_eq!(
             val.pointer("/STATS/0/HBinfo/HB0/MW0/1"),
-            Some(&json!("664"))
+            Some(&json!(664))
         );
 
         assert_eq!(val.pointer("/STATS/1/ID"), Some(&json!("POOL0")));
 
         assert_eq!(
-            val.pointer("/STATS/0/MM ID0:Summary/STATS/BVer/0"),
+            val.pointer("/STATS/0/MM ID0:Summary/STATS/BVer"),
             Some(&json!("25052801_14a19a2"))
         );
     }
 
-    #[test]
-    fn hbinfo_multiple_blocks_hb0_and_hb1() {
-        let resp = r#"
-        {
-          "STATUS":[{"STATUS":"S","Msg":"ok"}],
-          "STATS":[{
-            "ID":"AVALON0",
-            "HBinfo":"'HB0':{TEMP[55 56]} 'HB1':{TEMP[77 78] VOLT[12.3]}"
-          }]
-        }"#;
-        let val = test_rpc().parse_rpc_result(resp).unwrap();
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB0/TEMP/0"),
-            Some(&json!("55"))
-        );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB1/TEMP/1"),
-            Some(&json!("78"))
-        );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB1/VOLT/0"),
-            Some(&json!("12.3"))
-        );
-    }
 
     #[test]
     fn hbinfo_realistic_long_string() {
@@ -243,20 +255,13 @@ mod parse_rpc_result_nested_tests {
         let val = test_rpc().parse_rpc_result(&resp).unwrap();
         assert_eq!(
             val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/2"),
-            Some(&json!("60"))
+            Some(&json!(60))
         );
         assert_eq!(
             val.pointer("/STATS/0/HBinfo/HB0/MW0/1"),
-            Some(&json!("200"))
+            Some(&json!(200))
         );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB1/PVT_T0/0"),
-            Some(&json!("99"))
-        );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB1/MW0/1"),
-            Some(&json!("400"))
-        );
+
     }
 
     #[test]

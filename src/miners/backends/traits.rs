@@ -485,12 +485,12 @@ pub trait Restart {
 
 #[async_trait]
 pub trait Pause {
-    async fn pause(&self, at_time: Option<u64>) -> Result<bool>;
+    async fn pause(&self, at_time: Option<Duration>) -> Result<bool>;
 }
 
 #[async_trait]
 pub trait Resume {
-    async fn resume(&self, at_time: Option<u64>) -> Result<bool>;
+    async fn resume(&self, at_time: Option<Duration>) -> Result<bool>;
 }
 
 // Messages

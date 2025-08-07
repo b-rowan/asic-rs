@@ -1,6 +1,6 @@
 use super::{MinerFirmware, MinerMake};
-use crate::data::device::models::avalon::AvalonMinerModel;
 use antminer::AntMinerModel;
+use avalon::AvalonMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;

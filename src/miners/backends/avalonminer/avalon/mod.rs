@@ -18,17 +18,17 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
-use rpc::CGMinerRPC;
+use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub struct AvalonMiner {
     ip: IpAddr,
-    rpc: CGMinerRPC,
+    rpc: AvalonMinerRPCAPI,
     device_info: DeviceInfo,
 }
 
@@ -36,7 +36,7 @@ impl AvalonMiner {
     pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
         Self {
             ip,
-            rpc: CGMinerRPC::new(ip),
+            rpc: AvalonMinerRPCAPI::new(ip),
             device_info: DeviceInfo::new(
                 MinerMake::AvalonMiner,
                 model,
@@ -44,42 +44,6 @@ impl AvalonMiner {
                 HashAlgorithm::SHA256,
             ),
         }
-    }
-
-    /// Turn on the fault light
-    pub async fn fault_light_on(&self) -> Result<bool> {
-        let data = self
-            .rpc
-            .send_command("ascset", false, Some(json!(["0", "led", "1-1"])))
-            .await?;
-
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
-                }
-            }
-        }
-
-        Err(anyhow!("Failed to turn on fault light"))
-    }
-
-    /// Turn off the fault light
-    pub async fn fault_light_off(&self) -> Result<bool> {
-        let data = self
-            .rpc
-            .send_command("ascset", false, Some(json!(["0", "led", "1-0"])))
-            .await?;
-
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
-                }
-            }
-        }
-
-        Err(anyhow!("Failed to turn off fault light"))
     }
 
     /// Reboot the miner
@@ -92,35 +56,18 @@ impl AvalonMiner {
 
         Ok(false)
     }
+}
+#[async_trait]
+impl Pause for AvalonMiner {
+    async fn pause(&self, after: Option<Duration>) -> Result<bool> {
+        let offset = after.unwrap_or(Duration::from_secs(5));
+        let shutdown_time = SystemTime::now() + offset;
 
-    /// Schedule soft power on at a specific timestamp
-    pub async fn soft_power_on(&self, timestamp: u64) -> Result<bool> {
-        let data = self
-            .rpc
-            .send_command(
-                "ascset",
-                false,
-                Some(json!(["0", format!("softon,1:{}", timestamp)])),
-            )
-            .await?;
+        let timestamp = shutdown_time
+            .duration_since(UNIX_EPOCH)
+            .expect("Shutdown time is before UNIX epoch")
+            .as_secs();
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str()) {
-                    if status_code == "I" {
-                        if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                            return Ok(msg.contains("success softon"));
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(false)
-    }
-
-    /// Schedule soft power off at a specific timestamp
-    pub async fn soft_power_off(&self, timestamp: u64) -> Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -146,34 +93,60 @@ impl AvalonMiner {
     }
 }
 #[async_trait]
-impl Pause for AvalonMiner {
-    async fn pause(&self, at_time: Option<u64>) -> Result<bool> {
-        if let Some(time) = at_time {
-            self.soft_power_off(time).await?;
-        } else {
-            self.soft_power_off(0).await?;
-        }
-        Ok(true)
-    }
-}
-#[async_trait]
 impl Resume for AvalonMiner {
-    async fn resume(&self, at_time: Option<u64>) -> Result<bool> {
-        if let Some(time) = at_time {
-            self.soft_power_on(time).await?;
-        } else {
-            self.soft_power_on(0).await?;
+    async fn resume(&self, after: Option<Duration>) -> Result<bool> {
+        let offset = after.unwrap_or(Duration::from_secs(5));
+        let shutdown_time = SystemTime::now() + offset;
+
+        let timestamp = shutdown_time
+            .duration_since(UNIX_EPOCH)
+            .expect("Shutdown time is before UNIX epoch")
+            .as_secs();
+
+        let data = self
+            .rpc
+            .send_command(
+                "ascset",
+                false,
+                Some(json!(["0", format!("softon,1:{}", timestamp)])),
+            )
+            .await?;
+
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
+            if !status.is_empty() {
+                if let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str()) {
+                    if status_code == "I" {
+                        if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
+                            return Ok(msg.contains("success softon"));
+                        }
+                    }
+                }
+            }
         }
-        Ok(true)
+        Ok(false)
     }
 }
 #[async_trait]
 impl SetFaultLight for AvalonMiner {
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        match fault {
-            true => self.fault_light_on().await,
-            false => self.fault_light_off().await,
+        let command = if fault { "1-1" } else { "1-0" };
+
+        let data = self
+            .rpc
+            .send_command("ascset", false, Some(json!(["0", "led", command])))
+            .await?;
+
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
+            if let Some(msg) = status
+                .get(0)
+                .and_then(|s| s.get("Msg"))
+                .and_then(|m| m.as_str())
+            {
+                return Ok(msg == "ASC 0 set OK");
+            }
         }
+
+        Err(anyhow!("Failed to set fault light to {}", command))
     }
 }
 
