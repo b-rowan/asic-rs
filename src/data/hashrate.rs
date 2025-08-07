@@ -65,7 +65,7 @@ impl HashRate {
         let base = self.value * self.unit.to_multiplier(); // Convert to base unit (e.g., bytes)
 
         Self {
-            value: base / &unit.clone().to_multiplier(),
+            value: base / unit.clone().to_multiplier(),
             unit,
             algo: self.algo,
         }

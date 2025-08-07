@@ -158,7 +158,7 @@ impl GetDeviceInfo for ESPMiner200 {
 }
 
 impl CollectData for ESPMiner200 {
-    fn get_collector(&self) -> DataCollector {
+    fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self, &self.web)
     }
 }

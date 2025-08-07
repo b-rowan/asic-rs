@@ -210,7 +210,7 @@ impl GetDeviceInfo for BTMiner3 {
 }
 
 impl CollectData for BTMiner3 {
-    fn get_collector(&self) -> DataCollector {
+    fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self, &self.rpc)
     }
 }
