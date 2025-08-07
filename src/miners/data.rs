@@ -332,10 +332,10 @@ impl<'a> DataCollector<'a> {
     fn extract_field(&self, field: DataField) -> Option<Value> {
         let mut success: Vec<&Value> = Vec::new();
         for (command, extractor) in self.miner.get_locations(field) {
-            if let Some(response_data) = self.cache.get(&command) {
-                if let Some(value) = (extractor.func)(response_data, extractor.key) {
-                    success.push(value);
-                }
+            if let Some(response_data) = self.cache.get(&command)
+                && let Some(value) = (extractor.func)(response_data, extractor.key)
+            {
+                success.push(value);
             }
         }
         if success.is_empty() {
