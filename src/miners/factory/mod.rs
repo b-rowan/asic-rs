@@ -14,7 +14,9 @@ use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 use std::time::Duration;
+use tokio::net::TcpStream;
 use tokio::task::JoinSet;
+use tokio::time::timeout;
 
 use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
@@ -25,7 +27,8 @@ use crate::miners::backends::traits::GetMinerData;
 use crate::miners::factory::traits::VersionSelection;
 use traits::{DiscoveryCommands, ModelSelection};
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
+const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(5);
+const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
 
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     // Adaptive concurrency based on scale
@@ -36,6 +39,13 @@ fn calculate_optimal_concurrency(ip_count: usize) -> usize {
         5001..=10000 => 150, // Very large networks - high throughput
         _ => 200,            // Massive mining operations - maximum throughput
     }
+}
+
+async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> bool {
+    let addr = format!("{}:{}", ip, port);
+    timeout(connectivity_timeout, TcpStream::connect(&addr))
+        .await
+        .is_ok()
 }
 
 async fn get_miner_type_from_command(
@@ -142,8 +152,10 @@ pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
     ips: Vec<IpAddr>,
-    timeout: Duration,
+    identification_timeout: Duration,
+    connectivity_timeout: Duration,
     concurrent: Option<usize>,
+    check_port: bool,
 }
 
 impl Default for MinerFactory {
@@ -154,6 +166,11 @@ impl Default for MinerFactory {
 
 impl MinerFactory {
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
+        // Quick port check first to avoid wasting time on dead IPs
+        if self.check_port && !check_port_open(ip, 80, self.connectivity_timeout).await {
+            return Ok(None);
+        }
+
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -190,7 +207,7 @@ impl MinerFactory {
             let _ = discovery_tasks.spawn(get_miner_type_from_command(ip, command));
         }
 
-        let timeout = tokio::time::sleep(self.timeout).fuse();
+        let timeout = tokio::time::sleep(self.identification_timeout).fuse();
         let tasks = tokio::spawn(async move {
             loop {
                 if discovery_tasks.is_empty() {
@@ -244,9 +261,17 @@ impl MinerFactory {
             search_makes: None,
             search_firmwares: None,
             ips: Vec::new(),
-            timeout: DEFAULT_TIMEOUT,
+            identification_timeout: IDENTIFICATION_TIMEOUT,
+            connectivity_timeout: CONNECTIVITY_TIMEOUT,
             concurrent: None,
+            check_port: true, // Enable port checking by default
         }
+    }
+
+    // Port checking
+    pub fn with_port_check(mut self, enabled: bool) -> Self {
+        self.check_port = enabled;
+        self
     }
 
     // Concurrency limiting
@@ -267,13 +292,23 @@ impl MinerFactory {
     }
 
     // Timeout
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+    pub fn with_identification_timeout(mut self, timeout: Duration) -> Self {
+        self.identification_timeout = timeout;
         self
     }
 
-    pub fn with_timeout_secs(mut self, timeout_secs: u64) -> Self {
-        self.timeout = Duration::from_secs(timeout_secs);
+    pub fn with_identification_timeout_secs(mut self, timeout_secs: u64) -> Self {
+        self.identification_timeout = Duration::from_secs(timeout_secs);
+        self
+    }
+
+    pub fn with_connectivity_timeout(mut self, timeout: Duration) -> Self {
+        self.connectivity_timeout = timeout;
+        self
+    }
+
+    pub fn with_connectivity_timeout_secs(mut self, timeout_secs: u64) -> Self {
+        self.connectivity_timeout = Duration::from_secs(timeout_secs);
         self
     }
 
