@@ -226,49 +226,49 @@ impl GetDataLocations for AvalonMiner {
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm/0"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
                 },
             )],
             DataField::Hashboards => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                    key: Some("/STATS/0/HBinfo"),
                 },
             )],
             DataField::AverageTemperature => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/Temp/0"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
                 },
             )],
             DataField::WattageLimit => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/MPO/0"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
                 },
             )],
             DataField::Wattage => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER/0"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
                 },
             )],
             DataField::Fans => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
                 },
             )],
             DataField::LightFlashing => vec![(
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/Led/0"),
+                    key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
                 },
             )],
             DataField::Uptime => vec![(
@@ -352,13 +352,15 @@ impl GetHashboards for AvalonMiner {
         let board_cnt = hw.boards.unwrap_or(1) as usize;
         let chips_per = hw.chips.unwrap_or(0);
 
-        let stats = match data.get(&DataField::Hashboards) {
+        let hb_info = match data.get(&DataField::Hashboards).and_then(|v| v.as_object()) {
             Some(v) => v,
             _ => return Vec::new(),
         };
 
-        let summary = &stats;
-        let hb_info = &stats["HBinfo"];
+        let summary = match data.get(&DataField::Fans) {
+            Some(v) => v,
+            _ => return Vec::new(),
+        };//some HB info is grouped with fan data.
 
         (0..board_cnt)
             .map(|idx| {
@@ -473,14 +475,11 @@ impl GetFans for AvalonMiner {
             return Vec::new();
         }
 
-        let summary = &stats["STATS"][0]["MM ID0:Summary"]["STATS"];
-
         (1..=expected_fans)
             .filter_map(|idx| {
                 let key = format!("Fan{idx}");
-                summary[&key][0]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
+                stats.get(&key)
+                    .and_then(|val| val.as_f64())
                     .map(|rpm| FanData {
                         position: idx as i16,
                         rpm: Some(AngularVelocity::from_rpm(rpm)),
@@ -488,6 +487,7 @@ impl GetFans for AvalonMiner {
             })
             .collect()
     }
+
 }
 
 impl GetPsuFans for AvalonMiner {}
