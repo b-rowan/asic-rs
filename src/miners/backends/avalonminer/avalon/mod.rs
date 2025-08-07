@@ -77,16 +77,13 @@ impl Pause for AvalonMiner {
             )
             .await?;
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str()) {
-                    if status_code == "I" {
-                        if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                            return Ok(msg.contains("success softoff"));
-                        }
-                    }
-                }
-            }
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
+            && !status.is_empty()
+            && let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str())
+            && status_code == "I"
+            && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
+        {
+            return Ok(msg.contains("success softoff"));
         }
 
         Ok(false)
@@ -112,16 +109,13 @@ impl Resume for AvalonMiner {
             )
             .await?;
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str()) {
-                    if status_code == "I" {
-                        if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                            return Ok(msg.contains("success softon"));
-                        }
-                    }
-                }
-            }
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
+            && !status.is_empty()
+            && let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str())
+            && status_code == "I"
+            && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
+        {
+            return Ok(msg.contains("success softon"));
         }
         Ok(false)
     }
@@ -136,14 +130,13 @@ impl SetFaultLight for AvalonMiner {
             .send_command("ascset", false, Some(json!(["0", "led", command])))
             .await?;
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if let Some(msg) = status
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
+            && let Some(msg) = status
                 .first()
                 .and_then(|s| s.get("Msg"))
                 .and_then(|m| m.as_str())
-            {
-                return Ok(msg == "ASC 0 set OK");
-            }
+        {
+            return Ok(msg == "ASC 0 set OK");
         }
 
         Err(anyhow!("Failed to set fault light to {}", command))
@@ -162,12 +155,11 @@ impl SetPowerLimit for AvalonMiner {
             )
             .await?;
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
-            if !status.is_empty() {
-                if let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str()) {
-                    return Ok(msg == "ASC 0 set OK");
-                }
-            }
+        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
+            && !status.is_empty()
+            && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
+        {
+            return Ok(msg == "ASC 0 set OK");
         }
 
         Err(anyhow!("Failed to set power limit"))
