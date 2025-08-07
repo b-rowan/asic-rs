@@ -27,17 +27,18 @@ use crate::miners::backends::traits::GetMinerData;
 use crate::miners::factory::traits::VersionSelection;
 use traits::{DiscoveryCommands, ModelSelection};
 
-const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(5);
+const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
+const CONNECTIVITY_RETRIES: u32 = 3;
 
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     // Adaptive concurrency based on scale
     match ip_count {
-        0..=100 => 25,       // Small networks - conservative
-        101..=1000 => 50,    // Medium networks - moderate
-        1001..=5000 => 100,  // Large networks - aggressive
-        5001..=10000 => 150, // Very large networks - high throughput
-        _ => 200,            // Massive mining operations - maximum throughput
+        0..=100 => 100,      // Small networks - conservative
+        101..=1000 => 250,   // Medium networks - moderate
+        1001..=5000 => 500,  // Large networks - aggressive
+        5001..=10000 => 750, // Very large networks - high throughput
+        _ => 1000,           // Massive mining operations - maximum throughput
     }
 }
 
@@ -154,6 +155,7 @@ pub struct MinerFactory {
     ips: Vec<IpAddr>,
     identification_timeout: Duration,
     connectivity_timeout: Duration,
+    connectivity_retries: u32,
     concurrent: Option<usize>,
     check_port: bool,
 }
@@ -165,12 +167,19 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
-    pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
+    pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
         // Quick port check first to avoid wasting time on dead IPs
-        if self.check_port && !check_port_open(ip, 80, self.connectivity_timeout).await {
-            return Ok(None);
+        if (1..self.connectivity_retries).next().is_some() {
+            if self.check_port && !check_port_open(ip, 80, self.connectivity_timeout).await {
+                return Ok(None);
+            } else {
+                return self.get_miner(ip).await;
+            }
         }
+        Ok(None)
+    }
 
+    pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -263,6 +272,7 @@ impl MinerFactory {
             ips: Vec::new(),
             identification_timeout: IDENTIFICATION_TIMEOUT,
             connectivity_timeout: CONNECTIVITY_TIMEOUT,
+            connectivity_retries: CONNECTIVITY_RETRIES,
             concurrent: None,
             check_port: true, // Enable port checking by default
         }
@@ -309,6 +319,11 @@ impl MinerFactory {
 
     pub fn with_connectivity_timeout_secs(mut self, timeout_secs: u64) -> Self {
         self.connectivity_timeout = Duration::from_secs(timeout_secs);
+        self
+    }
+
+    pub fn with_connectivity_retries(mut self, retries: u32) -> Self {
+        self.connectivity_retries = retries;
         self
     }
 
@@ -451,7 +466,7 @@ impl MinerFactory {
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
 
         let miners: Vec<Box<dyn GetMinerData>> = stream::iter(self.ips.iter().copied())
-            .map(|ip| async move { self.get_miner(ip).await.ok().flatten() })
+            .map(|ip| async move { self.scan_miner(ip).await.ok().flatten() })
             .buffer_unordered(concurrency)
             .filter_map(|miner_opt| async move { miner_opt })
             .collect()
@@ -475,7 +490,7 @@ impl MinerFactory {
             self.ips
                 .iter()
                 .copied()
-                .map(move |ip| async move { self.get_miner(ip).await.ok().flatten() }),
+                .map(move |ip| async move { self.scan_miner(ip).await.ok().flatten() }),
         )
         .buffer_unordered(concurrency)
         .filter_map(|miner_opt| async move { miner_opt });
@@ -500,7 +515,7 @@ impl MinerFactory {
             self.ips
                 .iter()
                 .copied()
-                .map(move |ip| async move { (ip, self.get_miner(ip).await.ok().flatten()) }),
+                .map(move |ip| async move { (ip, self.scan_miner(ip).await.ok().flatten()) }),
         )
         .buffer_unordered(concurrency);
 
