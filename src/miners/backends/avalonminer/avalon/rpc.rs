@@ -69,7 +69,7 @@ impl AvalonMinerRPCAPI {
         Ok(val)
     }
 
-    fn convert_value(&self,val: &str, key: &str) -> Value {
+    fn convert_value(&self, val: &str, key: &str) -> Value {
         let val = val.trim();
 
         if key == "SYSTEMSTATU" {
@@ -213,8 +213,6 @@ mod parse_rpc_result_nested_tests {
 
         assert_eq!(val.pointer("/STATUS/0/STATUS"), Some(&json!("S")));
 
-
-
         assert_eq!(
             val.pointer("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
             Some(&json!(55032.79))
@@ -228,10 +226,7 @@ mod parse_rpc_result_nested_tests {
             val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/0"),
             Some(&json!(58))
         );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB0/MW0/1"),
-            Some(&json!(664))
-        );
+        assert_eq!(val.pointer("/STATS/0/HBinfo/HB0/MW0/1"), Some(&json!(664)));
 
         assert_eq!(val.pointer("/STATS/1/ID"), Some(&json!("POOL0")));
 
@@ -240,7 +235,6 @@ mod parse_rpc_result_nested_tests {
             Some(&json!("25052801_14a19a2"))
         );
     }
-
 
     #[test]
     fn hbinfo_realistic_long_string() {
@@ -257,11 +251,7 @@ mod parse_rpc_result_nested_tests {
             val.pointer("/STATS/0/HBinfo/HB0/PVT_T0/2"),
             Some(&json!(60))
         );
-        assert_eq!(
-            val.pointer("/STATS/0/HBinfo/HB0/MW0/1"),
-            Some(&json!(200))
-        );
-
+        assert_eq!(val.pointer("/STATS/0/HBinfo/HB0/MW0/1"), Some(&json!(200)));
     }
 
     #[test]

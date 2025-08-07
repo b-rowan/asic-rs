@@ -138,7 +138,7 @@ impl SetFaultLight for AvalonMiner {
 
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array()) {
             if let Some(msg) = status
-                .get(0)
+                .first()
                 .and_then(|s| s.get("Msg"))
                 .and_then(|m| m.as_str())
             {
@@ -360,7 +360,7 @@ impl GetHashboards for AvalonMiner {
         let summary = match data.get(&DataField::Fans) {
             Some(v) => v,
             _ => return Vec::new(),
-        };//some HB info is grouped with fan data.
+        }; //some HB info is grouped with fan data.
 
         (0..board_cnt)
             .map(|idx| {
@@ -478,7 +478,8 @@ impl GetFans for AvalonMiner {
         (1..=expected_fans)
             .filter_map(|idx| {
                 let key = format!("Fan{idx}");
-                stats.get(&key)
+                stats
+                    .get(&key)
                     .and_then(|val| val.as_f64())
                     .map(|rpm| FanData {
                         position: idx as i16,
@@ -487,7 +488,6 @@ impl GetFans for AvalonMiner {
             })
             .collect()
     }
-
 }
 
 impl GetPsuFans for AvalonMiner {}
