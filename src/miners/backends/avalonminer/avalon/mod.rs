@@ -290,7 +290,7 @@ impl GetIP for AvalonMiner {
 
 impl GetDeviceInfo for AvalonMiner {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info.clone()
+        self.device_info
     }
 }
 
@@ -354,7 +354,6 @@ impl GetHashboards for AvalonMiner {
             _ => return Vec::new(),
         }; //some HB info is grouped with fan data.
 
-
         (0..board_cnt)
             .map(|idx| {
                 let key = format!("HB{idx}");
@@ -368,13 +367,11 @@ impl GetHashboards for AvalonMiner {
                     .as_f64()
                     .map(Temperature::from_celsius);
 
-                let hashrate = summary["MGHS"][idx]
-                    .as_f64()
-                    .map(|r| HashRate {
-                        value: r,
-                        unit: HashRateUnit::GigaHash,
-                        algo: "SHA256".into(),
-                    });
+                let hashrate = summary["MGHS"][idx].as_f64().map(|r| HashRate {
+                    value: r,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".into(),
+                });
 
                 // per-chip arrays
                 let temps: Vec<f64> = hb_info[&key]["PVT_T0"]
@@ -535,23 +532,22 @@ impl GetPools for AvalonMiner {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use crate::data::device::models::avalon::AvalonMinerModel::{AvalonHomeQ, AvalonNano3};
-    use crate::test::api::MockAPIClient;
-    use crate::test::json::cgminer::avalon::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
     use super::*;
+    use crate::data::device::models::avalon::AvalonMinerModel::AvalonHomeQ;
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::cgminer::avalon::{
+        DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND,
+    };
 
     #[tokio::test]
 
     async fn test_avalon_home_q() -> Result<()> {
-
         let miner = AvalonMiner::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::Avalon(AvalonHomeQ),
-            MinerFirmware::Stock
+            MinerFirmware::Stock,
         );
 
         let mut results = HashMap::new();
@@ -577,7 +573,6 @@ mod tests {
         results.insert(pools_cmd, Value::from_str(POOLS_COMMAND)?);
         results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
 
-
         let mock_api = MockAPIClient::new(results);
         let mut collector = DataCollector::new(&miner, &mock_api);
         let data = collector.collect_all().await;
@@ -588,9 +583,10 @@ mod tests {
         assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(800.0)));
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
-        assert_eq!(miner_data.average_temperature, Some(Temperature::from_celsius(26.0)));
-
-
+        assert_eq!(
+            miner_data.average_temperature,
+            Some(Temperature::from_celsius(26.0))
+        );
 
         Ok(())
     }
