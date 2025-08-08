@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
 pub mod models;
 pub use models::MinerModel;
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
 pub enum MinerFirmware {
     #[serde(rename = "Stock")]
     Stock,
@@ -22,7 +23,7 @@ pub enum MinerFirmware {
     MSKMiner,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
 pub enum MinerMake {
     #[serde(rename = "AntMiner")]
     AntMiner,
@@ -38,7 +39,7 @@ pub enum MinerMake {
     BitAxe,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
 pub enum HashAlgorithm {
     #[serde(rename = "SHA256")]
     SHA256,
