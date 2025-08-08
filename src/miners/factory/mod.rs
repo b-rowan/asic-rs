@@ -250,26 +250,31 @@ impl MinerFactory {
         );
 
         match miner_info {
-            Some((make, firmware)) => {
-                let model = if let Some(miner_firmware) = firmware {
-                    miner_firmware.get_model(ip).await
-                } else if let Some(miner_make) = make {
-                    miner_make.get_model(ip).await
-                } else {
-                    return Ok(None);
-                };
+            Some((Some(make), Some(MinerFirmware::Stock))) => {
+                let model = make.get_model(ip).await;
+                let version = make.get_version(ip).await;
 
-                let version = if let Some(miner_firmware) = firmware {
-                    miner_firmware.get_version(ip).await
-                } else if let Some(miner_make) = make {
-                    miner_make.get_version(ip).await
-                } else {
-                    return Ok(None);
-                };
-
-                Ok(select_backend(ip, make, model, firmware, version))
+                Ok(select_backend(
+                    ip,
+                    Some(make),
+                    model,
+                    Some(MinerFirmware::Stock),
+                    version,
+                ))
             }
-            None => Ok(None),
+            Some((make, Some(firmware))) => {
+                let model = firmware.get_model(ip).await;
+                let version = firmware.get_version(ip).await;
+
+                Ok(select_backend(ip, make, model, Some(firmware), version))
+            }
+            Some((Some(make), firmware)) => {
+                let model = make.get_model(ip).await;
+                let version = make.get_version(ip).await;
+
+                Ok(select_backend(ip, Some(make), model, firmware, version))
+            }
+            _ => Ok(None),
         }
     }
 
