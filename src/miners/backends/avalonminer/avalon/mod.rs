@@ -354,22 +354,22 @@ impl GetHashboards for AvalonMiner {
             _ => return Vec::new(),
         }; //some HB info is grouped with fan data.
 
+
         (0..board_cnt)
             .map(|idx| {
                 let key = format!("HB{idx}");
 
                 // per-board aggregates
                 let intake = summary["ITemp"][idx]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
+                    .as_f64()
                     .map(Temperature::from_celsius);
+
                 let board_t = summary["HBITemp"][idx]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
+                    .as_f64()
                     .map(Temperature::from_celsius);
+
                 let hashrate = summary["MGHS"][idx]
-                    .as_str()
-                    .and_then(|s| s.parse::<f64>().ok())
+                    .as_f64()
                     .map(|r| HashRate {
                         value: r,
                         unit: HashRateUnit::GigaHash,
@@ -377,32 +377,19 @@ impl GetHashboards for AvalonMiner {
                     });
 
                 // per-chip arrays
-                let temps: Vec<String> = hb_info[&key]["PVT_T0"]
+                let temps: Vec<f64> = hb_info[&key]["PVT_T0"]
                     .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(str::to_owned)
-                            .collect()
-                    })
+                    .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
-                let volts: Vec<String> = hb_info[&key]["PVT_V0"]
+
+                let volts: Vec<f64> = hb_info[&key]["PVT_V0"]
                     .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(str::to_owned)
-                            .collect()
-                    })
+                    .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
-                let works: Vec<String> = hb_info[&key]["MW0"]
+
+                let works: Vec<f64> = hb_info[&key]["MW0"]
                     .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(str::to_owned)
-                            .collect()
-                    })
+                    .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
                 let chips: Vec<ChipData> = temps
@@ -410,11 +397,11 @@ impl GetHashboards for AvalonMiner {
                     .zip(volts.iter())
                     .zip(works.iter())
                     .enumerate()
-                    .map(|(pos, ((t, v), w))| ChipData {
+                    .map(|(pos, ((&t, &v), &w))| ChipData {
                         position: pos as u16,
-                        temperature: t.parse::<f64>().ok().map(Temperature::from_celsius),
-                        voltage: v.parse::<f64>().ok().map(Voltage::from_millivolts),
-                        working: w.parse::<f64>().ok().map(|w| w > 0.0),
+                        temperature: Some(Temperature::from_celsius(t)),
+                        voltage: Some(Voltage::from_millivolts(v)),
+                        working: Some(w > 0.0),
                         ..Default::default()
                     })
                     .collect();
@@ -545,5 +532,66 @@ impl GetPools for AvalonMiner {
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
             })
             .collect()
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::data::device::models::avalon::AvalonMinerModel::{AvalonHomeQ, AvalonNano3};
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::cgminer::avalon::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
+    use super::*;
+
+    #[tokio::test]
+
+    async fn test_avalon_home_q() -> Result<()> {
+
+        let miner = AvalonMiner::new(
+            IpAddr::from([127, 0, 0, 1]),
+            MinerModel::Avalon(AvalonHomeQ),
+            MinerFirmware::Stock
+        );
+
+        let mut results = HashMap::new();
+        let version_cmd: MinerCommand = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+        let stats_cmd: MinerCommand = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+        let devs_cmd: MinerCommand = MinerCommand::RPC {
+            command: "devs",
+            parameters: None,
+        };
+        let pools_cmd: MinerCommand = MinerCommand::RPC {
+            command: "pools",
+            parameters: None,
+        };
+
+        results.insert(stats_cmd, Value::from_str(PARSED_STATS_COMMAND)?);
+        results.insert(devs_cmd, Value::from_str(DEVS_COMMAND)?);
+        results.insert(pools_cmd, Value::from_str(POOLS_COMMAND)?);
+        results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
+
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(37819)));
+        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(800.0)));
+        assert_eq!(miner_data.fans.len(), 4);
+        assert_eq!(miner_data.hashboards[0].chips.len(), 160);
+        assert_eq!(miner_data.average_temperature, Some(Temperature::from_celsius(26.0)));
+
+
+
+        Ok(())
     }
 }

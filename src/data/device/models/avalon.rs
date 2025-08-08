@@ -34,4 +34,6 @@ pub enum AvalonMinerModel {
     AvalonNano3,
     #[serde(alias = "NANO3S")]
     AvalonNano3s,
+    #[serde(alias = "Q")]
+    AvalonHomeQ
 }

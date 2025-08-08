@@ -13,3 +13,4 @@ pub(crate) const CONFIG_COMMAND: &str = include_str!("config.json");
 pub(crate) const ASCSET_WORKMODE_COMMAND: &str = include_str!("ascset_workmode.json");
 pub(crate) const ASCSET_SOFTON_COMMAND: &str = include_str!("ascset_softon.json");
 pub(crate) const ASCSET_SOFTOFF_COMMAND: &str = include_str!("ascset_softoff.json");
+pub(crate) const PARSED_STATS_COMMAND: &str = include_str!("stats_parsed.json");

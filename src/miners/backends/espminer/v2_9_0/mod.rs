@@ -301,6 +301,8 @@ impl GetHashrate for ESPMiner290 {
         })
     }
 }
+
+impl GetAverageTemperature for ESPMiner290 {}
 impl GetExpectedHashrate for ESPMiner290 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {

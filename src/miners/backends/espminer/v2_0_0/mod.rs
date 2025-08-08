@@ -369,6 +369,8 @@ impl GetMessages for ESPMiner200 {
         messages
     }
 }
+
+impl GetAverageTemperature for ESPMiner200{}
 impl GetUptime for ESPMiner200 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)

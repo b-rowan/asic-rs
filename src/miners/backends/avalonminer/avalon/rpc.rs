@@ -210,7 +210,6 @@ mod parse_rpc_result_nested_tests {
     #[test]
     fn parses_full_cgminer_response() {
         let val = test_rpc().parse_rpc_result(STATS_COMMAND).unwrap();
-
         assert_eq!(val.pointer("/STATUS/0/STATUS"), Some(&json!("S")));
 
         assert_eq!(
