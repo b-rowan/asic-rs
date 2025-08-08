@@ -153,7 +153,7 @@ impl GetIP for ESPMiner200 {
 }
 impl GetDeviceInfo for ESPMiner200 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info.clone()
+        self.device_info
     }
 }
 

@@ -3,6 +3,7 @@ use antminer::AntMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use serde::{Deserialize, Serialize};
+use std::fmt::Pointer;
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
@@ -56,13 +57,24 @@ impl FromStr for BraiinsModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
     WhatsMiner(WhatsMinerModel),
     Braiins(BraiinsModel),
     Bitaxe(BitaxeModel),
+}
+
+impl Display for MinerModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MinerModel::AntMiner(m) => Ok(m.fmt(f)?),
+            MinerModel::WhatsMiner(m) => Ok(m.fmt(f)?),
+            MinerModel::Braiins(m) => Ok(m.fmt(f)?),
+            MinerModel::Bitaxe(m) => Ok(m.fmt(f)?),
+        }
+    }
 }
 
 pub(crate) struct MinerModelFactory {

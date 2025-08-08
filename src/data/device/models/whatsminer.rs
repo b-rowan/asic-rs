@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
 pub enum WhatsMinerModel {
     #[serde(alias = "M20PV10")]
     M20PV10,
