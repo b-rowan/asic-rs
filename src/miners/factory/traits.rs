@@ -48,13 +48,17 @@ impl ModelSelection for MinerFirmware {
         match self {
             MinerFirmware::LuxOS => model::get_model_luxos(ip).await,
             MinerFirmware::BraiinsOS => model::get_model_braiins_os(ip).await,
+            MinerFirmware::VNish => model::get_model_vnish(ip).await,
             _ => None,
         }
     }
 }
 impl VersionSelection for MinerFirmware {
-    async fn get_version(&self, _ip: IpAddr) -> Option<semver::Version> {
-        None
+    async fn get_version(&self, ip: IpAddr) -> Option<semver::Version> {
+        match self {
+            MinerFirmware::VNish => model::get_version_vnish(ip).await,
+            _ => None,
+        }
     }
 }
 

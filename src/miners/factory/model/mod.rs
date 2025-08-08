@@ -9,6 +9,51 @@ use std::net::IpAddr;
 
 pub mod whatsminer;
 
+pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{}/api/v1/info", ip))
+        .send()
+        .await
+        .ok();
+
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let model = json_data["model"].as_str().unwrap_or("");
+
+            // VnishOS typically runs on AntMiner hardware
+            let mut factory = MinerModelFactory::new();
+            factory.with_make(MinerMake::AntMiner).parse_model(model)
+        }
+        None => None,
+    }
+}
+
+pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{}/api/v1/info", ip))
+        .send()
+        .await
+        .ok();
+
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let fw_version = json_data["fw_version"].as_str().unwrap_or("");
+
+            // Try parsing directly first
+            if let Ok(version) = semver::Version::parse(fw_version) {
+                return Some(version);
+            }
+
+            // If direct parsing fails, try adding .0 for patch version
+            let normalized_version = format!("{}.0", fw_version);
+            semver::Version::parse(&normalized_version).ok()
+        }
+        None => None,
+    }
+}
+
 pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{}/cgi-bin/get_system_info.cgi", ip))
