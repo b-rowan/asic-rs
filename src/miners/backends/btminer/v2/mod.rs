@@ -208,7 +208,7 @@ impl GetIP for BTMiner2 {
 }
 impl GetDeviceInfo for BTMiner2 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info.clone()
+        self.device_info
     }
 }
 

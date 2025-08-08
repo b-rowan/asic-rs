@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod models;
 pub use models::MinerModel;
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum MinerFirmware {
     #[serde(rename = "Stock")]
     Stock,
@@ -22,7 +22,7 @@ pub enum MinerFirmware {
     MSKMiner,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum MinerMake {
     #[serde(rename = "AntMiner")]
     AntMiner,
@@ -38,7 +38,7 @@ pub enum MinerMake {
     BitAxe,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum HashAlgorithm {
     #[serde(rename = "SHA256")]
     SHA256,
@@ -52,7 +52,7 @@ pub enum HashAlgorithm {
     Kadena,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub make: MinerMake,
     pub model: MinerModel,
@@ -78,7 +78,7 @@ impl DeviceInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub struct MinerHardware {
     pub chips: Option<u16>,
     pub fans: Option<u8>,

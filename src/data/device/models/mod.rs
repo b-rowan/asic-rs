@@ -56,7 +56,7 @@ impl FromStr for BraiinsModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
