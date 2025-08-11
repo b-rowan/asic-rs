@@ -127,7 +127,7 @@ impl AvalonMinerRPCAPI {
         let mut outer = HashMap::new();
         let re = NESTED_STATS_RE.clone();
 
-        if let Some(cap) = re.captures(stats) {
+        for cap in re.captures_iter(stats) {
             let section = cap[1].to_string();
             let inner_str = &cap[2];
             let inner_map = self.parse_stats(inner_str);
