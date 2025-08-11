@@ -316,12 +316,12 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                hashboard.position = idx as u8;
-                                if let Some(v) = board.get("Enabled").and_then(|v| v.as_bool()) {
-                                    hashboard.active = Some(v);
-                                }
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                        {
+                            hashboard.position = idx as u8;
+                            if let Some(v) = board.get("Enabled").and_then(|v| v.as_bool()) {
+                                hashboard.active = Some(v);
                             }
                         }
                     })
@@ -374,58 +374,54 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                // Hashrate
-                                if let Some(h) = board
-                                    .get("Hashrate")
-                                    .and_then(|v| v.as_array())
-                                    .and_then(|v| v.first().and_then(|f| f.as_f64()))
-                                {
-                                    hashboard.hashrate = Some(HashRate {
-                                        value: h,
-                                        unit: HashRateUnit::MegaHash,
-                                        algo: String::from("SHA256"),
-                                    })
-                                };
-
-                                // ExpectedHashrate
-                                if let Some(h) = board
-                                    .get("Hashrate")
-                                    .and_then(|v| v.as_array())
-                                    .and_then(|v| {
-                                        Some((
-                                            v.first().and_then(|f| f.as_f64())?,
-                                            v.get(1).and_then(|f| f.as_f64())?,
-                                        ))
-                                    })
-                                {
-                                    hashboard.expected_hashrate = Some(HashRate {
-                                        value: h.0 / h.1,
-                                        unit: HashRateUnit::MegaHash,
-                                        algo: String::from("SHA256"),
-                                    })
-                                };
-
-                                //Frequency
-                                if let Some(f) =
-                                    board.get("Core Clock Avg").and_then(|v| v.as_f64())
-                                {
-                                    hashboard.frequency = Some(Frequency::from_megahertz(f))
-                                };
-
-                                //Voltage
-                                if let Some(v) = board.get("Input Voltage").and_then(|v| v.as_f64())
-                                {
-                                    hashboard.voltage = Some(Voltage::from_volts(v));
-                                };
-                                //Board Temp
-                                if let Some(v) = board.get("Temperature").and_then(|v| v.as_f64()) {
-                                    hashboard.board_temperature =
-                                        Some(Temperature::from_celsius(v));
-                                };
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                        {
+                            // Hashrate
+                            if let Some(h) = board
+                                .get("Hashrate")
+                                .and_then(|v| v.as_array())
+                                .and_then(|v| v.first().and_then(|f| f.as_f64()))
+                            {
+                                hashboard.hashrate = Some(HashRate {
+                                    value: h,
+                                    unit: HashRateUnit::MegaHash,
+                                    algo: String::from("SHA256"),
+                                })
                             };
-                        }
+
+                            // ExpectedHashrate
+                            if let Some(h) = board
+                                .get("Hashrate")
+                                .and_then(|v| v.as_array())
+                                .and_then(|v| {
+                                    Some((
+                                        v.first().and_then(|f| f.as_f64())?,
+                                        v.get(1).and_then(|f| f.as_f64())?,
+                                    ))
+                                })
+                            {
+                                hashboard.expected_hashrate = Some(HashRate {
+                                    value: h.0 / h.1,
+                                    unit: HashRateUnit::MegaHash,
+                                    algo: String::from("SHA256"),
+                                })
+                            };
+
+                            //Frequency
+                            if let Some(f) = board.get("Core Clock Avg").and_then(|v| v.as_f64()) {
+                                hashboard.frequency = Some(Frequency::from_megahertz(f))
+                            };
+
+                            //Voltage
+                            if let Some(v) = board.get("Input Voltage").and_then(|v| v.as_f64()) {
+                                hashboard.voltage = Some(Voltage::from_volts(v));
+                            };
+                            //Board Temp
+                            if let Some(v) = board.get("Temperature").and_then(|v| v.as_f64()) {
+                                hashboard.board_temperature = Some(Temperature::from_celsius(v));
+                            };
+                        };
                     })
                 })
             });
@@ -436,32 +432,30 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                // Outlet Temperature
-                                if let Some(h) = board.get("Data").and_then(|v| {
-                                    v.as_array().and_then(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_f64())
-                                            .max_by(|a, b| a.partial_cmp(b).unwrap())
-                                    })
-                                }) {
-                                    hashboard.outlet_temperature =
-                                        Some(Temperature::from_celsius(h));
-                                };
-
-                                if let Some(h) = board.get("Data").and_then(|v| {
-                                    v.as_array().and_then(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_f64())
-                                            .min_by(|a, b| a.partial_cmp(b).unwrap())
-                                    })
-                                }) {
-                                    hashboard.intake_temperature =
-                                        Some(Temperature::from_celsius(h));
-                                };
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                        {
+                            // Outlet Temperature
+                            if let Some(h) = board.get("Data").and_then(|v| {
+                                v.as_array().and_then(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_f64())
+                                        .max_by(|a, b| a.partial_cmp(b).unwrap())
+                                })
+                            }) {
+                                hashboard.outlet_temperature = Some(Temperature::from_celsius(h));
                             };
-                        }
+
+                            if let Some(h) = board.get("Data").and_then(|v| {
+                                v.as_array().and_then(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_f64())
+                                        .min_by(|a, b| a.partial_cmp(b).unwrap())
+                                })
+                            }) {
+                                hashboard.intake_temperature = Some(Temperature::from_celsius(h));
+                            };
+                        };
                     })
                 })
             });
@@ -472,25 +466,23 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                if let Some(t) =
-                                    board.get("Data").and_then(|v| v.as_array()).map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_f64())
-                                            .map(Temperature::from_celsius)
-                                            .collect::<Vec<Temperature>>()
-                                    })
-                                {
-                                    for (chip_no, temp) in t.iter().enumerate() {
-                                        if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
-                                            chip_data.position = chip_no as u16;
-                                            chip_data.temperature = Some(*temp);
-                                        }
-                                    }
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                            && let Some(t) =
+                                board.get("Data").and_then(|v| v.as_array()).map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_f64())
+                                        .map(Temperature::from_celsius)
+                                        .collect::<Vec<Temperature>>()
+                                })
+                        {
+                            for (chip_no, temp) in t.iter().enumerate() {
+                                if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
+                                    chip_data.position = chip_no as u16;
+                                    chip_data.temperature = Some(*temp);
                                 }
-                            };
-                        }
+                            }
+                        };
                     })
                 })
             });
@@ -501,25 +493,23 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                if let Some(t) =
-                                    board.get("Data").and_then(|v| v.as_array()).map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_f64())
-                                            .map(Voltage::from_millivolts)
-                                            .collect::<Vec<Voltage>>()
-                                    })
-                                {
-                                    for (chip_no, voltage) in t.iter().enumerate() {
-                                        if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
-                                            chip_data.position = chip_no as u16;
-                                            chip_data.voltage = Some(*voltage);
-                                        }
-                                    }
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                            && let Some(t) =
+                                board.get("Data").and_then(|v| v.as_array()).map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_f64())
+                                        .map(Voltage::from_millivolts)
+                                        .collect::<Vec<Voltage>>()
+                                })
+                        {
+                            for (chip_no, voltage) in t.iter().enumerate() {
+                                if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
+                                    chip_data.position = chip_no as u16;
+                                    chip_data.voltage = Some(*voltage);
                                 }
-                            };
-                        }
+                            }
+                        };
                     })
                 })
             });
@@ -530,25 +520,23 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                if let Some(t) =
-                                    board.get("Data").and_then(|v| v.as_array()).map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|v| v.as_f64())
-                                            .map(Frequency::from_megahertz)
-                                            .collect::<Vec<Frequency>>()
-                                    })
-                                {
-                                    for (chip_no, freq) in t.iter().enumerate() {
-                                        if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
-                                            chip_data.position = chip_no as u16;
-                                            chip_data.frequency = Some(*freq);
-                                        }
-                                    }
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                            && let Some(t) =
+                                board.get("Data").and_then(|v| v.as_array()).map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|v| v.as_f64())
+                                        .map(Frequency::from_megahertz)
+                                        .collect::<Vec<Frequency>>()
+                                })
+                        {
+                            for (chip_no, freq) in t.iter().enumerate() {
+                                if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
+                                    chip_data.position = chip_no as u16;
+                                    chip_data.frequency = Some(*freq);
                                 }
-                            };
-                        }
+                            }
+                        };
                     })
                 })
             });
@@ -560,33 +548,29 @@ impl GetHashboards for PowerPlay {
             .and_then(|v| {
                 v.as_array().map(|boards| {
                     boards.iter().for_each(|board| {
-                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64()) {
-                            if let Some(hashboard) = hashboards.get_mut(idx as usize) {
-                                if let Some(t) =
-                                    board.get("Data").and_then(|v| v.as_array()).map(|arr| {
-                                        arr.iter()
-                                            .filter_map(|inner| inner.as_array())
-                                            .filter_map(|inner| {
-                                                inner.first().and_then(|v| v.as_f64())
-                                            })
-                                            .map(|hr| HashRate {
-                                                value: hr,
-                                                unit: HashRateUnit::MegaHash,
-                                                algo: String::from("SHA256"),
-                                            })
-                                            .collect::<Vec<HashRate>>()
-                                    })
-                                {
-                                    for (chip_no, hashrate) in t.iter().enumerate() {
-                                        if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
-                                            chip_data.position = chip_no as u16;
-                                            chip_data.working = Some(true);
-                                            chip_data.hashrate = Some(hashrate.clone());
-                                        }
-                                    }
+                        if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
+                            && let Some(hashboard) = hashboards.get_mut(idx as usize)
+                            && let Some(t) =
+                                board.get("Data").and_then(|v| v.as_array()).map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|inner| inner.as_array())
+                                        .filter_map(|inner| inner.first().and_then(|v| v.as_f64()))
+                                        .map(|hr| HashRate {
+                                            value: hr,
+                                            unit: HashRateUnit::MegaHash,
+                                            algo: String::from("SHA256"),
+                                        })
+                                        .collect::<Vec<HashRate>>()
+                                })
+                        {
+                            for (chip_no, hashrate) in t.iter().enumerate() {
+                                if let Some(chip_data) = hashboard.chips.get_mut(chip_no) {
+                                    chip_data.position = chip_no as u16;
+                                    chip_data.working = Some(true);
+                                    chip_data.hashrate = Some(hashrate.clone());
                                 }
-                            };
-                        }
+                            }
+                        };
                     })
                 })
             });
@@ -644,13 +628,13 @@ impl GetFans for PowerPlay {
             for (key, value) in obj {
                 if let Some(num) = value.as_f64() {
                     // Extract the number from the key (e.g. "Fans Speed 3" -> 3)
-                    if let Some(pos_str) = key.strip_prefix("Fans Speed ") {
-                        if let Ok(pos) = pos_str.parse::<i16>() {
-                            fans.push(FanData {
-                                position: pos,
-                                rpm: Some(AngularVelocity::from_rpm(num)),
-                            });
-                        }
+                    if let Some(pos_str) = key.strip_prefix("Fans Speed ")
+                        && let Ok(pos) = pos_str.parse::<i16>()
+                    {
+                        fans.push(FanData {
+                            position: pos,
+                            rpm: Some(AngularVelocity::from_rpm(num)),
+                        });
                     }
                 }
             }

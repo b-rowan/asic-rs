@@ -1,12 +1,14 @@
 use std::net::IpAddr;
 
 use semver;
+pub use v1::BTMiner1;
 pub use v2::BTMiner2;
 pub use v3::BTMiner3;
 
 use crate::data::device::{MinerFirmware, MinerModel};
 use crate::miners::backends::traits::GetMinerData;
 
+pub mod v1;
 pub mod v2;
 pub mod v3;
 
@@ -25,8 +27,13 @@ impl BTMiner {
             .matches(&version)
         {
             Box::new(BTMiner3::new(ip, model, firmware))
-        } else {
+        } else if semver::VersionReq::parse(">= 2022.9.20")
+            .unwrap()
+            .matches(&version)
+        {
             Box::new(BTMiner2::new(ip, model, firmware))
+        } else {
+            Box::new(BTMiner1::new(ip, model, firmware))
         }
     }
 }

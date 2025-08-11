@@ -19,3 +19,14 @@ pub struct MinerMessage {
     /// The severity of this message
     pub severity: MessageSeverity,
 }
+
+impl MinerMessage {
+    pub fn new(timestamp: u32, code: u64, message: String, severity: MessageSeverity) -> Self {
+        Self {
+            timestamp,
+            code,
+            message,
+            severity,
+        }
+    }
+}
