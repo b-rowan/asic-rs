@@ -391,21 +391,21 @@ impl GetHashboards for AvalonAMiner {
 
                 let chip_temps: Vec<f64> = hb_info
                     .get(&key)
-                    .and_then(|hb| hb.get(&format!("PVT_T{idx}")))
+                    .and_then(|hb| hb.get(format!("PVT_T{idx}")))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
                 let chip_volts: Vec<f64> = hb_info
                     .get(&key)
-                    .and_then(|hb| hb.get(&format!("PVT_V{idx}")))
+                    .and_then(|hb| hb.get(format!("PVT_V{idx}")))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
                 let chip_works: Vec<f64> = hb_info
                     .get(&key)
-                    .and_then(|hb| hb.get(&format!("MW{idx}")))
+                    .and_then(|hb| hb.get(format!("MW{idx}")))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();

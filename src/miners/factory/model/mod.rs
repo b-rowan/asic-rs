@@ -222,39 +222,37 @@ pub(crate) async fn get_model_avalonminer(ip: IpAddr) -> Option<MinerModel> {
 
     match response {
         Some(json_data) => {
-            if let Some(prod_field) = json_data.pointer("/VERSION/0/PROD") {
-                if let Some(miner_model) = prod_field.as_str() {
-                    let mut miner_model = miner_model.to_uppercase();
+            if let Some(prod_field) = json_data.pointer("/VERSION/0/PROD")
+                && let Some(miner_model) = prod_field.as_str()
+            {
+                let mut miner_model = miner_model.to_uppercase();
 
-                    if miner_model.contains("-") {
-                        miner_model = miner_model.split("-").collect::<Vec<&str>>()[0].to_string();
-                    }
-
-                    // Handle special cases for nano and newer models
-                    if miner_model == "AVALONNANO"
-                        || miner_model == "AVALON0O"
-                        || miner_model == "AVALONMINER 15"
-                    {
-                        if let Some(subtype_field) = json_data.pointer("/VERSION/0/MODEL") {
-                            if let Some(subtype) = subtype_field.as_str() {
-                                miner_model = format!("AVALONMINER {}", subtype.to_uppercase());
-                            }
-                        }
-                    }
-
-                    return MinerModelFactory::new()
-                        .with_make(MinerMake::AvalonMiner)
-                        .parse_model(&miner_model);
+                if miner_model.contains("-") {
+                    miner_model = miner_model.split("-").collect::<Vec<&str>>()[0].to_string();
                 }
+
+                // Handle special cases for nano and newer models
+                if (miner_model == "AVALONNANO"
+                    || miner_model == "AVALON0O"
+                    || miner_model == "AVALONMINER 15")
+                    && let Some(subtype_field) = json_data.pointer("/VERSION/0/MODEL")
+                    && let Some(subtype) = subtype_field.as_str()
+                {
+                    miner_model = format!("AVALONMINER {}", subtype.to_uppercase());
+                }
+
+                return MinerModelFactory::new()
+                    .with_make(MinerMake::AvalonMiner)
+                    .parse_model(&miner_model);
             }
 
-            if let Some(model_field) = json_data.pointer("/VERSION/0/MODEL") {
-                if let Some(model_str) = model_field.as_str() {
-                    let model = model_str.split("-").collect::<Vec<&str>>()[0].to_uppercase();
-                    return MinerModelFactory::new()
-                        .with_make(MinerMake::AvalonMiner)
-                        .parse_model(&model);
-                }
+            if let Some(model_field) = json_data.pointer("/VERSION/0/MODEL")
+                && let Some(model_str) = model_field.as_str()
+            {
+                let model = model_str.split("-").collect::<Vec<&str>>()[0].to_uppercase();
+                return MinerModelFactory::new()
+                    .with_make(MinerMake::AvalonMiner)
+                    .parse_model(&model);
             }
 
             None
