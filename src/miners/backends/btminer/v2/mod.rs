@@ -45,8 +45,6 @@ impl BTMiner2 {
     }
 }
 
-impl GetAverageTemperature for BTMiner2 {}
-
 impl GetDataLocations for BTMiner2 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         let get_miner_info_cmd: MinerCommand = MinerCommand::RPC {

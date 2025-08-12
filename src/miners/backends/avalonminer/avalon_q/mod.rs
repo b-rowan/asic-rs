@@ -467,14 +467,6 @@ impl GetFans for AvalonQMiner {
 
 impl GetPsuFans for AvalonQMiner {}
 
-impl GetAverageTemperature for AvalonQMiner {
-    fn parse_average_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
-        data.extract_map::<f64, _>(DataField::AverageTemperature, |f| {
-            Temperature::from_celsius(f)
-        })
-    }
-}
-
 impl GetWattage for AvalonQMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)

@@ -398,19 +398,6 @@ pub trait GetPsuFans: CollectData {
     }
 }
 
-#[async_trait]
-pub trait GetAverageTemperature: CollectData {
-    async fn get_average_temperature(&self) -> Option<Temperature> {
-        let mut collector = self.get_collector();
-        let data = collector.collect(&[DataField::AverageTemperature]).await;
-        self.parse_average_temperature(&data)
-    }
-    #[allow(unused_variables)]
-    fn parse_average_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
-        None
-    }
-}
-
 // Fluid Temperature
 #[async_trait]
 pub trait GetFluidTemperature: CollectData {
