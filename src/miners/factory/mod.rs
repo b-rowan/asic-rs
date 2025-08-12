@@ -7,6 +7,7 @@ use anyhow::Result;
 use futures::future::FutureExt;
 use futures::{Stream, StreamExt, pin_mut, stream};
 use ipnet::IpNet;
+use rand::seq::SliceRandom;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
 use std::collections::HashSet;
@@ -402,11 +403,18 @@ impl MinerFactory {
     pub fn with_subnet(mut self, subnet: &str) -> Result<Self> {
         let ips = self.hosts_from_subnet(subnet)?;
         self.ips = ips;
+        self.shuffle_ips();
         Ok(self)
     }
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
         Ok(network.hosts().collect())
+    }
+
+    /// Randomize IP order to avoid bursts to a single switch/segment
+    fn shuffle_ips(&mut self) {
+        let mut rng = rand::rng();
+        self.ips.shuffle(&mut rng);
     }
 
     // Octet handlers
@@ -420,6 +428,7 @@ impl MinerFactory {
     ) -> Result<Self> {
         let ips = self.hosts_from_octets(octet1, octet2, octet3, octet4)?;
         self.ips = ips;
+        self.shuffle_ips();
         self.update_adaptive_concurrency();
         Ok(self)
     }
