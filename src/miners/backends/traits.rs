@@ -70,7 +70,6 @@ impl<
         + GetMessages
         + GetUptime
         + GetIsMining
-        + GetAverageTemperature
         + GetPools,
 > GetMinerData for T
 {
@@ -93,7 +92,6 @@ impl<
         let api_version = self.parse_api_version(&data);
         let firmware_version = self.parse_firmware_version(&data);
         let control_board_version = self.parse_control_board_version(&data);
-        let avg_temp = self.parse_average_temperature(&data);
         let uptime = self.parse_uptime(&data);
         let hashrate = self.parse_hashrate(&data);
         let expected_hashrate = self.parse_expected_hashrate(&data);
@@ -123,7 +121,7 @@ impl<
                     board_temps.iter().sum::<f64>() / hashboards.len() as f64,
                 ))
             } else {
-                avg_temp
+                None
             }
         };
         let efficiency = match (hashrate.as_ref(), wattage.as_ref()) {
