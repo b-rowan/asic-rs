@@ -27,6 +27,7 @@ use crate::miners::backends::espminer::ESPMiner;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::factory::traits::VersionSelection;
+use std::net::SocketAddr;
 use traits::{DiscoveryCommands, ModelSelection};
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -44,11 +45,22 @@ fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     }
 }
 
+/// Fast port connectivity check with TCP optimizations
 async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> bool {
-    let addr = format!("{}:{}", ip, port);
-    timeout(connectivity_timeout, TcpStream::connect(&addr))
-        .await
-        .is_ok()
+    let addr: SocketAddr = (ip, port).into();
+
+    let stream = match timeout(connectivity_timeout, TcpStream::connect(addr)).await {
+        Ok(Ok(stream)) => stream,
+        _ => return false,
+    };
+
+    // disable Nagle's algorithm for immediate transmission
+    let _ = stream.set_nodelay(true);
+
+    // immediate close without waiting for lingering data
+    let _ = stream.set_linger(Some(Duration::from_secs(0)));
+
+    true
 }
 
 async fn get_miner_type_from_command(
