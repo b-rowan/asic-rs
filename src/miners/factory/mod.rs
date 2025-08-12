@@ -22,6 +22,7 @@ use tokio::time::timeout;
 use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
+use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::btminer::BTMiner;
 use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::espminer::ESPMiner;
@@ -164,6 +165,9 @@ fn select_backend(
         }
         (Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)) => {
             Some(ESPMiner::new(ip, model?, firmware?, version?))
+        }
+        (Some(MinerMake::AvalonMiner), Some(MinerFirmware::Stock)) => {
+            Some(AvalonMiner::new(ip, model?, firmware?))
         }
         (Some(_), Some(MinerFirmware::VNish)) => Some(Box::new(Vnish::new(ip, make?, model?))),
         (Some(_), Some(MinerFirmware::EPic)) => Some(Box::new(PowerPlay::new(ip, make?, model?))),

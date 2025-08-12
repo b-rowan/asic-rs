@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-pub mod rpc;
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -14,11 +13,11 @@ use crate::miners::data::{
 };
 
 use crate::miners::api::RPCAPIClient;
+use crate::miners::backends::avalonminer::shared::rpc::AvalonMinerRPCAPI;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
-use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -26,13 +25,13 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
-pub struct AvalonMiner {
+pub struct AvalonQMiner {
     ip: IpAddr,
     rpc: AvalonMinerRPCAPI,
     device_info: DeviceInfo,
 }
 
-impl AvalonMiner {
+impl AvalonQMiner {
     pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
         Self {
             ip,
@@ -58,7 +57,7 @@ impl AvalonMiner {
     }
 }
 #[async_trait]
-impl Pause for AvalonMiner {
+impl Pause for AvalonQMiner {
     async fn pause(&self, after: Option<Duration>) -> Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
@@ -90,7 +89,7 @@ impl Pause for AvalonMiner {
     }
 }
 #[async_trait]
-impl Resume for AvalonMiner {
+impl Resume for AvalonQMiner {
     async fn resume(&self, after: Option<Duration>) -> Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
@@ -121,7 +120,7 @@ impl Resume for AvalonMiner {
     }
 }
 #[async_trait]
-impl SetFaultLight for AvalonMiner {
+impl SetFaultLight for AvalonQMiner {
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
         let command = if fault { "1-1" } else { "1-0" };
 
@@ -144,7 +143,7 @@ impl SetFaultLight for AvalonMiner {
 }
 
 #[async_trait]
-impl SetPowerLimit for AvalonMiner {
+impl SetPowerLimit for AvalonQMiner {
     async fn set_power_limit(&self, limit: Power) -> Result<bool> {
         let data = self
             .rpc
@@ -166,7 +165,7 @@ impl SetPowerLimit for AvalonMiner {
     }
 }
 
-impl GetDataLocations for AvalonMiner {
+impl GetDataLocations for AvalonQMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         let version_cmd: MinerCommand = MinerCommand::RPC {
             command: "version",
@@ -282,25 +281,25 @@ impl GetDataLocations for AvalonMiner {
     }
 }
 
-impl GetIP for AvalonMiner {
+impl GetIP for AvalonQMiner {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for AvalonMiner {
+impl GetDeviceInfo for AvalonQMiner {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info
     }
 }
 
-impl CollectData for AvalonMiner {
-    fn get_collector(&self) -> DataCollector {
+impl CollectData for AvalonQMiner {
+    fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self, &self.rpc)
     }
 }
 
-impl GetMAC for AvalonMiner {
+impl GetMAC for AvalonQMiner {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac).and_then(|raw| {
             let mut mac = raw.trim().to_lowercase();
@@ -320,25 +319,25 @@ impl GetMAC for AvalonMiner {
     }
 }
 
-impl GetSerialNumber for AvalonMiner {}
+impl GetSerialNumber for AvalonQMiner {}
 
-impl GetHostname for AvalonMiner {}
+impl GetHostname for AvalonQMiner {}
 
-impl GetApiVersion for AvalonMiner {
+impl GetApiVersion for AvalonQMiner {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for AvalonMiner {
+impl GetFirmwareVersion for AvalonQMiner {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetControlBoardVersion for AvalonMiner {}
+impl GetControlBoardVersion for AvalonQMiner {}
 
-impl GetHashboards for AvalonMiner {
+impl GetHashboards for AvalonQMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let hw = &self.device_info.hardware;
         let board_cnt = hw.boards.unwrap_or(1) as usize;
@@ -419,7 +418,7 @@ impl GetHashboards for AvalonMiner {
     }
 }
 
-impl GetHashrate for AvalonMiner {
+impl GetHashrate for AvalonQMiner {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
@@ -429,7 +428,7 @@ impl GetHashrate for AvalonMiner {
     }
 }
 
-impl GetExpectedHashrate for AvalonMiner {
+impl GetExpectedHashrate for AvalonQMiner {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
@@ -439,7 +438,7 @@ impl GetExpectedHashrate for AvalonMiner {
     }
 }
 
-impl GetFans for AvalonMiner {
+impl GetFans for AvalonQMiner {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let stats = match data.get(&DataField::Fans) {
             Some(v) => v,
@@ -466,9 +465,9 @@ impl GetFans for AvalonMiner {
     }
 }
 
-impl GetPsuFans for AvalonMiner {}
+impl GetPsuFans for AvalonQMiner {}
 
-impl GetAverageTemperature for AvalonMiner {
+impl GetAverageTemperature for AvalonQMiner {
     fn parse_average_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         data.extract_map::<f64, _>(DataField::AverageTemperature, |f| {
             Temperature::from_celsius(f)
@@ -476,36 +475,36 @@ impl GetAverageTemperature for AvalonMiner {
     }
 }
 
-impl GetWattage for AvalonMiner {
+impl GetWattage for AvalonQMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
 
-impl GetWattageLimit for AvalonMiner {
+impl GetWattageLimit for AvalonQMiner {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
     }
 }
 
-impl GetLightFlashing for AvalonMiner {
+impl GetLightFlashing for AvalonQMiner {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
-impl GetMessages for AvalonMiner {}
+impl GetMessages for AvalonQMiner {}
 
-impl GetUptime for AvalonMiner {
+impl GetUptime for AvalonQMiner {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetFluidTemperature for AvalonMiner {}
-impl GetIsMining for AvalonMiner {}
+impl GetFluidTemperature for AvalonQMiner {}
+impl GetIsMining for AvalonQMiner {}
 
-impl GetPools for AvalonMiner {
+impl GetPools for AvalonQMiner {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         data.get(&DataField::Pools)
             .and_then(|v| v.as_array())
@@ -544,7 +543,7 @@ mod tests {
     #[tokio::test]
 
     async fn test_avalon_home_q() -> Result<()> {
-        let miner = AvalonMiner::new(
+        let miner = AvalonQMiner::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::Avalon(AvalonHomeQ),
             MinerFirmware::Stock,
