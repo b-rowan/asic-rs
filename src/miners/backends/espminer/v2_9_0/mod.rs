@@ -59,6 +59,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("macAddr"),
+                    tag: None,
                 },
             )],
             DataField::Hostname => vec![(
@@ -66,6 +67,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hostname"),
+                    tag: None,
                 },
             )],
             DataField::FirmwareVersion => vec![(
@@ -73,6 +75,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
+                    tag: None,
                 },
             )],
             DataField::ApiVersion => vec![(
@@ -80,6 +83,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
+                    tag: None,
                 },
             )],
             DataField::ControlBoardVersion => vec![(
@@ -87,6 +91,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("boardVersion"),
+                    tag: None,
                 },
             )],
             DataField::ExpectedHashrate => vec![(
@@ -94,6 +99,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("expectedHashrate"),
+                    tag: None,
                 },
             )],
             DataField::Hashboards => vec![
@@ -102,6 +108,7 @@ impl GetDataLocations for ESPMiner290 {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
+                        tag: None,
                     },
                 ),
                 (
@@ -109,6 +116,7 @@ impl GetDataLocations for ESPMiner290 {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
+                        tag: None,
                     },
                 ),
             ],
@@ -117,6 +125,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hashRate"),
+                    tag: None,
                 },
             )],
             DataField::Fans => vec![(
@@ -124,6 +133,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("fanrpm"),
+                    tag: None,
                 },
             )],
             DataField::AverageTemperature => vec![(
@@ -131,6 +141,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("temp"),
+                    tag: None,
                 },
             )],
             DataField::Wattage => vec![(
@@ -138,6 +149,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("power"),
+                    tag: None,
                 },
             )],
             DataField::Uptime => vec![(
@@ -145,6 +157,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_key,
                     key: Some("uptimeSeconds"),
+                    tag: None,
                 },
             )],
             DataField::Pools => vec![(
@@ -152,6 +165,7 @@ impl GetDataLocations for ESPMiner290 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
+                    tag: None,
                 },
             )],
             _ => vec![],

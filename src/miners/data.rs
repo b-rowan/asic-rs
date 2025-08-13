@@ -78,6 +78,8 @@ pub struct DataExtractor {
     pub func: ExtractorFn,
     /// Optional key or pointer within the response to extract.
     pub key: Option<&'static str>,
+    /// Optional tag to move the extracted value to
+    pub tag: Option<&'static str>,
 }
 
 /// Alias for a tuple describing the API command and the extractor used to parse its result.
@@ -330,12 +332,20 @@ impl<'a> DataCollector<'a> {
     ///
     /// Uses the extractor function and key associated with the field for parsing.
     fn extract_field(&self, field: DataField) -> Option<Value> {
-        let mut success: Vec<&Value> = Vec::new();
+        let mut success: Vec<Value> = Vec::new();
         for (command, extractor) in self.miner.get_locations(field) {
             if let Some(response_data) = self.cache.get(&command)
                 && let Some(value) = (extractor.func)(response_data, extractor.key)
             {
-                success.push(value);
+                match extractor.tag {
+                    Some(tag) => {
+                        let tag = tag.to_string();
+                        success.push(json!({ tag: value.clone() }).clone());
+                    }
+                    None => {
+                        success.push(value.clone());
+                    }
+                }
             }
         }
         if success.is_empty() {
@@ -343,7 +353,7 @@ impl<'a> DataCollector<'a> {
         } else {
             let mut response = json!({});
             for value in success {
-                self.merge(&mut response, value.clone())
+                self.merge(&mut response, value)
             }
             Some(response)
         }

@@ -3,7 +3,6 @@ use antminer::AntMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use serde::{Deserialize, Serialize};
-use std::fmt::Pointer;
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 

@@ -60,6 +60,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/network_status/mac"),
+                    tag: None,
                 },
             )],
             DataField::SerialNumber => vec![
@@ -68,6 +69,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/psu_serial"),
+                        tag: None,
                     },
                 ),
                 (
@@ -75,6 +77,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/serial"),
+                        tag: None,
                     },
                 ),
             ],
@@ -83,6 +86,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/network_status/hostname"),
+                    tag: None,
                 },
             )],
             DataField::ApiVersion => vec![(
@@ -90,6 +94,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fw_version"),
+                    tag: None,
                 },
             )],
             DataField::FirmwareVersion => vec![(
@@ -97,6 +102,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fw_version"),
+                    tag: None,
                 },
             )],
             DataField::ControlBoardVersion => vec![(
@@ -104,6 +110,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/platform"),
+                    tag: None,
                 },
             )],
             DataField::Uptime => vec![(
@@ -111,6 +118,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/uptime"),
+                    tag: None,
                 },
             )],
             DataField::Hashrate => vec![(
@@ -118,6 +126,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/hr_realtime"),
+                    tag: None,
                 },
             )],
             DataField::ExpectedHashrate => vec![
@@ -126,6 +135,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/hr_stock"),
+                        tag: None,
                     },
                 ),
                 (
@@ -133,6 +143,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/miner/hr_stock"),
+                        tag: None,
                     },
                 ),
             ],
@@ -141,6 +152,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/power_consumption"),
+                    tag: None,
                 },
             )],
             DataField::Fans => vec![(
@@ -148,6 +160,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/cooling/fans"),
+                    tag: None,
                 },
             )],
             DataField::Hashboards => vec![
@@ -156,6 +169,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/miner/chains"),
+                        tag: None,
                     },
                 ),
                 (
@@ -163,6 +177,7 @@ impl GetDataLocations for Vnish {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
+                        tag: None,
                     },
                 ),
             ],
@@ -171,6 +186,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/pools"),
+                    tag: None,
                 },
             )],
             DataField::IsMining => vec![(
@@ -178,6 +194,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner_state"),
+                    tag: None,
                 },
             )],
             DataField::Efficiency => vec![(
@@ -185,6 +202,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/power_efficiency"),
+                    tag: None,
                 },
             )],
             DataField::LightFlashing => vec![(
@@ -192,6 +210,7 @@ impl GetDataLocations for Vnish {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/find_miner"),
+                    tag: None,
                 },
             )],
             _ => vec![],

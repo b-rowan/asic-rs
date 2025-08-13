@@ -82,6 +82,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/mac"),
+                    tag: None,
                 },
             )],
             DataField::ApiVersion => vec![(
@@ -89,6 +90,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/api_ver"),
+                    tag: None,
                 },
             )],
             DataField::FirmwareVersion => vec![(
@@ -96,6 +98,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/fw_ver"),
+                    tag: None,
                 },
             )],
             DataField::ControlBoardVersion => vec![(
@@ -103,6 +106,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/platform"),
+                    tag: None,
                 },
             )],
             DataField::Hostname => vec![(
@@ -110,6 +114,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/hostname"),
+                    tag: None,
                 },
             )],
             DataField::LightFlashing => vec![(
@@ -117,6 +122,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/ledstat"),
+                    tag: None,
                 },
             )],
             DataField::WattageLimit => vec![(
@@ -124,6 +130,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Power Limit"),
+                    tag: None,
                 },
             )],
             DataField::Fans => vec![(
@@ -131,6 +138,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0"),
+                    tag: None,
                 },
             )],
             DataField::PsuFans => vec![(
@@ -138,6 +146,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/fan_speed"),
+                    tag: None,
                 },
             )],
             DataField::Hashboards => vec![(
@@ -145,6 +154,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
+                    tag: None,
                 },
             )],
             DataField::Pools => vec![(
@@ -152,6 +162,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
+                    tag: None,
                 },
             )],
             DataField::Uptime => vec![(
@@ -159,6 +170,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Elapsed"),
+                    tag: None,
                 },
             )],
             DataField::Wattage => vec![(
@@ -166,6 +178,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Power"),
+                    tag: None,
                 },
             )],
             DataField::Hashrate => vec![(
@@ -173,6 +186,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/HS RT"),
+                    tag: None,
                 },
             )],
             DataField::ExpectedHashrate => vec![(
@@ -180,6 +194,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Factory GHS"),
+                    tag: None,
                 },
             )],
             DataField::FluidTemperature => vec![(
@@ -187,6 +202,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Env Temp"),
+                    tag: None,
                 },
             )],
             DataField::IsMining => vec![(
@@ -194,6 +210,7 @@ impl GetDataLocations for BTMiner2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/btmineroff"),
+                    tag: None,
                 },
             )],
             _ => vec![],
