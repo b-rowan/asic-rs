@@ -481,7 +481,7 @@ impl GetWattage for AvalonAMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         let wattage = data.get(&DataField::Wattage).and_then(|v| v.as_array())?;
         let wattage = wattage.iter().filter_map(|v| v.as_f64()).sum();
-        return Some(Power::from_milliwatts(wattage));
+        Some(Power::from_milliwatts(wattage))
     }
 }
 
