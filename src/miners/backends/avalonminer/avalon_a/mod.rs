@@ -229,20 +229,6 @@ impl GetDataLocations for AvalonAMiner {
                     key: Some("/STATS/0/MM ID0"),
                 },
             )],
-            DataField::AverageTemperature => vec![(
-                stats_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/STATS/ITemp"),
-                },
-            )],
-            DataField::WattageLimit => vec![(
-                stats_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/STATS/MPO"),
-                },
-            )],
             DataField::Wattage => vec![(
                 stats_cmd,
                 DataExtractor {
@@ -261,7 +247,7 @@ impl GetDataLocations for AvalonAMiner {
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/STATS/Led"),
+                    key: Some("/STATS/0/MM ID0/Led"),
                 },
             )],
             DataField::Uptime => vec![(
