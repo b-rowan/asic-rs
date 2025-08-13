@@ -44,9 +44,11 @@ impl AvalonAMiner {
             ),
         }
     }
+}
 
-    /// Reboot the miner
-    pub async fn reboot(&self) -> Result<bool> {
+#[async_trait]
+impl Restart for AvalonAMiner {
+    async fn restart(&self) -> Result<bool> {
         let data = self.rpc.send_command("restart", false, None).await?;
 
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_str()) {
@@ -245,7 +247,7 @@ impl GetDataLocations for AvalonAMiner {
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/STATS/WALLPOWER"),
+                    key: Some("/STATS/0/MM ID0/MW"),
                 },
             )],
             DataField::Fans => vec![(
@@ -348,37 +350,30 @@ impl GetHashboards for AvalonAMiner {
             _ => return Vec::new(),
         };
 
-        let summary = match data.get(&DataField::Fans) {
-            Some(v) => v,
-            _ => return Vec::new(),
-        };
-
         (0..board_cnt)
             .map(|idx| {
-                let key = format!("HB{idx}");
-
-                let _chip_temp = summary
+                let _chip_temp = hb_info
                     .get("MTmax")
                     .and_then(|v| v.as_array())
                     .and_then(|arr| arr.get(idx))
                     .and_then(|v| v.as_f64())
                     .map(Temperature::from_celsius);
 
-                let board_temp = summary
+                let board_temp = hb_info
                     .get("MTavg")
                     .and_then(|v| v.as_array())
                     .and_then(|arr| arr.get(idx))
                     .and_then(|v| v.as_f64())
                     .map(Temperature::from_celsius);
 
-                let intake_temp = summary
+                let intake_temp = hb_info
                     .get("ITemp")
                     .and_then(|v| v.as_array())
                     .and_then(|arr| arr.get(idx))
                     .and_then(|v| v.as_f64())
                     .map(Temperature::from_celsius);
 
-                let hashrate = summary
+                let hashrate = hb_info
                     .get("MGHS")
                     .and_then(|v| v.as_array())
                     .and_then(|arr| arr.get(idx))
@@ -390,22 +385,19 @@ impl GetHashboards for AvalonAMiner {
                     });
 
                 let chip_temps: Vec<f64> = hb_info
-                    .get(&key)
-                    .and_then(|hb| hb.get(format!("PVT_T{idx}")))
+                    .get(&format!("PVT_T{idx}"))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
                 let chip_volts: Vec<f64> = hb_info
-                    .get(&key)
-                    .and_then(|hb| hb.get(format!("PVT_V{idx}")))
+                    .get(&format!("PVT_V{idx}"))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
                 let chip_works: Vec<f64> = hb_info
-                    .get(&key)
-                    .and_then(|hb| hb.get(format!("MW{idx}")))
+                    .get(&format!("MW{idx}"))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
@@ -418,7 +410,6 @@ impl GetHashboards for AvalonAMiner {
                     let volt = chip_volts.get(pos).copied().unwrap_or(0.0);
                     let work = chip_works.get(pos).copied().unwrap_or(0.0);
 
-                    // Skip chips with 0 temperature (like pyasic does)
                     if temp == 0.0 {
                         continue;
                     }
@@ -502,7 +493,9 @@ impl GetPsuFans for AvalonAMiner {}
 
 impl GetWattage for AvalonAMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
+        let wattage = data.get(&DataField::Wattage).and_then(|v| v.as_array())?;
+        let wattage = wattage.iter().filter_map(|v| v.as_f64()).sum();
+        return Some(Power::from_milliwatts(wattage));
     }
 }
 
@@ -559,43 +552,24 @@ impl GetPools for AvalonAMiner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::device::models::avalon::AvalonMinerModel::AvalonHomeQ;
+    use crate::data::device::models::avalon::AvalonMinerModel::Avalon1246;
     use crate::test::api::MockAPIClient;
-    use crate::test::json::cgminer::avalon::{
-        DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND,
-    };
+    use crate::test::json::cgminer::avalon::AVALON_A_STATS_PARSED;
 
     #[tokio::test]
-
-    async fn test_avalon_home_q() -> Result<()> {
+    async fn test_avalon_a() -> Result<()> {
         let miner = AvalonAMiner::new(
             IpAddr::from([127, 0, 0, 1]),
-            MinerModel::Avalon(AvalonHomeQ),
+            MinerModel::Avalon(Avalon1246),
             MinerFirmware::Stock,
         );
-
         let mut results = HashMap::new();
-        let version_cmd: MinerCommand = MinerCommand::RPC {
-            command: "version",
-            parameters: None,
-        };
         let stats_cmd: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
-        let devs_cmd: MinerCommand = MinerCommand::RPC {
-            command: "devs",
-            parameters: None,
-        };
-        let pools_cmd: MinerCommand = MinerCommand::RPC {
-            command: "pools",
-            parameters: None,
-        };
 
-        results.insert(stats_cmd, Value::from_str(PARSED_STATS_COMMAND)?);
-        results.insert(devs_cmd, Value::from_str(DEVS_COMMAND)?);
-        results.insert(pools_cmd, Value::from_str(POOLS_COMMAND)?);
-        results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
+        results.insert(stats_cmd, Value::from_str(AVALON_A_STATS_PARSED)?);
 
         let mock_api = MockAPIClient::new(results);
         let mut collector = DataCollector::new(&miner, &mock_api);
@@ -603,13 +577,13 @@ mod tests {
 
         let miner_data = miner.parse_data(data);
 
-        assert_eq!(miner_data.uptime, Some(Duration::from_secs(37819)));
-        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(800.0)));
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(24684)));
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(24578.195)));
         assert_eq!(miner_data.fans.len(), 4);
-        assert_eq!(miner_data.hashboards[0].chips.len(), 160);
+        assert_eq!(miner_data.hashboards[0].chips.len(), 120);
         assert_eq!(
             miner_data.average_temperature,
-            Some(Temperature::from_celsius(26.0))
+            Some(Temperature::from_celsius(65.0))
         );
 
         Ok(())

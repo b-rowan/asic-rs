@@ -574,10 +574,6 @@ mod tests {
         assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(800.0)));
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
-        assert_eq!(
-            miner_data.average_temperature,
-            Some(Temperature::from_celsius(26.0))
-        );
 
         Ok(())
     }

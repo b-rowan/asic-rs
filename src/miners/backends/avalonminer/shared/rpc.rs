@@ -63,6 +63,11 @@ impl AvalonMinerRPCAPI {
                     let parsed = self.parse_nested_stats(s);
                     item["HBinfo"] = json!(parsed);
                 }
+
+                if let Some(s) = item["MM ID0"].as_str() {
+                    let parsed = self.parse_stats(s);
+                    item["MM ID0"] = json!(parsed);
+                }
             }
         }
 

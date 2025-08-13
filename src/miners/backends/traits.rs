@@ -459,7 +459,6 @@ pub trait GetLightFlashing: CollectData {
 pub trait SetFaultLight {
     async fn set_fault_light(&self, fault: bool) -> Result<bool>;
 }
-
 #[async_trait]
 pub trait SetPowerLimit {
     async fn set_power_limit(&self, limit: Power) -> Result<bool>;

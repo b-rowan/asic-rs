@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![allow(dead_code)]
 pub(crate) const COIN_COMMAND: &str = include_str!("coin.json");
 pub(crate) const ASCSET_HELP_COMMAND: &str = include_str!("ascset_help.json");
 pub(crate) const SUMMARY_COMMAND: &str = include_str!("summary.json");
@@ -14,3 +15,5 @@ pub(crate) const ASCSET_WORKMODE_COMMAND: &str = include_str!("ascset_workmode.j
 pub(crate) const ASCSET_SOFTON_COMMAND: &str = include_str!("ascset_softon.json");
 pub(crate) const ASCSET_SOFTOFF_COMMAND: &str = include_str!("ascset_softoff.json");
 pub(crate) const PARSED_STATS_COMMAND: &str = include_str!("stats_parsed.json");
+pub(crate) const AVALON_A_STATS: &str = include_str!("avalon_a_stats.json");
+pub(crate) const AVALON_A_STATS_PARSED: &str = include_str!("avalon_a_stats_parsed.json");
