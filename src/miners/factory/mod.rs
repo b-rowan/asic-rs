@@ -291,6 +291,7 @@ impl MinerFactory {
                         MinerModel::Braiins(_) => MinerMake::Braiins,
                         MinerModel::Bitaxe(_) => MinerMake::BitAxe,
                         MinerModel::EPic(_) => MinerMake::EPic,
+                        MinerModel::Avalon(_) => MinerMake::AvalonMiner,
                     };
                     return Ok(select_backend(
                         ip,

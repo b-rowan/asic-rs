@@ -190,6 +190,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/MAC"),
+                    tag: None,
                 },
             )],
             DataField::ApiVersion => vec![(
@@ -197,6 +198,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
+                    tag: None,
                 },
             )],
             DataField::FirmwareVersion => vec![(
@@ -204,6 +206,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/CGMiner"),
+                    tag: None,
                 },
             )],
             DataField::Hashrate => vec![(
@@ -211,6 +214,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/DEVS/0/MHS 1m"),
+                    tag: None,
                 },
             )],
             DataField::ExpectedHashrate => vec![(
@@ -218,6 +222,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
+                    tag: None,
                 },
             )],
             DataField::Hashboards => vec![(
@@ -225,6 +230,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/HBinfo"),
+                    tag: None,
                 },
             )],
             DataField::AverageTemperature => vec![(
@@ -232,6 +238,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
+                    tag: None,
                 },
             )],
             DataField::WattageLimit => vec![(
@@ -239,6 +246,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
+                    tag: None,
                 },
             )],
             DataField::Wattage => vec![(
@@ -246,6 +254,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
+                    tag: None,
                 },
             )],
             DataField::Fans => vec![(
@@ -253,6 +262,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                    tag: None,
                 },
             )],
             DataField::LightFlashing => vec![(
@@ -260,6 +270,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
+                    tag: None,
                 },
             )],
             DataField::Uptime => vec![(
@@ -267,6 +278,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/Elapsed"),
+                    tag: None,
                 },
             )],
             DataField::Pools => vec![(
@@ -274,6 +286,7 @@ impl GetDataLocations for AvalonQMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
+                    tag: None,
                 },
             )],
             _ => vec![],

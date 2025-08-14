@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Hash)]
+#[derive(Debug, Display, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Hash)]
 pub enum AvalonMinerModel {
     #[serde(alias = "721")]
     Avalon721,
