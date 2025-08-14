@@ -233,7 +233,14 @@ impl GetDataLocations for AvalonAMiner {
                 stats_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/MW"),
+                    key: Some("/STATS/0/MM ID0/PS"),
+                },
+            )],
+            DataField::WattageLimit => vec![(
+                stats_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0/MM ID0/PS"),
                 },
             )],
             DataField::Fans => vec![(
@@ -480,14 +487,18 @@ impl GetPsuFans for AvalonAMiner {}
 impl GetWattage for AvalonAMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         let wattage = data.get(&DataField::Wattage).and_then(|v| v.as_array())?;
-        let wattage = wattage.iter().filter_map(|v| v.as_f64()).sum();
-        Some(Power::from_milliwatts(wattage))
+        let wattage = wattage.get(4).and_then(|watts: &Value| watts.as_f64())?;
+        Some(Power::from_watts(wattage))
     }
 }
 
 impl GetWattageLimit for AvalonAMiner {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        let limit = data
+            .get(&DataField::WattageLimit)
+            .and_then(|v| v.as_array())?;
+        let limit = limit.get(6).and_then(|watts: &Value| watts.as_f64())?;
+        Some(Power::from_watts(limit))
     }
 }
 
@@ -564,7 +575,7 @@ mod tests {
         let miner_data = miner.parse_data(data);
 
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(24684)));
-        assert_eq!(miner_data.wattage, Some(Power::from_watts(24578.195)));
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3189.0)));
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 120);
         assert_eq!(
