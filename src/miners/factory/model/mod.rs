@@ -11,7 +11,7 @@ pub mod whatsminer;
 
 pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
     let response: Option<Response> = Client::new()
-        .get(format!("http://{}/api/v1/info", ip))
+        .get(format!("http://{ip}/api/v1/info"))
         .send()
         .await
         .ok();
@@ -31,7 +31,7 @@ pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
 
 pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
     let response: Option<Response> = Client::new()
-        .get(format!("http://{}/api/v1/info", ip))
+        .get(format!("http://{ip}/api/v1/info"))
         .send()
         .await
         .ok();
@@ -47,8 +47,49 @@ pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
             }
 
             // If direct parsing fails, try adding .0 for patch version
-            let normalized_version = format!("{}.0", fw_version);
+            let normalized_version = format!("{fw_version}.0");
             semver::Version::parse(&normalized_version).ok()
+        }
+        None => None,
+    }
+}
+
+pub(crate) async fn get_model_epic(ip: IpAddr) -> Option<MinerModel> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{ip}:4028/capabilities"))
+        .send()
+        .await
+        .ok();
+
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let model = json_data["Model"].as_str().unwrap_or("").to_uppercase();
+
+            MinerModelFactory::new()
+                .with_firmware(MinerFirmware::EPic)
+                .parse_model(&model)
+        }
+        None => None,
+    }
+}
+pub(crate) async fn get_version_epic(ip: IpAddr) -> Option<semver::Version> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{ip}:4028/summary"))
+        .send()
+        .await
+        .ok();
+
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let fw_version = json_data["Software"]
+                .as_str()
+                .unwrap_or("")
+                .split(" ")
+                .last()?
+                .strip_prefix("v")?;
+            semver::Version::parse(fw_version).ok()
         }
         None => None,
     }
@@ -56,7 +97,7 @@ pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
 
 pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
     let response: Option<Response> = Client::new()
-        .get(format!("http://{}/cgi-bin/get_system_info.cgi", ip))
+        .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
         .send_with_digest_auth("root", "root")
         .await
         .ok();

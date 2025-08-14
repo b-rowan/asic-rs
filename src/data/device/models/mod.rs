@@ -2,6 +2,7 @@ use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
+use epic::EPicModel;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
@@ -9,6 +10,7 @@ use whatsminer::WhatsMinerModel;
 pub mod antminer;
 pub mod bitaxe;
 pub mod braiins;
+pub mod epic;
 pub mod whatsminer;
 
 #[derive(Debug, Clone)]
@@ -56,6 +58,15 @@ impl FromStr for BraiinsModel {
     }
 }
 
+impl FromStr for EPicModel {
+    type Err = ModelParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelParseError)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MinerModel {
@@ -63,6 +74,7 @@ pub enum MinerModel {
     WhatsMiner(WhatsMinerModel),
     Braiins(BraiinsModel),
     Bitaxe(BitaxeModel),
+    EPic(EPicModel),
 }
 
 impl Display for MinerModel {
@@ -72,6 +84,7 @@ impl Display for MinerModel {
             MinerModel::WhatsMiner(m) => Ok(m.fmt(f)?),
             MinerModel::Braiins(m) => Ok(m.fmt(f)?),
             MinerModel::Bitaxe(m) => Ok(m.fmt(f)?),
+            MinerModel::EPic(m) => Ok(m.fmt(f)?),
         }
     }
 }
@@ -119,6 +132,15 @@ impl MinerModelFactory {
                     }
                     if let Ok(model) = BraiinsModel::from_str(model_str) {
                         return Some(MinerModel::Braiins(model));
+                    }
+                    None
+                }
+                Some(MinerFirmware::EPic) => {
+                    if let Ok(model) = AntMinerModel::from_str(model_str) {
+                        return Some(MinerModel::AntMiner(model));
+                    }
+                    if let Ok(model) = EPicModel::from_str(model_str) {
+                        return Some(MinerModel::EPic(model));
                     }
                     None
                 }

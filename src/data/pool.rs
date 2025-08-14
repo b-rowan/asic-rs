@@ -34,7 +34,12 @@ pub struct PoolURL {
 
 impl From<String> for PoolURL {
     fn from(url: String) -> Self {
-        let parsed = Url::parse(&url).expect("Invalid pool URL");
+        let stratum_url = if url.starts_with("stratum") {
+            url
+        } else {
+            format!("stratum+tcp://{url}")
+        };
+        let parsed = Url::parse(&stratum_url).expect("Invalid pool URL");
         let scheme = PoolScheme::from(parsed.scheme().to_string());
         let host = parsed.host_str().unwrap().to_string();
         let port = parsed.port().unwrap_or(80);

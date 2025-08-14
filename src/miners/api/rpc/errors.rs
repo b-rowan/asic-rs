@@ -12,10 +12,10 @@ impl Display for RPCError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RPCError::StatusCheckFailed(message) => {
-                write!(f, "Command returned with error status: {}", message)
+                write!(f, "Command returned with error status: {message}")
             }
             RPCError::DeserializationFailed(error) => {
-                write!(f, "Failed to deserialize result: {}", error)
+                write!(f, "Failed to deserialize result: {error}")
             }
             RPCError::ConnectionFailed => {
                 write!(f, "Failed to connect to RPC API")

@@ -8,7 +8,7 @@ pub(crate) async fn send_rpc_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<serde_json::Value> {
-    let stream = tokio::net::TcpStream::connect(format!("{}:4028", ip)).await;
+    let stream = tokio::net::TcpStream::connect(format!("{ip}:4028")).await;
     if stream.is_err() {
         return None;
     }
@@ -41,7 +41,7 @@ pub(crate) async fn send_web_command(
     let resp = client
         .execute(
             client
-                .get(format!("http://{}{}", ip, command))
+                .get(format!("http://{ip}{command}"))
                 .build()
                 .expect("Failed to construct request."),
         )

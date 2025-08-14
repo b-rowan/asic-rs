@@ -2,6 +2,7 @@ use crate::data::device::MinerHardware;
 use crate::data::device::models::antminer::AntMinerModel;
 use crate::data::device::models::bitaxe::BitaxeModel;
 use crate::data::device::models::braiins::BraiinsModel;
+use crate::data::device::models::epic::EPicModel;
 use crate::data::device::models::whatsminer::WhatsMinerModel;
 
 impl From<&WhatsMinerModel> for MinerHardware {
@@ -1843,6 +1844,23 @@ impl From<&BraiinsModel> for MinerHardware {
                 chips: None,
                 fans: Some(1),
                 boards: Some(1),
+            },
+        }
+    }
+}
+
+impl From<&EPicModel> for MinerHardware {
+    fn from(value: &EPicModel) -> Self {
+        match value {
+            EPicModel::BM520i => Self {
+                chips: Some(124),
+                fans: Some(4),
+                boards: Some(3),
+            },
+            EPicModel::S19JProDual => Self {
+                chips: Some(126),
+                fans: Some(8),
+                boards: Some(6),
             },
         }
     }

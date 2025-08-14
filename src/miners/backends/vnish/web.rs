@@ -164,7 +164,7 @@ impl VnishWebAPI {
 
         // Add authentication headers if provided
         if let Some(ref token) = *self.bearer_token.read().unwrap() {
-            request_builder = request_builder.header("Authorization", format!("Bearer {}", token));
+            request_builder = request_builder.header("Authorization", format!("Bearer {token}"));
         }
 
         let request = request_builder
@@ -207,12 +207,12 @@ pub enum VnishError {
 impl std::fmt::Display for VnishError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VnishError::NetworkError(msg) => write!(f, "Network error: {}", msg),
-            VnishError::HttpError(code) => write!(f, "HTTP error: {}", code),
-            VnishError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            VnishError::RequestError(msg) => write!(f, "Request error: {}", msg),
+            VnishError::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            VnishError::HttpError(code) => write!(f, "HTTP error: {code}"),
+            VnishError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            VnishError::RequestError(msg) => write!(f, "Request error: {msg}"),
             VnishError::Timeout => write!(f, "Request timeout"),
-            VnishError::UnsupportedMethod(method) => write!(f, "Unsupported method: {}", method),
+            VnishError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
             VnishError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
             VnishError::AuthenticationFailed => write!(f, "Authentication failed"),
             VnishError::Unauthorized => write!(f, "Unauthorized access"),

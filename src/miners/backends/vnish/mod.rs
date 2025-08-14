@@ -197,14 +197,6 @@ impl GetDataLocations for Vnish {
                     tag: None,
                 },
             )],
-            DataField::Efficiency => vec![(
-                summary_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/miner/power_efficiency"),
-                    tag: None,
-                },
-            )],
             DataField::LightFlashing => vec![(
                 status_cmd,
                 DataExtractor {
@@ -440,7 +432,8 @@ impl GetPools for Vnish {
                 let url = pool
                     .pointer("/url")
                     .and_then(|v| v.as_str())
-                    .map(Self::parse_pool_url);
+                    .map(String::from)
+                    .map(PoolURL::from);
 
                 let user = pool
                     .pointer("/user")
@@ -538,17 +531,6 @@ impl Vnish {
             .and_then(|v| v.as_str())
             .map(|s| s == "mining")
             .or_else(|| hashrate.as_ref().map(|h| h.value > 0.0))
-    }
-
-    fn parse_pool_url(url_str: &str) -> PoolURL {
-        // Convert host:port format to full UR
-        let full_url = if url_str.starts_with("stratum") {
-            url_str.to_string()
-        } else {
-            format!("stratum+tcp://{}", url_str)
-        };
-
-        PoolURL::from(full_url)
     }
 
     fn parse_pool_status(status: Option<&str>) -> (Option<bool>, Option<bool>) {

@@ -23,6 +23,7 @@ use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::btminer::BTMiner;
+use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::espminer::ESPMiner;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::backends::vnish::Vnish;
@@ -165,6 +166,7 @@ fn select_backend(
             Some(ESPMiner::new(ip, model?, firmware?, version?))
         }
         (Some(_), Some(MinerFirmware::VNish)) => Some(Box::new(Vnish::new(ip, make?, model?))),
+        (Some(_), Some(MinerFirmware::EPic)) => Some(Box::new(PowerPlay::new(ip, make?, model?))),
         _ => None,
     }
 }
@@ -278,6 +280,22 @@ impl MinerFactory {
             Some((make, Some(firmware))) => {
                 let model = firmware.get_model(ip).await;
                 let version = firmware.get_version(ip).await;
+                if let Some(model) = model {
+                    let make = match model {
+                        MinerModel::AntMiner(_) => MinerMake::AntMiner,
+                        MinerModel::WhatsMiner(_) => MinerMake::WhatsMiner,
+                        MinerModel::Braiins(_) => MinerMake::Braiins,
+                        MinerModel::Bitaxe(_) => MinerMake::BitAxe,
+                        MinerModel::EPic(_) => MinerMake::EPic,
+                    };
+                    return Ok(select_backend(
+                        ip,
+                        Some(make),
+                        Some(model),
+                        Some(firmware),
+                        version,
+                    ));
+                }
 
                 Ok(select_backend(ip, make, model, Some(firmware), version))
             }

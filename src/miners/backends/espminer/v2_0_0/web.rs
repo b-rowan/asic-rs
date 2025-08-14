@@ -200,12 +200,12 @@ pub enum ESPMinerError {
 impl std::fmt::Display for ESPMinerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ESPMinerError::NetworkError(msg) => write!(f, "Network error: {}", msg),
-            ESPMinerError::HttpError(code) => write!(f, "HTTP error: {}", code),
-            ESPMinerError::ParseError(msg) => write!(f, "Parse error: {}", msg),
-            ESPMinerError::RequestError(msg) => write!(f, "Request error: {}", msg),
+            ESPMinerError::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            ESPMinerError::HttpError(code) => write!(f, "HTTP error: {code}"),
+            ESPMinerError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            ESPMinerError::RequestError(msg) => write!(f, "Request error: {msg}"),
             ESPMinerError::Timeout => write!(f, "Request timeout"),
-            ESPMinerError::UnsupportedMethod(method) => write!(f, "Unsupported method: {}", method),
+            ESPMinerError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
             ESPMinerError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
             ESPMinerError::WebError => write!(f, "Web error"),
         }

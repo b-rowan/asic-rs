@@ -268,7 +268,7 @@ impl GetHashboards for BTMiner3 {
         for idx in 0..board_count {
             let hashrate = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/hash-average", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/hash-average")))
                 .and_then(|val| val.as_f64())
                 .map(|f| HashRate {
                     value: f,
@@ -277,7 +277,7 @@ impl GetHashboards for BTMiner3 {
                 });
             let expected_hashrate = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/factory-hash", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/factory-hash")))
                 .and_then(|val| val.as_f64())
                 .map(|f| HashRate {
                     value: f,
@@ -286,30 +286,30 @@ impl GetHashboards for BTMiner3 {
                 });
             let board_temperature = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-min")))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
             let intake_temperature = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-min", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-min")))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
             let outlet_temperature = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/chip-temp-max", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-max")))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
             let serial_number =
-                data.extract_nested::<String>(DataField::Hashboards, &format!("pcbsn{}", idx));
+                data.extract_nested::<String>(DataField::Hashboards, &format!("pcbsn{idx}"));
 
             let working_chips = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/effective-chips", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/effective-chips")))
                 .and_then(|val| val.as_u64())
                 .map(|u| u as u16);
             let frequency = data
                 .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{}/freq", idx)))
+                .and_then(|val| val.pointer(&format!("/edevs/{idx}/freq")))
                 .and_then(|val| val.as_f64())
                 .map(Frequency::from_megahertz);
 
@@ -358,7 +358,7 @@ impl GetFans for BTMiner3 {
         for (idx, direction) in ["in", "out"].iter().enumerate() {
             let fan = data.extract_nested_map::<f64, _>(
                 DataField::Fans,
-                &format!("fan-speed-{}", direction),
+                &format!("fan-speed-{direction}"),
                 |rpm| FanData {
                     position: idx as i16,
                     rpm: Some(AngularVelocity::from_rpm(rpm)),
@@ -427,23 +427,23 @@ impl GetPools for BTMiner3 {
             {
                 let user = data
                     .get(&DataField::Pools)
-                    .and_then(|val| val.pointer(&format!("/{}/account", idx)))
+                    .and_then(|val| val.pointer(&format!("/{idx}/account")))
                     .map(|val| String::from(val.as_str().unwrap_or("")));
 
                 let alive = data
                     .get(&DataField::Pools)
-                    .and_then(|val| val.pointer(&format!("/{}/status", idx)))
+                    .and_then(|val| val.pointer(&format!("/{idx}/status")))
                     .map(|val| val.as_str())
                     .map(|val| val == Some("alive"));
 
                 let active = data
                     .get(&DataField::Pools)
-                    .and_then(|val| val.pointer(&format!("/{}/stratum-active", idx)))
+                    .and_then(|val| val.pointer(&format!("/{idx}/stratum-active")))
                     .and_then(|val| val.as_bool());
 
                 let url = data
                     .get(&DataField::Pools)
-                    .and_then(|val| val.pointer(&format!("/{}/url", idx)))
+                    .and_then(|val| val.pointer(&format!("/{idx}/url")))
                     .map(|val| PoolURL::from(String::from(val.as_str().unwrap_or(""))));
 
                 pools.push(PoolData {
