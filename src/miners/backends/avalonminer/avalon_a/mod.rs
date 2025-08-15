@@ -203,14 +203,6 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
-            DataField::SerialNumber => vec![(
-                version_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/VERSION/0/DNA"),
-                    tag: None,
-                },
-            )],
             DataField::ApiVersion => vec![(
                 version_cmd,
                 DataExtractor {
@@ -342,11 +334,7 @@ impl GetMAC for AvalonAMiner {
     }
 }
 
-impl GetSerialNumber for AvalonAMiner {
-    fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        data.extract::<String>(DataField::SerialNumber)
-    }
-}
+impl GetSerialNumber for AvalonAMiner {}
 
 impl GetControlBoardVersion for AvalonAMiner {
     fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
