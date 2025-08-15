@@ -195,6 +195,22 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
+            DataField::ControlBoardVersion => vec![(
+                version_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/VERSION/0/HWTYPE"),
+                    tag: None,
+                },
+            )],
+            DataField::SerialNumber => vec![(
+                version_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/VERSION/0/DNA"),
+                    tag: None,
+                },
+            )],
             DataField::ApiVersion => vec![(
                 version_cmd,
                 DataExtractor {
@@ -207,7 +223,7 @@ impl GetDataLocations for AvalonAMiner {
                 version_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/VERSION/0/CGMiner"),
+                    key: Some("/VERSION/0/VERSION"),
                     tag: None,
                 },
             )],
@@ -326,7 +342,17 @@ impl GetMAC for AvalonAMiner {
     }
 }
 
-impl GetSerialNumber for AvalonAMiner {}
+impl GetSerialNumber for AvalonAMiner {
+    fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::SerialNumber)
+    }
+}
+
+impl GetControlBoardVersion for AvalonAMiner {
+    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::ControlBoardVersion)
+    }
+}
 
 impl GetHostname for AvalonAMiner {}
 
@@ -341,8 +367,6 @@ impl GetFirmwareVersion for AvalonAMiner {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
-
-impl GetControlBoardVersion for AvalonAMiner {}
 
 impl GetHashboards for AvalonAMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
