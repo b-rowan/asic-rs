@@ -21,6 +21,7 @@ semver = "1.0"
 anyhow = "1.0"
 ipnet = "2.11"
 rand = "0.9"
+regex = "1.11"
 
 [profile.release]
 opt-level = 3

@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use crate::miners::api::APIClient;
 use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow};

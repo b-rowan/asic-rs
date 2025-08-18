@@ -217,6 +217,25 @@ pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
+pub(crate) async fn get_model_avalonminer(ip: IpAddr) -> Option<MinerModel> {
+    let response = util::send_rpc_command(&ip, "version").await;
+
+    match response {
+        Some(json_data) => {
+            if let Some(model_field) = json_data.pointer("/VERSION/0/MODEL")
+                && let Some(model_str) = model_field.as_str()
+            {
+                let model = model_str.split("-").collect::<Vec<&str>>()[0].to_uppercase();
+                return MinerModelFactory::new()
+                    .with_make(MinerMake::AvalonMiner)
+                    .parse_model(&model);
+            }
+
+            None
+        }
+        None => None,
+    }
+}
 pub(crate) async fn get_model_luxos(ip: IpAddr) -> Option<MinerModel> {
     let response = util::send_rpc_command(&ip, "version").await;
     match response {

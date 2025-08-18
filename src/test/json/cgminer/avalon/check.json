@@ -1,0 +1,16 @@
+{
+    "STATUS": [{
+            "STATUS": "S",
+            "When": 1753432184,
+            "Code": 72,
+            "Msg": "Check command",
+            "Description": "cgminer 4.11.1"
+        }
+    ],
+    "CHECK": [{
+            "Exists": "N",
+            "Access": "N"
+        }
+    ],
+    "id": 1
+}

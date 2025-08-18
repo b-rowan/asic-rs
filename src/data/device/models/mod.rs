@@ -1,5 +1,6 @@
 use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
+use avalon::AvalonMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;
@@ -8,6 +9,7 @@ use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
 pub mod antminer;
+pub mod avalon;
 pub mod bitaxe;
 pub mod braiins;
 pub mod epic;
@@ -58,6 +60,15 @@ impl FromStr for BraiinsModel {
     }
 }
 
+impl FromStr for AvalonMinerModel {
+    type Err = ModelParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelParseError)
+    }
+}
+
 impl FromStr for EPicModel {
     type Err = ModelParseError;
 
@@ -74,6 +85,7 @@ pub enum MinerModel {
     WhatsMiner(WhatsMinerModel),
     Braiins(BraiinsModel),
     Bitaxe(BitaxeModel),
+    Avalon(AvalonMinerModel),
     EPic(EPicModel),
 }
 
@@ -85,6 +97,7 @@ impl Display for MinerModel {
             MinerModel::Braiins(m) => Ok(m.fmt(f)?),
             MinerModel::Bitaxe(m) => Ok(m.fmt(f)?),
             MinerModel::EPic(m) => Ok(m.fmt(f)?),
+            MinerModel::Avalon(m) => Ok(m.fmt(f)?),
         }
     }
 }
@@ -124,6 +137,10 @@ impl MinerModelFactory {
             Some(MinerMake::BitAxe) => {
                 let model = BitaxeModel::from_str(model_str).ok();
                 model.map(MinerModel::Bitaxe)
+            }
+            Some(MinerMake::AvalonMiner) => {
+                let model = AvalonMinerModel::from_str(model_str).ok();
+                model.map(MinerModel::Avalon)
             }
             None => match self.firmware {
                 Some(MinerFirmware::BraiinsOS) => {
