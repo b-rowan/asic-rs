@@ -2,7 +2,7 @@
 name = "asic-rs"
 version = "0.1.0"
 edition = "2024"
-license = "LICENSE.txt"
+license = "Apache-2.0"
 description = "Simple ASIC management in Rust"
 
 [dependencies]
