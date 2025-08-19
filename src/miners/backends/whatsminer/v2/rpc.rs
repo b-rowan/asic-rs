@@ -9,13 +9,13 @@ use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug)]
-pub struct BTMinerRPCAPI {
+pub struct WhatsMinerRPCAPI {
     ip: IpAddr,
     port: u16,
 }
 
 #[async_trait]
-impl APIClient for BTMinerRPCAPI {
+impl APIClient for WhatsMinerRPCAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::RPC {
@@ -31,7 +31,7 @@ impl APIClient for BTMinerRPCAPI {
 }
 
 impl RPCCommandStatus {
-    fn from_btminer_v1(response: &str) -> Result<Self, RPCError> {
+    fn from_btminer_v2(response: &str) -> Result<Self, RPCError> {
         let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
 
         if let Ok(data) = &parsed {
@@ -62,7 +62,7 @@ impl RPCCommandStatus {
 }
 
 #[async_trait]
-impl RPCAPIClient for BTMinerRPCAPI {
+impl RPCAPIClient for WhatsMinerRPCAPI {
     async fn send_command(
         &self,
         command: &str,
@@ -104,7 +104,7 @@ impl RPCAPIClient for BTMinerRPCAPI {
     }
 }
 
-impl BTMinerRPCAPI {
+impl WhatsMinerRPCAPI {
     pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
         Self {
             ip,
@@ -113,7 +113,7 @@ impl BTMinerRPCAPI {
     }
 
     fn parse_rpc_result(&self, response: &str) -> Result<Value> {
-        let status = RPCCommandStatus::from_btminer_v1(response)?;
+        let status = RPCCommandStatus::from_btminer_v2(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
             Err(e) => Err(e)?,

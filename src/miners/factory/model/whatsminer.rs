@@ -1,7 +1,7 @@
 use crate::data::device::models::MinerModelFactory;
 use crate::data::device::{MinerMake, MinerModel};
 use crate::miners::api::APIClient;
-use crate::miners::backends::btminer::v3;
+use crate::miners::backends::whatsminer::v3;
 use crate::miners::commands::MinerCommand;
 use crate::miners::util;
 use serde_json::json;
@@ -26,7 +26,7 @@ pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Option<MinerModel> {
 }
 
 pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Option<MinerModel> {
-    let rpc = v3::BTMinerRPCAPI::new(ip, None);
+    let rpc = v3::WhatsMinerRPCAPI::new(ip, None);
     let response = rpc
         .get_api_result(&MinerCommand::RPC {
             command: "get.device.info",

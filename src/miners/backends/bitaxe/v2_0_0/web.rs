@@ -9,9 +9,9 @@ use serde_json::Value;
 use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
 
-/// ESPMiner WebAPI client for communicating with BitAxe and similar miners
+/// BitAxe WebAPI client for communicating with BitAxe and similar miners
 #[derive(Debug)]
-pub struct ESPMinerWebAPI {
+pub struct BitAxeWebAPI {
     client: Client,
     pub ip: IpAddr,
     port: u16,
@@ -21,7 +21,7 @@ pub struct ESPMinerWebAPI {
 
 #[async_trait]
 #[allow(dead_code)]
-trait ESPMiner200WebAPI: WebAPIClient {
+trait BitAxe200WebAPI: WebAPIClient {
     /// Get system information
     async fn system_info(&self) -> Result<Value> {
         self.send_command("system/info", false, None, Method::GET)
@@ -48,7 +48,7 @@ trait ESPMiner200WebAPI: WebAPIClient {
 }
 
 #[async_trait]
-impl APIClient for ESPMinerWebAPI {
+impl APIClient for BitAxeWebAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI {
@@ -64,7 +64,7 @@ impl APIClient for ESPMinerWebAPI {
 }
 
 #[async_trait]
-impl WebAPIClient for ESPMinerWebAPI {
+impl WebAPIClient for BitAxeWebAPI {
     /// Send a command to the miner
     async fn send_command(
         &self,
@@ -87,12 +87,12 @@ impl WebAPIClient for ESPMinerWebAPI {
                             Ok(json_data) => return Ok(json_data),
                             Err(e) => {
                                 if attempt == self.retries {
-                                    return Err(ESPMinerError::ParseError(e.to_string()))?;
+                                    return Err(BitAxeError::ParseError(e.to_string()))?;
                                 }
                             }
                         }
                     } else if attempt == self.retries {
-                        return Err(ESPMinerError::HttpError(response.status().as_u16()))?;
+                        return Err(BitAxeError::HttpError(response.status().as_u16()))?;
                     }
                 }
                 Err(e) => {
@@ -103,14 +103,14 @@ impl WebAPIClient for ESPMinerWebAPI {
             }
         }
 
-        Err(ESPMinerError::MaxRetriesExceeded)?
+        Err(BitAxeError::MaxRetriesExceeded)?
     }
 }
 
-impl ESPMiner200WebAPI for ESPMinerWebAPI {}
+impl BitAxe200WebAPI for BitAxeWebAPI {}
 
-impl ESPMinerWebAPI {
-    /// Create a new ESPMiner WebAPI client
+impl BitAxeWebAPI {
+    /// Create a new BitAxe WebAPI client
     pub fn new(ip: IpAddr, port: u16) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
@@ -144,7 +144,7 @@ impl ESPMinerWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, ESPMinerError> {
+    ) -> Result<Response, BitAxeError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => {
@@ -161,25 +161,25 @@ impl ESPMinerWebAPI {
                 }
                 builder
             }
-            _ => return Err(ESPMinerError::UnsupportedMethod(method.to_string())),
+            _ => return Err(BitAxeError::UnsupportedMethod(method.to_string())),
         };
 
         let request = request_builder
             .timeout(self.timeout)
             .build()
-            .map_err(|e| ESPMinerError::RequestError(e.to_string()))?;
+            .map_err(|e| BitAxeError::RequestError(e.to_string()))?;
 
         let response = timeout(self.timeout, self.client.execute(request))
             .await
-            .map_err(|_| ESPMinerError::Timeout)?
-            .map_err(|e| ESPMinerError::NetworkError(e.to_string()))?;
+            .map_err(|_| BitAxeError::Timeout)?
+            .map_err(|e| BitAxeError::NetworkError(e.to_string()))?;
         Ok(response)
     }
 }
 
-/// Error types for ESPMiner WebAPI operations
+/// Error types for BitAxe WebAPI operations
 #[derive(Debug, Clone)]
-pub enum ESPMinerError {
+pub enum BitAxeError {
     /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),
     /// HTTP error with status code
@@ -197,22 +197,22 @@ pub enum ESPMinerError {
     WebError,
 }
 
-impl std::fmt::Display for ESPMinerError {
+impl std::fmt::Display for BitAxeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ESPMinerError::NetworkError(msg) => write!(f, "Network error: {msg}"),
-            ESPMinerError::HttpError(code) => write!(f, "HTTP error: {code}"),
-            ESPMinerError::ParseError(msg) => write!(f, "Parse error: {msg}"),
-            ESPMinerError::RequestError(msg) => write!(f, "Request error: {msg}"),
-            ESPMinerError::Timeout => write!(f, "Request timeout"),
-            ESPMinerError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
-            ESPMinerError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
-            ESPMinerError::WebError => write!(f, "Web error"),
+            BitAxeError::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            BitAxeError::HttpError(code) => write!(f, "HTTP error: {code}"),
+            BitAxeError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            BitAxeError::RequestError(msg) => write!(f, "Request error: {msg}"),
+            BitAxeError::Timeout => write!(f, "Request timeout"),
+            BitAxeError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
+            BitAxeError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
+            BitAxeError::WebError => write!(f, "Web error"),
         }
     }
 }
 
-impl std::error::Error for ESPMinerError {}
+impl std::error::Error for BitAxeError {}
 
 // Usage example
 #[cfg(test)]

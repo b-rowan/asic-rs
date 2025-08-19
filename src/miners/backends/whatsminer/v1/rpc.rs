@@ -9,13 +9,13 @@ use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug)]
-pub struct BTMinerRPCAPI {
+pub struct WhatsMinerRPCAPI {
     ip: IpAddr,
     port: u16,
 }
 
 #[async_trait]
-impl APIClient for BTMinerRPCAPI {
+impl APIClient for WhatsMinerRPCAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::RPC {
@@ -31,36 +31,38 @@ impl APIClient for BTMinerRPCAPI {
 }
 
 impl RPCCommandStatus {
-    fn from_btminer_v3(response: &str) -> Result<Self, RPCError> {
-        let value: serde_json::Value = serde_json::from_str(response)?;
+    fn from_btminer_v1(response: &str) -> Result<Self, RPCError> {
+        let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
 
-        match value["code"].as_i64() {
-            None => {
-                let message = value["msg"].as_str();
+        if let Ok(data) = &parsed {
+            let command_status = data["STATUS"][0]["STATUS"]
+                .as_str()
+                .or(data["STATUS"].as_str());
+            let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
 
-                Err(RPCError::StatusCheckFailed(
-                    message
-                        .unwrap_or("Unknown error when looking for status code")
-                        .to_owned(),
-                ))
-            }
-            Some(code) => match code {
-                0 => Ok(Self::Success),
-                _ => {
-                    let message = value["msg"].as_str();
-                    Err(RPCError::StatusCheckFailed(
+            match command_status {
+                Some(status) => match status {
+                    "S" | "I" => Ok(RPCCommandStatus::Success),
+                    _ => Err(RPCError::StatusCheckFailed(
                         message
-                            .unwrap_or("Unknown error when parsing status")
+                            .unwrap_or("Unknown error when looking for status code")
                             .to_owned(),
-                    ))
-                }
-            },
+                    )),
+                },
+                None => Err(RPCError::StatusCheckFailed(
+                    message
+                        .unwrap_or("Unknown error when parsing status")
+                        .to_owned(),
+                )),
+            }
+        } else {
+            Err(RPCError::DeserializationFailed(parsed.err().unwrap()))
         }
     }
 }
 
 #[async_trait]
-impl RPCAPIClient for BTMinerRPCAPI {
+impl RPCAPIClient for WhatsMinerRPCAPI {
     async fn send_command(
         &self,
         command: &str,
@@ -74,48 +76,44 @@ impl RPCAPIClient for BTMinerRPCAPI {
         let request = match parameters {
             Some(Value::Object(mut obj)) => {
                 // Use the existing object as the base
-                obj.insert("cmd".to_string(), json!(command));
+                obj.insert("command".to_string(), json!(command));
                 Value::Object(obj)
             }
             Some(other) => {
                 // Wrap non-objects into the "param" key
-                json!({ "cmd": command, "param": other })
+                json!({ "command": command, "paramater": other })
             }
             None => {
                 // No parameters at all
-                json!({ "cmd": command })
+                json!({ "command": command })
             }
         };
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
-        let length = json_bytes.len() as u32;
 
-        stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(json_bytes).await?;
+        stream.write_all(json_bytes).await.unwrap();
 
-        let mut len_buf = [0u8; 4];
-        stream.read_exact(&mut len_buf).await?;
-        let response_len = u32::from_le_bytes(len_buf) as usize;
+        let mut buffer = Vec::new();
+        stream.read_to_end(&mut buffer).await.unwrap();
 
-        let mut resp_buf = vec![0u8; response_len];
-        stream.read_exact(&mut resp_buf).await?;
+        let response = String::from_utf8_lossy(&buffer)
+            .into_owned()
+            .replace('\0', "");
 
-        let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
-
-        self.parse_rpc_result(&response_str)
+        self.parse_rpc_result(&response)
     }
 }
 
-impl BTMinerRPCAPI {
+impl WhatsMinerRPCAPI {
     pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
         Self {
             ip,
-            port: port.unwrap_or(4433),
+            port: port.unwrap_or(4028),
         }
     }
 
     fn parse_rpc_result(&self, response: &str) -> Result<Value> {
-        let status = RPCCommandStatus::from_btminer_v3(response)?;
+        let status = RPCCommandStatus::from_btminer_v1(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
             Err(e) => Err(e)?,

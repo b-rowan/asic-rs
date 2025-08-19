@@ -9,7 +9,6 @@ use serde_json::Value;
 use std::{net::IpAddr, sync::RwLock, time::Duration};
 
 /// VNish WebAPI client
-
 #[derive(Debug)]
 pub struct VnishWebAPI {
     client: Client,

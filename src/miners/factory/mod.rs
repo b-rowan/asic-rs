@@ -23,11 +23,11 @@ use super::commands::MinerCommand;
 use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::avalonminer::AvalonMiner;
-use crate::miners::backends::btminer::BTMiner;
+use crate::miners::backends::bitaxe::BitAxe;
 use crate::miners::backends::epic::PowerPlay;
-use crate::miners::backends::espminer::ESPMiner;
 use crate::miners::backends::traits::GetMinerData;
 use crate::miners::backends::vnish::Vnish;
+use crate::miners::backends::whatsminer::WhatsMiner;
 use crate::miners::factory::traits::VersionSelection;
 use std::net::SocketAddr;
 use traits::{DiscoveryCommands, ModelSelection};
@@ -161,16 +161,16 @@ fn select_backend(
 ) -> Option<Box<dyn GetMinerData>> {
     match (make, firmware) {
         (Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)) => {
-            Some(BTMiner::new(ip, model?, firmware?, version?))
+            Some(WhatsMiner::new(ip, model?, version))
         }
         (Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)) => {
-            Some(ESPMiner::new(ip, model?, firmware?, version?))
+            Some(BitAxe::new(ip, model?, version))
         }
         (Some(MinerMake::AvalonMiner), Some(MinerFirmware::Stock)) => {
-            Some(AvalonMiner::new(ip, model?, firmware?))
+            Some(AvalonMiner::new(ip, model?, version))
         }
-        (Some(_), Some(MinerFirmware::VNish)) => Some(Box::new(Vnish::new(ip, make?, model?))),
-        (Some(_), Some(MinerFirmware::EPic)) => Some(Box::new(PowerPlay::new(ip, make?, model?))),
+        (Some(_), Some(MinerFirmware::VNish)) => Some(Vnish::new(ip, make?, model?, version)),
+        (Some(_), Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, make?, model?, version)),
         _ => None,
     }
 }

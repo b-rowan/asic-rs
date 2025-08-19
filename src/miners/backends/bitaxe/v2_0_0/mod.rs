@@ -21,28 +21,33 @@ use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
     get_by_pointer,
 };
-use web::ESPMinerWebAPI;
+use web::BitAxeWebAPI;
 
 pub mod web;
 #[derive(Debug)]
-pub struct ESPMiner200 {
+pub struct BitAxe200 {
     ip: IpAddr,
-    web: ESPMinerWebAPI,
+    web: BitAxeWebAPI,
     device_info: DeviceInfo,
 }
 
-impl ESPMiner200 {
-    pub fn new(ip: IpAddr, model: MinerModel, firmware: MinerFirmware) -> Self {
-        ESPMiner200 {
+impl BitAxe200 {
+    pub fn new(ip: IpAddr, model: MinerModel) -> Self {
+        BitAxe200 {
             ip,
-            web: ESPMinerWebAPI::new(ip, 80),
-            device_info: DeviceInfo::new(MinerMake::BitAxe, model, firmware, HashAlgorithm::SHA256),
+            web: BitAxeWebAPI::new(ip, 80),
+            device_info: DeviceInfo::new(
+                MinerMake::BitAxe,
+                model,
+                MinerFirmware::Stock,
+                HashAlgorithm::SHA256,
+            ),
         }
     }
 }
 
 #[async_trait]
-impl GetDataLocations for ESPMiner200 {
+impl GetDataLocations for BitAxe200 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         let system_info_command: MinerCommand = MinerCommand::WebAPI {
             command: "system/info",
@@ -159,54 +164,54 @@ impl GetDataLocations for ESPMiner200 {
     }
 }
 
-impl GetIP for ESPMiner200 {
+impl GetIP for BitAxe200 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
-impl GetDeviceInfo for ESPMiner200 {
+impl GetDeviceInfo for BitAxe200 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info
     }
 }
 
-impl CollectData for ESPMiner200 {
+impl CollectData for BitAxe200 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self, &self.web)
     }
 }
 
-impl GetMAC for ESPMiner200 {
+impl GetMAC for BitAxe200 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetSerialNumber for ESPMiner200 {
+impl GetSerialNumber for BitAxe200 {
     // N/A
 }
-impl GetHostname for ESPMiner200 {
+impl GetHostname for BitAxe200 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
-impl GetApiVersion for ESPMiner200 {
+impl GetApiVersion for BitAxe200 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
-impl GetFirmwareVersion for ESPMiner200 {
+impl GetFirmwareVersion for BitAxe200 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
-impl GetControlBoardVersion for ESPMiner200 {
+impl GetControlBoardVersion for BitAxe200 {
     fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ControlBoardVersion)
     }
 }
-impl GetHashboards for ESPMiner200 {
+impl GetHashboards for BitAxe200 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         // Extract nested values with type conversion
         let board_voltage = data.extract_nested_map::<f64, _>(
@@ -285,7 +290,7 @@ impl GetHashboards for ESPMiner200 {
         vec![board_data]
     }
 }
-impl GetHashrate for ESPMiner200 {
+impl GetHashrate for BitAxe200 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
@@ -294,7 +299,7 @@ impl GetHashrate for ESPMiner200 {
         })
     }
 }
-impl GetExpectedHashrate for ESPMiner200 {
+impl GetExpectedHashrate for BitAxe200 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let total_chips =
             data.extract_nested_map::<u64, _>(DataField::ExpectedHashrate, "asicCount", |u| {
@@ -321,7 +326,7 @@ impl GetExpectedHashrate for ESPMiner200 {
         })
     }
 }
-impl GetFans for ESPMiner200 {
+impl GetFans for BitAxe200 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         data.extract_map_or::<f64, _>(DataField::Fans, Vec::new(), |f| {
             vec![FanData {
@@ -331,24 +336,24 @@ impl GetFans for ESPMiner200 {
         })
     }
 }
-impl GetPsuFans for ESPMiner200 {
+impl GetPsuFans for BitAxe200 {
     // N/A
 }
-impl GetFluidTemperature for ESPMiner200 {
+impl GetFluidTemperature for BitAxe200 {
     // N/A
 }
-impl GetWattage for ESPMiner200 {
+impl GetWattage for BitAxe200 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetWattageLimit for ESPMiner200 {
+impl GetWattageLimit for BitAxe200 {
     // N/A
 }
-impl GetLightFlashing for ESPMiner200 {
+impl GetLightFlashing for BitAxe200 {
     // N/A
 }
-impl GetMessages for ESPMiner200 {
+impl GetMessages for BitAxe200 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
         let timestamp = SystemTime::now()
@@ -370,18 +375,18 @@ impl GetMessages for ESPMiner200 {
     }
 }
 
-impl GetUptime for ESPMiner200 {
+impl GetUptime for BitAxe200 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for ESPMiner200 {
+impl GetIsMining for BitAxe200 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         let hashrate = self.parse_hashrate(data);
         hashrate.as_ref().is_some_and(|hr| hr.value > 0.0)
     }
 }
-impl GetPools for ESPMiner200 {
+impl GetPools for BitAxe200 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         let main_url =
             data.extract_nested_or::<String>(DataField::Pools, "stratumURL", String::new());
@@ -447,10 +452,9 @@ mod tests {
     #[tokio::test]
     async fn test_espminer_200_data_parsers() {
         dbg!(SYSTEM_INFO_COMMAND);
-        let miner = ESPMiner200::new(
+        let miner = BitAxe200::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::Bitaxe(BitaxeModel::Supra),
-            MinerFirmware::Stock,
         );
         let mut results = HashMap::new();
         let system_info_command: MinerCommand = MinerCommand::WebAPI {

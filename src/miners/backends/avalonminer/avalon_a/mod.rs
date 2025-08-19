@@ -1,28 +1,30 @@
-#![allow(dead_code)]
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use super::shared::rpc::AvalonMinerRPCAPI;
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Power, Temperature, Voltage};
+use serde_json::{Value, json};
+
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
+use crate::miners::api::RPCAPIClient;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-
-use crate::miners::api::RPCAPIClient;
 use anyhow::{Result, anyhow};
-use async_trait::async_trait;
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Power, Temperature, Voltage};
-use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+pub use rpc::AvalonMinerRPCAPI;
+
+mod rpc;
 
 #[derive(Debug)]
 pub struct AvalonAMiner {
@@ -32,14 +34,14 @@ pub struct AvalonAMiner {
 }
 
 impl AvalonAMiner {
-    pub fn new(ip: IpAddr, model: MinerModel, miner_firmware: MinerFirmware) -> Self {
+    pub fn new(ip: IpAddr, model: MinerModel) -> Self {
         Self {
             ip,
             rpc: AvalonMinerRPCAPI::new(ip),
             device_info: DeviceInfo::new(
                 MinerMake::AvalonMiner,
                 model,
-                miner_firmware,
+                MinerFirmware::Stock,
                 HashAlgorithm::SHA256,
             ),
         }
@@ -579,11 +581,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_avalon_a() -> Result<()> {
-        let miner = AvalonAMiner::new(
-            IpAddr::from([127, 0, 0, 1]),
-            MinerModel::Avalon(Avalon1246),
-            MinerFirmware::Stock,
-        );
+        let miner = AvalonAMiner::new(IpAddr::from([127, 0, 0, 1]), MinerModel::Avalon(Avalon1246));
         let mut results = HashMap::new();
         let stats_cmd: MinerCommand = MinerCommand::RPC {
             command: "stats",
