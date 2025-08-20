@@ -1,3 +1,4 @@
+pub mod antminer;
 pub mod avalonminer;
 pub mod bitaxe;
 pub mod epic;

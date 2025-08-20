@@ -80,6 +80,7 @@ impl VersionSelection for MinerMake {
         match self {
             MinerMake::BitAxe => model::get_version_bitaxe(ip).await,
             MinerMake::WhatsMiner => model::get_version_whatsminer(ip).await,
+            MinerMake::AntMiner => model::get_version_antminer(ip).await,
             _ => None,
         }
     }

@@ -114,6 +114,30 @@ pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
     }
 }
 
+pub(crate) async fn get_version_antminer(ip: IpAddr) -> Option<semver::Version> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{ip}/cgi-bin/summary.cgi"))
+        .send_with_digest_auth("root", "root")
+        .await
+        .ok();
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
+            let year = fw_version
+                .chars()
+                .rev()
+                .take(4)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<String>(); // Very ugly code :(
+            Some(semver::Version::new(year.parse::<u64>().ok()?, 0, 0))
+        }
+        None => None,
+    }
+}
+
 pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Option<MinerModel> {
     let response = util::send_rpc_command(&ip, "get_version").await;
 
