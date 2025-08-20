@@ -1,7 +1,3 @@
-use crate::miners::api::rpc::errors::RPCError;
-use crate::miners::api::rpc::status::RPCCommandStatus;
-use crate::miners::api::{APIClient, RPCAPIClient};
-use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use regex::Regex;
@@ -10,6 +6,11 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::LazyLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+use crate::miners::api::rpc::errors::RPCError;
+use crate::miners::api::rpc::status::RPCCommandStatus;
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
 static STATS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").unwrap());
 static NESTED_STATS_RE: LazyLock<Regex> =

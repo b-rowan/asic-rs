@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -14,15 +14,13 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
-use crate::miners::api::RPCAPIClient;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
 
-pub use rpc::AvalonMinerRPCAPI;
+use rpc::AvalonMinerRPCAPI;
 
 mod rpc;
 
@@ -58,6 +56,17 @@ impl AvalonQMiner {
         Ok(false)
     }
 }
+
+#[async_trait]
+impl APIClient for AvalonQMiner {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for AvalonMiner API")),
+        }
+    }
+}
+
 #[async_trait]
 impl Pause for AvalonQMiner {
     async fn pause(&self, after: Option<Duration>) -> Result<bool> {
@@ -310,7 +319,7 @@ impl GetDeviceInfo for AvalonQMiner {
 
 impl CollectData for AvalonQMiner {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.rpc)
+        DataCollector::new(self)
     }
 }
 
@@ -579,7 +588,8 @@ mod tests {
         results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
 
         let mock_api = MockAPIClient::new(results);
-        let mut collector = DataCollector::new(&miner, &mock_api);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;
 
         let miner_data = miner.parse_data(data);

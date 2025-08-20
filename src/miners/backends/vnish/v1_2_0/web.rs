@@ -1,12 +1,11 @@
-use crate::miners::{
-    api::{APIClient, WebAPIClient},
-    commands::MinerCommand,
-};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
 use std::{net::IpAddr, sync::RwLock, time::Duration};
+
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
 /// VNish WebAPI client
 #[derive(Debug)]
@@ -182,6 +181,7 @@ impl VnishWebAPI {
 
 /// Error types for Vnish WebAPI operations
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum VnishError {
     /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),

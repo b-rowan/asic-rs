@@ -1,6 +1,6 @@
 use crate::data::device::models::MinerModelFactory;
 use crate::data::device::{MinerMake, MinerModel};
-use crate::miners::api::APIClient;
+use crate::miners::backends::traits::APIClient;
 use crate::miners::backends::whatsminer::v3;
 use crate::miners::commands::MinerCommand;
 use crate::miners::util;

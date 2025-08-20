@@ -1,8 +1,9 @@
-use crate::miners::api::WebAPIClient;
 use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::Method;
 use serde_json::Value;
+
+use crate::miners::backends::traits::*;
 
 pub use super::super::v2_0_0::web::BitAxeWebAPI;
 

@@ -1,5 +1,7 @@
-use crate::miners::backends::traits::GetDataLocations;
-use crate::miners::{api::APIClient, commands::MinerCommand};
+use crate::miners::{
+    backends::traits::{APIClient, MinerInterface},
+    commands::MinerCommand,
+};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use strum::{EnumIter, IntoEnumIterator};
@@ -249,19 +251,30 @@ impl DataExtensions for HashMap<DataField, Value> {
 /// A utility for collecting structured miner data from an API backend.
 pub struct DataCollector<'a> {
     /// Backend-specific data mapping logic.
-    miner: &'a dyn GetDataLocations,
-    /// API client used to send commands to the miner.
-    api_client: &'a dyn APIClient,
+    miner: &'a dyn MinerInterface,
+    client: &'a dyn APIClient,
     /// Cache of command responses keyed by command string.
     cache: HashMap<MinerCommand, Value>,
 }
 
 impl<'a> DataCollector<'a> {
     /// Constructs a new `DataCollector` with the given backend and API client.
-    pub fn new(miner: &'a dyn GetDataLocations, api_client: &'a dyn APIClient) -> Self {
+    pub fn new(miner: &'a dyn MinerInterface) -> Self {
         Self {
             miner,
-            api_client,
+            client: miner,
+            cache: HashMap::new(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn new_with_client(
+        miner: &'a dyn MinerInterface,
+        client: &'a dyn APIClient,
+    ) -> Self {
+        Self {
+            miner,
+            client,
             cache: HashMap::new(),
         }
     }
@@ -280,7 +293,7 @@ impl<'a> DataCollector<'a> {
         let required_commands = self.get_required_commands(fields);
 
         for command in required_commands {
-            if let Ok(response) = self.api_client.get_api_result(&command).await {
+            if let Ok(response) = self.client.get_api_result(&command).await {
                 self.cache.insert(command, response);
             }
         }

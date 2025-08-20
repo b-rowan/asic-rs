@@ -1,11 +1,12 @@
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -18,9 +19,10 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
+
 use web::PowerPlayWebAPI;
 
-pub mod web;
+mod web;
 
 #[derive(Debug)]
 pub struct PowerPlayV1 {
@@ -40,6 +42,16 @@ impl PowerPlayV1 {
                 MinerFirmware::EPic,
                 HashAlgorithm::SHA256,
             ),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for PowerPlayV1 {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for ePIC PowerPlay API")),
         }
     }
 }
@@ -244,7 +256,7 @@ impl GetDeviceInfo for PowerPlayV1 {
 
 impl CollectData for PowerPlayV1 {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.web)
+        DataCollector::new(self)
     }
 }
 
@@ -796,7 +808,8 @@ mod tests {
         }
 
         let mock_api = MockAPIClient::new(results);
-        let mut collector = DataCollector::new(&miner, &mock_api);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;
 
         let miner_data = miner.parse_data(data);

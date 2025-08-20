@@ -1,14 +1,12 @@
-mod rpc;
-mod web;
-
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::Value;
 
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
@@ -16,16 +14,17 @@ use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
 use crate::data::pool::{PoolData, PoolURL};
-use crate::miners::api::APIClient;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
-use async_trait::async_trait;
+
 use rpc::AntMinerRPCAPI;
 use web::AntMinerWebAPI;
+
+mod rpc;
+mod web;
 
 #[derive(Debug)]
 pub struct AntMinerV2020 {
@@ -351,7 +350,7 @@ impl GetDeviceInfo for AntMinerV2020 {
 
 impl CollectData for AntMinerV2020 {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, self)
+        DataCollector::new(self)
     }
 }
 
@@ -746,7 +745,7 @@ mod tests {
 
         let mock_api = MockAPIClient::new(results);
 
-        let mut collector = DataCollector::new(&miner, &mock_api);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;
 
         let miner_data = miner.parse_data(data);

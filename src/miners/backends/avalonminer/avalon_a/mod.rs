@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -14,15 +14,13 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
-use crate::miners::api::RPCAPIClient;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
 
-pub use rpc::AvalonMinerRPCAPI;
+use rpc::AvalonMinerRPCAPI;
 
 mod rpc;
 
@@ -44,6 +42,16 @@ impl AvalonAMiner {
                 MinerFirmware::Stock,
                 HashAlgorithm::SHA256,
             ),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for AvalonAMiner {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for AvalonMiner API")),
         }
     }
 }
@@ -312,7 +320,7 @@ impl GetDeviceInfo for AvalonAMiner {
 
 impl CollectData for AvalonAMiner {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.rpc)
+        DataCollector::new(self)
     }
 }
 
@@ -594,7 +602,8 @@ mod tests {
         results.insert(stats_cmd, Value::from_str(AVALON_A_STATS_PARSED)?);
 
         let mock_api = MockAPIClient::new(results);
-        let mut collector = DataCollector::new(&miner, &mock_api);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;
 
         let miner_data = miner.parse_data(data);

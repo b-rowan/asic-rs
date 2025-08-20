@@ -1,11 +1,12 @@
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::{Value, json};
 
 use crate::data::board::BoardData;
 use crate::data::device::MinerMake;
@@ -20,7 +21,7 @@ use crate::miners::data::{
     get_by_pointer,
 };
 
-pub use rpc::WhatsMinerRPCAPI;
+pub(crate) use rpc::WhatsMinerRPCAPI;
 
 mod rpc;
 
@@ -42,6 +43,16 @@ impl WhatsMinerV3 {
                 MinerFirmware::Stock,
                 HashAlgorithm::SHA256,
             ),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for WhatsMinerV3 {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for WhatsMiner API")),
         }
     }
 }
@@ -230,7 +241,7 @@ impl GetDeviceInfo for WhatsMinerV3 {
 
 impl CollectData for WhatsMinerV3 {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.rpc)
+        DataCollector::new(self)
     }
 }
 

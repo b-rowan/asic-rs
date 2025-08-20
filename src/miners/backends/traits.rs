@@ -46,6 +46,10 @@ pub trait CollectData: GetDataLocations {
     fn get_collector(&self) -> DataCollector<'_>;
 }
 
+pub trait MinerInterface: GetDataLocations + APIClient {}
+
+impl<T: GetDataLocations + APIClient> MinerInterface for T {}
+
 pub trait GetDataLocations: Send + Sync + Debug {
     /// Returns the locations of the specified data field on the miner.
     ///
@@ -199,7 +203,7 @@ pub trait APIClient: Send + Sync {
 }
 
 #[async_trait]
-pub trait WebAPIClient: Send + Sync + APIClient {
+pub trait WebAPIClient: APIClient {
     async fn send_command(
         &self,
         command: &str,
@@ -210,7 +214,7 @@ pub trait WebAPIClient: Send + Sync + APIClient {
 }
 
 #[async_trait]
-pub trait RPCAPIClient: Send + Sync + APIClient {
+pub trait RPCAPIClient: APIClient {
     async fn send_command(
         &self,
         command: &str,
@@ -218,8 +222,8 @@ pub trait RPCAPIClient: Send + Sync + APIClient {
         parameters: Option<Value>,
     ) -> Result<Value>;
 }
-// Data traits
 
+// Data traits
 pub trait GetIP: Send + Sync {
     /// Returns the IP address of the miner.
     fn get_ip(&self) -> IpAddr;

@@ -1,11 +1,12 @@
-use crate::miners::api::{APIClient, WebAPIClient};
-use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
 use std::{net::IpAddr, time::Duration};
+
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
 #[derive(Debug)]
 pub struct AntMinerWebAPI {

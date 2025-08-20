@@ -1,12 +1,13 @@
-use crate::miners::api::rpc::errors::RPCError;
-use crate::miners::api::rpc::status::RPCCommandStatus;
-use crate::miners::api::{APIClient, RPCAPIClient};
-use crate::miners::commands::MinerCommand;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+use crate::miners::api::rpc::errors::RPCError;
+use crate::miners::api::rpc::status::RPCCommandStatus;
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
 #[derive(Debug)]
 pub struct AntMinerRPCAPI {

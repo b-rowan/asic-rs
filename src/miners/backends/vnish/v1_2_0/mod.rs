@@ -1,11 +1,12 @@
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -18,9 +19,10 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
+
 use web::VnishWebAPI;
 
-pub mod web;
+mod web;
 
 #[derive(Debug)]
 pub struct VnishV120 {
@@ -40,6 +42,16 @@ impl VnishV120 {
                 MinerFirmware::VNish,
                 HashAlgorithm::SHA256,
             ),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for VnishV120 {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for Vnish API")),
         }
     }
 }
@@ -229,7 +241,7 @@ impl GetDeviceInfo for VnishV120 {
 
 impl CollectData for VnishV120 {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.web)
+        DataCollector::new(self)
     }
 }
 

@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::MinerMake;
@@ -22,7 +22,8 @@ use crate::miners::data::{
     get_by_pointer,
 };
 use web::BitAxeWebAPI;
-pub mod web;
+
+mod web;
 
 #[derive(Debug)]
 pub struct BitAxe290 {
@@ -42,6 +43,16 @@ impl BitAxe290 {
                 MinerFirmware::Stock,
                 HashAlgorithm::SHA256,
             ),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for BitAxe290 {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            _ => Err(anyhow!("Unsupported command type for BitAxe API")),
         }
     }
 }
@@ -191,7 +202,7 @@ impl GetDeviceInfo for BitAxe290 {
 
 impl CollectData for BitAxe290 {
     fn get_collector(&self) -> DataCollector<'_> {
-        DataCollector::new(self, &self.web)
+        DataCollector::new(self)
     }
 }
 

@@ -1,13 +1,12 @@
-use crate::miners::{
-    api::{APIClient, WebAPIClient},
-    commands::MinerCommand,
-};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
 use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
+
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
 /// BitAxe WebAPI client for communicating with BitAxe and similar miners
 #[derive(Debug)]
@@ -126,18 +125,6 @@ impl BitAxeWebAPI {
         }
     }
 
-    /// Set the timeout for API requests
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
-        self
-    }
-
-    /// Set the number of retries for failed requests
-    pub fn with_retries(mut self, retries: u32) -> Self {
-        self.retries = retries;
-        self
-    }
-
     /// Execute the actual HTTP request
     async fn execute_request(
         &self,
@@ -194,7 +181,6 @@ pub enum BitAxeError {
     UnsupportedMethod(String),
     /// Maximum retries exceeded
     MaxRetriesExceeded,
-    WebError,
 }
 
 impl std::fmt::Display for BitAxeError {
@@ -207,7 +193,6 @@ impl std::fmt::Display for BitAxeError {
             BitAxeError::Timeout => write!(f, "Request timeout"),
             BitAxeError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
             BitAxeError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
-            BitAxeError::WebError => write!(f, "Web error"),
         }
     }
 }

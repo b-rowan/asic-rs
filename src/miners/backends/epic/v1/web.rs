@@ -1,15 +1,13 @@
-use crate::miners::{
-    api::{APIClient, WebAPIClient},
-    commands::MinerCommand,
-};
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
 use std::{net::IpAddr, time::Duration};
 
-/// ePIC PowerPlay WebAPI client
+use crate::miners::backends::traits::*;
+use crate::miners::commands::MinerCommand;
 
+/// ePIC PowerPlay WebAPI client
 #[derive(Debug)]
 pub struct PowerPlayWebAPI {
     client: Client,
@@ -121,6 +119,7 @@ impl PowerPlayWebAPI {
 
 /// Error types for EPic WebAPI operations
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum PowerPlayError {
     /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),
