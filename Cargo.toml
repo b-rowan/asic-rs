@@ -22,6 +22,7 @@ anyhow = "1.0"
 ipnet = "2.11"
 rand = "0.9"
 regex = "1.11"
+chrono = "0.4.41"
 
 [profile.release]
 opt-level = 3

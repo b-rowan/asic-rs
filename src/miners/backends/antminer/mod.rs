@@ -8,11 +8,7 @@ use v2020::AntMinerV2020;
 pub struct AntMiner;
 
 impl AntMiner {
-    pub fn new(
-        ip: IpAddr,
-        model: MinerModel,
-        version: Option<semver::Version>,
-    ) -> Box<dyn GetMinerData> {
+    pub fn new(ip: IpAddr, model: MinerModel, _: Option<semver::Version>) -> Box<dyn GetMinerData> {
         Box::new(AntMinerV2020::new(ip, model))
     }
 }

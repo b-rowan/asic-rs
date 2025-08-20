@@ -2,6 +2,7 @@ use crate::data::device::models::MinerModelFactory;
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::factory::model::whatsminer::{get_model_whatsminer_v2, get_model_whatsminer_v3};
 use crate::miners::util;
+use chrono::{Datelike, NaiveDateTime};
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Response};
 use semver;
@@ -124,15 +125,19 @@ pub(crate) async fn get_version_antminer(ip: IpAddr) -> Option<semver::Version> 
         Some(data) => {
             let json_data = data.json::<serde_json::Value>().await.ok()?;
             let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
-            let year = fw_version
-                .chars()
-                .rev()
-                .take(4)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect::<String>(); // Very ugly code :(
-            Some(semver::Version::new(year.parse::<u64>().ok()?, 0, 0))
+
+            let cleaned: String = {
+                let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
+                parts.remove(4); // remove time zone
+                parts.join(" ")
+            };
+
+            let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
+
+            let version =
+                semver::Version::new(dt.year() as u64, dt.month() as u64, dt.day() as u64);
+
+            Some(version)
         }
         None => None,
     }
