@@ -440,8 +440,7 @@ impl GetPools for WhatsMinerV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         let mut pools: Vec<PoolData> = Vec::new();
         let pools_raw = data.get(&DataField::Pools);
-        if pools_raw.is_some() {
-            let pools_response = pools_raw.unwrap();
+        if let Some(pools_response) = pools_raw {
             for (idx, _) in pools_response
                 .as_array()
                 .unwrap_or(&Vec::new())

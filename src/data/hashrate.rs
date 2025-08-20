@@ -19,7 +19,7 @@ pub enum HashRateUnit {
 }
 
 impl HashRateUnit {
-    fn to_multiplier(self) -> f64 {
+    fn to_multiplier(&self) -> f64 {
         match self {
             HashRateUnit::Hash => 1e0,
             HashRateUnit::KiloHash => 1e3,

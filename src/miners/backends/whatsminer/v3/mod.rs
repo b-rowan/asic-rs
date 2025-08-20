@@ -365,8 +365,8 @@ impl GetFans for WhatsMinerV3 {
                     rpm: Some(AngularVelocity::from_rpm(rpm)),
                 },
             );
-            if fan.is_some() {
-                fans.push(fan.unwrap());
+            if let Some(fan_data) = fan {
+                fans.push(fan_data);
             }
         }
         fans
@@ -380,8 +380,8 @@ impl GetPsuFans for WhatsMinerV3 {
             position: 0i16,
             rpm: Some(AngularVelocity::from_rpm(rpm)),
         });
-        if psu_fan.is_some() {
-            psu_fans.push(psu_fan.unwrap());
+        if let Some(fan_data) = psu_fan {
+            psu_fans.push(fan_data);
         }
         psu_fans
     }
@@ -418,8 +418,7 @@ impl GetPools for WhatsMinerV3 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         let mut pools: Vec<PoolData> = Vec::new();
         let pools_raw = data.get(&DataField::Pools);
-        if pools_raw.is_some() {
-            let pools_response = pools_raw.unwrap();
+        if let Some(pools_response) = pools_raw {
             for (idx, _) in pools_response
                 .as_array()
                 .unwrap_or(&Vec::new())

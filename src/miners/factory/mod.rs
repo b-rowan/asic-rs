@@ -490,6 +490,11 @@ impl MinerFactory {
         self.ips.len()
     }
 
+    /// Check if the list of IPs is empty
+    pub fn is_empty(&self) -> bool {
+        self.ips.is_empty()
+    }
+
     /// Scan the IPs specified in the factory
     pub async fn scan(&self) -> Result<Vec<Box<dyn GetMinerData>>> {
         if self.ips.is_empty() {
