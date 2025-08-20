@@ -92,9 +92,9 @@ impl From<&MinerModel> for MinerHardware {
             MinerModel::AntMiner(model_name) => Self::from(model_name),
             MinerModel::WhatsMiner(model_name) => Self::from(model_name),
             MinerModel::Braiins(model_name) => Self::from(model_name),
-            MinerModel::Bitaxe(model_name) => Self::from(model_name),
+            MinerModel::BitAxe(model_name) => Self::from(model_name),
             MinerModel::EPic(model_name) => Self::from(model_name),
-            MinerModel::Avalon(model_name) => Self::from(model_name),
+            MinerModel::AvalonMiner(model_name) => Self::from(model_name),
         }
     }
 }

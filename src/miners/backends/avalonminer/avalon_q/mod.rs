@@ -552,7 +552,7 @@ mod tests {
     async fn test_avalon_home_q() -> Result<()> {
         let miner = AvalonQMiner::new(
             IpAddr::from([127, 0, 0, 1]),
-            MinerModel::Avalon(AvalonHomeQ),
+            MinerModel::AvalonMiner(AvalonHomeQ),
         );
 
         let mut results = HashMap::new();

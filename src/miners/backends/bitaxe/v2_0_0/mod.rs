@@ -445,7 +445,7 @@ impl GetPools for BitAxe200 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::device::models::bitaxe::BitaxeModel;
+    use crate::data::device::models::bitaxe::BitAxeModel;
     use crate::test::api::MockAPIClient;
     use crate::test::json::bitaxe::v2_0_0::SYSTEM_INFO_COMMAND;
 
@@ -454,7 +454,7 @@ mod tests {
         dbg!(SYSTEM_INFO_COMMAND);
         let miner = BitAxe200::new(
             IpAddr::from([127, 0, 0, 1]),
-            MinerModel::Bitaxe(BitaxeModel::Supra),
+            MinerModel::BitAxe(BitAxeModel::Supra),
         );
         let mut results = HashMap::new();
         let system_info_command: MinerCommand = MinerCommand::WebAPI {

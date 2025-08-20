@@ -581,7 +581,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_avalon_a() -> Result<()> {
-        let miner = AvalonAMiner::new(IpAddr::from([127, 0, 0, 1]), MinerModel::Avalon(Avalon1246));
+        let miner = AvalonAMiner::new(
+            IpAddr::from([127, 0, 0, 1]),
+            MinerModel::AvalonMiner(Avalon1246),
+        );
         let mut results = HashMap::new();
         let stats_cmd: MinerCommand = MinerCommand::RPC {
             command: "stats",

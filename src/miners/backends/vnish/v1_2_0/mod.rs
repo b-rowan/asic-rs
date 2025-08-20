@@ -30,11 +30,16 @@ pub struct VnishV120 {
 }
 
 impl VnishV120 {
-    pub fn new(ip: IpAddr, make: MinerMake, model: MinerModel) -> Self {
+    pub fn new(ip: IpAddr, model: MinerModel) -> Self {
         VnishV120 {
             ip,
             web: VnishWebAPI::new(ip, 80),
-            device_info: DeviceInfo::new(make, model, MinerFirmware::VNish, HashAlgorithm::SHA256),
+            device_info: DeviceInfo::new(
+                MinerMake::from(model),
+                model,
+                MinerFirmware::VNish,
+                HashAlgorithm::SHA256,
+            ),
         }
     }
 }

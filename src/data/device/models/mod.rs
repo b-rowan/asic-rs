@@ -1,7 +1,7 @@
 use super::{MinerFirmware, MinerMake};
 use antminer::AntMinerModel;
 use avalon::AvalonMinerModel;
-use bitaxe::BitaxeModel;
+use bitaxe::BitAxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ impl FromStr for AntMinerModel {
             .map_err(|_| ModelParseError)
     }
 }
-impl FromStr for BitaxeModel {
+impl FromStr for BitAxeModel {
     type Err = ModelParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -84,8 +84,8 @@ pub enum MinerModel {
     AntMiner(AntMinerModel),
     WhatsMiner(WhatsMinerModel),
     Braiins(BraiinsModel),
-    Bitaxe(BitaxeModel),
-    Avalon(AvalonMinerModel),
+    BitAxe(BitAxeModel),
+    AvalonMiner(AvalonMinerModel),
     EPic(EPicModel),
 }
 
@@ -95,9 +95,22 @@ impl Display for MinerModel {
             MinerModel::AntMiner(m) => Ok(m.fmt(f)?),
             MinerModel::WhatsMiner(m) => Ok(m.fmt(f)?),
             MinerModel::Braiins(m) => Ok(m.fmt(f)?),
-            MinerModel::Bitaxe(m) => Ok(m.fmt(f)?),
+            MinerModel::BitAxe(m) => Ok(m.fmt(f)?),
             MinerModel::EPic(m) => Ok(m.fmt(f)?),
-            MinerModel::Avalon(m) => Ok(m.fmt(f)?),
+            MinerModel::AvalonMiner(m) => Ok(m.fmt(f)?),
+        }
+    }
+}
+
+impl From<MinerModel> for MinerMake {
+    fn from(model: MinerModel) -> Self {
+        match model {
+            MinerModel::AntMiner(_) => MinerMake::AntMiner,
+            MinerModel::WhatsMiner(_) => MinerMake::WhatsMiner,
+            MinerModel::Braiins(_) => MinerMake::Braiins,
+            MinerModel::BitAxe(_) => MinerMake::BitAxe,
+            MinerModel::EPic(_) => MinerMake::EPic,
+            MinerModel::AvalonMiner(_) => MinerMake::AvalonMiner,
         }
     }
 }
@@ -135,12 +148,12 @@ impl MinerModelFactory {
                 model.map(MinerModel::WhatsMiner)
             }
             Some(MinerMake::BitAxe) => {
-                let model = BitaxeModel::from_str(model_str).ok();
-                model.map(MinerModel::Bitaxe)
+                let model = BitAxeModel::from_str(model_str).ok();
+                model.map(MinerModel::BitAxe)
             }
             Some(MinerMake::AvalonMiner) => {
                 let model = AvalonMinerModel::from_str(model_str).ok();
-                model.map(MinerModel::Avalon)
+                model.map(MinerModel::AvalonMiner)
             }
             None => match self.firmware {
                 Some(MinerFirmware::BraiinsOS) => {

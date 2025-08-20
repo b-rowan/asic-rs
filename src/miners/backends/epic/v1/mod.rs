@@ -30,11 +30,16 @@ pub struct PowerPlayV1 {
 }
 
 impl PowerPlayV1 {
-    pub fn new(ip: IpAddr, make: MinerMake, model: MinerModel) -> Self {
+    pub fn new(ip: IpAddr, model: MinerModel) -> Self {
         PowerPlayV1 {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028),
-            device_info: DeviceInfo::new(make, model, MinerFirmware::EPic, HashAlgorithm::SHA256),
+            device_info: DeviceInfo::new(
+                MinerMake::from(model),
+                model,
+                MinerFirmware::EPic,
+                HashAlgorithm::SHA256,
+            ),
         }
     }
 }
