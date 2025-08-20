@@ -1,0 +1,3834 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ePIC UMC API",
+    "description": "",
+    "contact": {
+      "email": "support@epicblockchain.io"
+    },
+    "version": "1.22.5"
+  },
+  "servers": [
+    {
+      "url": "http://{IP}:4028",
+      "variables": {
+        "IP": {
+          "default": "127.0.0.1"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/authenticate": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Authenticate the controls towards the miner",
+        "operationId": "authenticate",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": null,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticate succesful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/boardenable": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Enable board, true to enable, false to disable",
+        "operationId": "enable_board",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GenHbDataBoolSchemaOnly"
+                }
+              },
+              "example": {
+                "param": [
+                  {
+                    "Data": true,
+                    "Index": 0
+                  }
+                ],
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Provides miner model and all available coins and performance presets.",
+        "operationId": "generate_capabilities_response",
+        "responses": {
+          "200": {
+            "description": "Capabilities of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clearhashrate": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Clears the hashrate data collected by the miner",
+        "operationId": "clear_hashrate",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": null,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clocks": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the clock per chip",
+        "description": "Returns the clock per chip for each hashboard",
+        "operationId": "generate_clocks_response",
+        "responses": {
+          "200": {
+            "description": "Individual chip clock for all boards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clocks/config": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the clock signal generators and core clock selects config per chip for all boards and board clock average",
+        "operationId": "generate_clocks_config_response",
+        "responses": {
+          "200": {
+            "description": "Individual chip's clock signal generators and core clock selects config for all boards and board clock average",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataTupleCoreConfigSchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/coin": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set the mining config of the miner",
+        "description": "Supports up to 3 stratum_configs",
+        "operationId": "set_coin_pool_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoinInfoCoinSchemaOnly"
+              },
+              "example": {
+                "param": {
+                  "coin": "BTC",
+                  "stratum_configs": [
+                    {
+                      "login": "epicblockchain.default",
+                      "password": "password",
+                      "pool": "stratum+tcp://btc.ss.poolin.one:443"
+                    }
+                  ],
+                  "unique_id": true
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/criticaltemp": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the critical temperature threshold of the miner",
+        "description": "The default is set to 100c",
+        "operationId": "change_critical_temp",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "example": {
+                "param": 100,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/defaultconfig": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Reset miner to default configs",
+        "operationId": "default_config",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": null,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/disableboardonfailure": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set if hashboards should be disabled if they fail.",
+        "operationId": "set_disable_board_on_failure",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              },
+              "example": {
+                "param": false,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enableboardsonidle": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Configures enabling boards on idle",
+        "description": "Setting to true will automatically re-enable any disabled boards if the miner remains idle for more than 10 minutes. This does not restart the miner.\nSetting to false will disable this feature",
+        "operationId": "configure_enable_boards_on_idle",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ethernet": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the ethernet configuration",
+        "operationId": "generate_ethernet_response",
+        "responses": {
+          "200": {
+            "description": "Current ethernet type of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkInfo"
+                },
+                "example": {
+                  "dhcp": {
+                    "address": "192.168.0.0",
+                    "dns": "192.168.0.0",
+                    "dns2": null,
+                    "gateway": "192.168.0.0",
+                    "mac_address": "E2:FA:20:0A:43:1D",
+                    "netmask": "255.255.255.0"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fans/minimum": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set the minimum number of fans working required.",
+        "operationId": "set_min_working_fans",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              },
+              "example": {
+                "param": 0,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fanspeed": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Manually set the fan speed or run Autofan with target operating temperature of the miner",
+        "description": "Provide a number from 1-100. Note: if the target sent exceeds limit, it will automatically be set to a number within range",
+        "operationId": "set_fan_speed",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FanMode"
+              },
+              "examples": {
+                "Auto": {
+                  "value": {
+                    "param": {
+                      "Auto": {
+                        "Idle Speed": 100,
+                        "Target Temperature": 60
+                      }
+                    },
+                    "password": "letmein"
+                  }
+                },
+                "Manual": {
+                  "value": {
+                    "param": {
+                      "Manual": 100
+                    },
+                    "password": "letmein"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashrate": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the hashrate per chip",
+        "description": "Returns the hashrate per chip for each hashboard and hashrate difference compared to theoretical hashrate",
+        "operationId": "generate_hashrate",
+        "responses": {
+          "200": {
+            "description": "Hashrate for all boards in MH/s",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataTupleF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashrate/history/continuous": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the realtime hashrate",
+        "description": "Returns realtime hashrate for the rig every 10 seconds for up to 1 hour",
+        "operationId": "generate_total_hashrate_history",
+        "responses": {
+          "200": {
+            "description": "Hashrate for all boards in MH/s",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TotalHashrate"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashrate/history/discrete": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the discrete hashrate of the miner",
+        "operationId": "generate_discrete_hashrate",
+        "responses": {
+          "200": {
+            "description": "Returns discrete hashrate in MH/s",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TotalHashrate"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashratesplit": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Split the hashrate of the miner",
+        "description": "Supports up to 3 configurations",
+        "operationId": "hashrate_split",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/HashrateSplitSchemaOnly"
+                }
+              },
+              "example": {
+                "param": [
+                  {
+                    "coin": "BTC",
+                    "ratio": 100,
+                    "sc_index": 0,
+                    "stratum_configs": [
+                      {
+                        "login": "epicblockchain.default",
+                        "password": "password",
+                        "pool": "stratum+tcp://btc.ss.poolin.one:443"
+                      }
+                    ],
+                    "unique_id": true,
+                    "unique_worker_id_variant": "IpAddress"
+                  }
+                ],
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashratesplit/config": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Hashrate split pool config",
+        "operationId": "generate_hashrate_split_config",
+        "responses": {
+          "200": {
+            "description": "Returns hashrate split config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashrateSplitInfoSchemaOnly"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashratesplit/enable": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Enable hashrate split",
+        "operationId": "hashrate_split_enable",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": false,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hashratesplit/status": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Hashrate split pool status",
+        "operationId": "generate_hashrate_split_status",
+        "responses": {
+          "200": {
+            "description": "Returns hashrate split information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolInfo"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/history": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns pool hashrate history",
+        "description": "Returns hashrate data polled every one hour for up to the past 48 hrs.",
+        "operationId": "generate_history_response",
+        "responses": {
+          "200": {
+            "description": "Pool hashrate history in the past 48 hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/id": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set status of the unique id",
+        "description": "True for unique, false for non unique",
+        "operationId": "set_unique_id",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/id/variant": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set the unique id of the miner as either the IP address, MAC address, or the CPU ID",
+        "description": "IpAddress to select unique ID as IP address\n\nMacAddress for MAC address\n\nCpuId for CPU ID",
+        "operationId": "change_unique_id_variant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UniqueIdVariant"
+              },
+              "example": {
+                "param": "IpAddress",
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/identify": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Identify the miner",
+        "description": "Turn the LED on",
+        "operationId": "identify",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/idleonconnectionlost": {
+      "post": {
+        "tags": ["post"],
+        "summary": "On connection lost, the miner will go to idle. When disabled, the miner will continue to draw power.",
+        "operationId": "set_idle_on_connection_lost",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/log": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the log of the miner.",
+        "operationId": "generate_log_response",
+        "responses": {
+          "200": {
+            "description": "Log of the miner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/log/error": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the error log of the miner.",
+        "operationId": "generate_error_log_response",
+        "responses": {
+          "200": {
+            "description": "Error log of the miner",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/miner": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Autostart or stop the mining program",
+        "operationId": "miner_cmd",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpState"
+              },
+              "example": {
+                "param": "Autostart",
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the network type",
+        "operationId": "generate_network_response",
+        "responses": {
+          "200": {
+            "description": "Current network type of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkInfo"
+                },
+                "example": {
+                  "dhcp": {
+                    "address": "192.168.0.0",
+                    "dns": "192.168.0.0",
+                    "dns2": null,
+                    "gateway": "192.168.0.0",
+                    "mac_address": "E2:FA:20:0A:43:1D",
+                    "netmask": "255.255.255.0"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the ethernet configuration of the miner",
+        "operationId": "change_ethernet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkInfo"
+              },
+              "examples": {
+                "dhcp": {
+                  "value": {
+                    "param": {
+                      "dhcp": null
+                    },
+                    "password": "letmein"
+                  }
+                },
+                "static": {
+                  "value": {
+                    "param": {
+                      "static": {
+                        "address": "192.168.0.0",
+                        "dns": "192.168.0.0",
+                        "dns2": "192.168.0.0",
+                        "gateway": "192.168.0.0",
+                        "mac_address": "E2:FA:20:0A:43:1D",
+                        "netmask": "255.255.255.0"
+                      }
+                    },
+                    "password": "letmein"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/overdrive": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Configures overdrive mode",
+        "description": "May provide better efficiency when overclocking (Bitmain bm1366 only). Set to true to enable overdrive mode, false to disable.",
+        "operationId": "configure_overdrive_mode",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/password": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Set a new password for the miner. param contains the new password",
+        "operationId": "change_password",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": "",
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/perpetualtune": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns perpetual tune algorithms setting of the miner.",
+        "operationId": "generate_autotune_response",
+        "responses": {
+          "200": {
+            "description": "Perpetual tune information of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerpetualTuneInfo"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["post"],
+        "summary": "Enable or disable perpetual tune",
+        "operationId": "set_autotune_state",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "boolean"
+              },
+              "example": {
+                "param": true,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The current perpetual tune status in boolean of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/perpetualtune/algo": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Enable perpetual tune with specific target and algorithm",
+        "description": "Optional: minimum throttle target before idling (Bitmain only)",
+        "operationId": "change_autotune_algo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlgoInfo"
+              },
+              "example": {
+                "param": {
+                  "algo": "VoltageOptimizer",
+                  "min_throttle": 10,
+                  "target": 70,
+                  "throttle_step": 5
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/perpetualtune/reset": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Restarts perpetual tune algorithm on target hashrate",
+        "operationId": "reset_autotune_algo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerpetualTuneAlgorithm"
+              },
+              "example": {
+                "param": "VoltageOptimizer",
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reboot": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Provide unsigned integer in param to specify a delay in seconds before the reboot",
+        "description": "Provide 0 to reboot instantly",
+        "operationId": "reboot",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              "example": {
+                "param": 0,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shutdowntemp": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the shutdown temperature threshold of the miner",
+        "description": "The default is set to 95c",
+        "operationId": "change_shutdown_temp",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "example": {
+                "param": 95,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/softreboot": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Softreboot the miner",
+        "operationId": "soft_reset",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": null,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns generic readable data for the miner.",
+        "description": "Returns general data includes software, status, hostname, ect.",
+        "operationId": "generate_summary_response",
+        "responses": {
+          "200": {
+            "description": "General information of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/systemupdate": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Update the system",
+        "operationId": "update_system",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Multipart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/temps": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the temperature sensor data collected by the miner",
+        "operationId": "generate_temps_response",
+        "responses": {
+          "200": {
+            "description": "Temperature sensor data of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/temps/board": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the board temperatures",
+        "operationId": "generate_boards_temp_response",
+        "responses": {
+          "200": {
+            "description": "Board temperature sensor data of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/temps/chip": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the chip temperatures",
+        "operationId": "generate_chips_temp_response",
+        "responses": {
+          "200": {
+            "description": "Chip temperatures data of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timezone": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the timezone of the miner",
+        "operationId": "generate_timezone_response",
+        "responses": {
+          "200": {
+            "description": "Timezone of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "America/Toronto"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the timezone for the miner and override DHCP timezone",
+        "operationId": "change_timezone",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": {
+                "param": "America/Toronto",
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully changed the timezone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the clock and voltage of the miner",
+        "description": "if the clock and voltage is too high, it will automatically be set to a maximum of 1000MHz and 15v respectively",
+        "operationId": "change_clks_and_voltages",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClksAndVoltage"
+              },
+              "example": {
+                "param": {
+                  "clks": "",
+                  "voltage": ""
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune/clock/all": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change only the clocks of the chips in the miner",
+        "operationId": "change_all_clks",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "number",
+                "format": "float"
+              },
+              "example": {
+                "param": 550,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune/clock/board": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the clocks for specified hashboards",
+        "operationId": "change_all_clks_board",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TuneSingleHbClock"
+              },
+              "example": {
+                "param": {
+                  "v": [
+                    {
+                      "Data": 525.0,
+                      "Index": 0
+                    },
+                    {
+                      "Data": 525.0,
+                      "Index": 1
+                    }
+                  ]
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune/clock/chip": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change only the clocks for each chip for each hashboard in the miner",
+        "description": "Pass the hashboard id as the Index and chip id and the target value as the Data",
+        "operationId": "change_chip_clks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChipTuneHbClocks"
+              },
+              "example": {
+                "param": {
+                  "v": [
+                    {
+                      "Data": [
+                        [0, [400.0]],
+                        [5, [425.0]]
+                      ],
+                      "Index": 0
+                    },
+                    {
+                      "Data": [
+                        [45, [415.0]],
+                        [72, [400.0]],
+                        [89, [420.0]]
+                      ],
+                      "Index": 1
+                    },
+                    {
+                      "Data": [[4, [430.0]]],
+                      "Index": 2
+                    }
+                  ]
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune/config/chip": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the core pll select config of plls on a chip",
+        "description": "Pass the hashboard id as the Index, and chip id and the core pll select configs as the Data",
+        "operationId": "change_chip_core_config",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChipTuneSingleHbConfig"
+              },
+              "example": {
+                "param": {
+                  "v": [
+                    {
+                      "Data": [
+                        [
+                          0,
+                          [
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1]
+                          ]
+                        ]
+                      ],
+                      "Index": 0
+                    },
+                    {
+                      "Data": [
+                        [
+                          0,
+                          [
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1]
+                          ]
+                        ]
+                      ],
+                      "Index": 1
+                    },
+                    {
+                      "Data": [
+                        [
+                          0,
+                          [
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1],
+                            [1, 1]
+                          ]
+                        ]
+                      ],
+                      "Index": 2
+                    }
+                  ]
+                },
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tune/voltage": {
+      "post": {
+        "tags": ["post"],
+        "summary": "Change only the voltage of the miner (in Millivolts)",
+        "operationId": "change_voltage",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "example": {
+                "param": 13000,
+                "password": "letmein"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voltages": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the voltage data collected by the miner",
+        "operationId": "generate_voltages_response",
+        "responses": {
+          "200": {
+            "description": "Voltage data of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HbDataF32SchemaOnly"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wifi": {
+      "get": {
+        "tags": ["get"],
+        "summary": "Returns the wifi configuration",
+        "operationId": "generate_wifi_response",
+        "responses": {
+          "200": {
+            "description": "Current wifi type of the miner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkInfo"
+                },
+                "example": {
+                  "dhcp": {
+                    "address": "192.168.0.0",
+                    "dns": "192.168.0.0",
+                    "dns2": null,
+                    "gateway": "192.168.0.0",
+                    "mac_address": "E2:FA:20:0A:43:1D",
+                    "netmask": "255.255.255.0"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["post"],
+        "summary": "Change the wifi configuration of the miner",
+        "operationId": "change_wifi",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkInfo"
+              },
+              "examples": {
+                "dhcp": {
+                  "value": {
+                    "param": {
+                      "dhcp": null
+                    },
+                    "password": "letmein"
+                  }
+                },
+                "static": {
+                  "value": {
+                    "param": {
+                      "static": {
+                        "address": "192.168.0.0",
+                        "dns": "192.168.0.0",
+                        "dns2": "192.168.0.0",
+                        "gateway": "192.168.0.0",
+                        "mac_address": "E2:FA:20:0A:43:1D",
+                        "netmask": "255.255.255.0"
+                      }
+                    },
+                    "password": "letmein"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlgoInfo": {
+        "type": "object",
+        "required": ["algo", "target"],
+        "properties": {
+          "algo": {
+            "$ref": "#/components/schemas/PerpetualTuneAlgorithm"
+          },
+          "min_throttle": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "target": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "throttle_step": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          }
+        }
+      },
+      "AlgorithmStats": {
+        "type": "object",
+        "required": ["Optimized", "Target", "Unit"],
+        "properties": {
+          "Min Throttle Target": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Optimized": {
+            "type": "boolean"
+          },
+          "Target": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Throttle Step": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Throttle Target": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Unit": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "string",
+        "enum": [
+          "{\"MissingParam\":\"Missing param\"}",
+          "{\"BadPassword\":\"Authentication failed\"}",
+          "{\"RebootFailed\":\"Reboot failed\"}",
+          "{\"PasswdChangeFailed\":\"Password change failed on \"}",
+          "{\"TimezoneChangeFailed\":\"Timezone change failed\"}",
+          "{\"InvalidMultipart\":\"Invalid multipart post request\"}",
+          "{\"InvalidChecksum\":\"Invalid update file checksum\"}",
+          "{\"FileTransferFailed\":\"File transfer failed (Check Logs)\"}",
+          "{\"FileProcessingFailed\":\"File validation failed (Check Logs)\"}",
+          "{\"MountFailed\":\"Failed to mount partition\"}",
+          "{\"LastCmdStillPending\":\"Last command is still pending\"}",
+          "{\"BadPartBootFlag\":\"Bad boot flag for partition\"}",
+          "{\"NoBootDeviceDetected\":\"No boot device detected\"}",
+          "{\"SystemUpdateInProgress\":\"Update already in progress\"}",
+          "{\"InvalidNumberOfFiles\":\"Unexpected number of files in system update zip\"}",
+          "{\"BadUpdateFile\":\"Incorrect file type in system update zip\"}",
+          "{\"InsufficientMemory\":\"Insufficient memory space for update (Reboot miner to clear memory)\"}",
+          "{\"FileCreateExtractionFailed\":\"File extraction failed ( path creation)\"}",
+          "{\"FileCopyExtractionFailed\":\"File extraction failed ( copy) \"}",
+          "{\"MissingSwuFile\":\"Missing .swu file in update zip\"}",
+          "{\"FailedToCopyImage\":\"Failed to copy image to device \"}",
+          "{\"PSUInfoNotDetected\":\"PSU Info Not Detected\"}",
+          "{\"InvalidBoardId\":\"Invalid board id duplicate or not exist\"}",
+          "{\"InvalidNumberHashrateSplitConfig\":\"Number of splits exceeds the maximum (0) allowed\"}",
+          "{\"InvalidSumPortion\":\"Sum of portions must be 100\"}",
+          "{\"InvalidSplitPortion\":\"Portion cannot be 0\"}",
+          "{\"InvalidHashrateSplitConfig\":\"Invalid hashrate split config\"}",
+          "{\"InvalidPoolConfig\":\"Invalid pool config\"}",
+          "{\"UniqueIdParseError\":\"unique id parse error\"}",
+          "{\"InvalidPoolAddr\":\"\"}",
+          "{\"InvalidMethod\":\"\"}",
+          "{\"InvalidUrl\":\"\"}",
+          "{\"UnknownError\":\"\"}"
+        ]
+      },
+      "AutofanInfo": {
+        "type": "object",
+        "required": ["Target Temperature", "Idle Speed"],
+        "properties": {
+          "Idle Speed": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Target Temperature": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "CapabilitiesResponse": {
+        "type": "object",
+        "required": [
+          "Model",
+          "Board Serial Numbers",
+          "Default Voltage",
+          "Default Hashrate",
+          "Chips Per Bank",
+          "Max HBs",
+          "Max Clock Configs",
+          "Coins",
+          "Display",
+          "Tune Presets",
+          "PerpetualTune",
+          "Temp Sensor Info"
+        ],
+        "properties": {
+          "Board Serial Numbers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "Chip Type": {
+            "type": "string",
+            "nullable": true
+          },
+          "Chips Per Bank": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Coins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "Control Board Version": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ControlBoardVersion"
+              }
+            ],
+            "nullable": true
+          },
+          "Default Clock": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Default Hashrate": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Default Voltage": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Display": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "Max Clock Configs": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Max HBs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Model": {
+            "type": "string"
+          },
+          "Model Subtype": {
+            "type": "string",
+            "nullable": true
+          },
+          "Performance Estimator": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceEstimator"
+              }
+            ],
+            "nullable": true
+          },
+          "PerpetualTune": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PerpetualTuneOption"
+            }
+          },
+          "Psu Info": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PsuInfo"
+              }
+            ],
+            "nullable": true
+          },
+          "Temp Sensor Info": {
+            "$ref": "#/components/schemas/TempSensorInfo"
+          },
+          "Tune Presets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TuneOption"
+            }
+          },
+          "Voltage Estimator": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VoltageEstimator"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "ChipTuneHbClocks": {
+        "type": "object",
+        "required": ["v"],
+        "properties": {
+          "v": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HbClocks"
+            }
+          }
+        }
+      },
+      "ChipTuneSingleHbConfig": {
+        "type": "object",
+        "required": ["v"],
+        "properties": {
+          "v": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SingleHbConfig"
+            }
+          }
+        }
+      },
+      "ClksAndVoltage": {
+        "type": "object",
+        "required": ["clks", "voltage"],
+        "properties": {
+          "clks": {
+            "type": "string"
+          },
+          "voltage": {
+            "type": "string"
+          }
+        }
+      },
+      "Coin": {
+        "type": "string",
+        "enum": ["BTC", "LTC"]
+      },
+      "CoinInfoCoinSchemaOnly": {
+        "type": "object",
+        "required": ["coin", "stratum_configs"],
+        "properties": {
+          "coin": {
+            "$ref": "#/components/schemas/Coin"
+          },
+          "stratum_configs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StratumConfig"
+            }
+          },
+          "unique_id": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "ControlBoardVersion": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CpuInfo"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "carrierBoardVersion": {
+                "type": "string",
+                "example": "1.2.3",
+                "nullable": true
+              },
+              "somBoardVersion": {
+                "type": "string",
+                "example": "1.2.3",
+                "nullable": true
+              }
+            }
+          }
+        ]
+      },
+      "CpuInfo": {
+        "type": "object",
+        "required": ["cpuSerial"],
+        "properties": {
+          "cpuHardware": {
+            "type": "string",
+            "nullable": true
+          },
+          "cpuSerial": {
+            "type": "string"
+          }
+        }
+      },
+      "FanMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["Auto"],
+            "properties": {
+              "Auto": {
+                "$ref": "#/components/schemas/AutofanInfo"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["Manual"],
+            "properties": {
+              "Manual": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              }
+            }
+          }
+        ]
+      },
+      "FansInfo": {
+        "type": "object",
+        "required": ["Fans Speed", "Fan Mode", "Minimum Working Fans"],
+        "properties": {
+          "Fan Mode": {
+            "$ref": "#/components/schemas/FanMode"
+          },
+          "Fans Speed": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Minimum Working Fans": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "FansRpmInfo": {
+        "type": "object",
+        "properties": {
+          "Fans Speed 1": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 10": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 11": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 12": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 2": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 3": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 4": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 5": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 6": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 7": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 8": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "Fans Speed 9": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          }
+        }
+      },
+      "GenHbDataBoolSchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["Index", "Data"],
+        "properties": {
+          "Data": {
+            "type": "boolean"
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "GenHbDataF32SchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["Index", "Data"],
+        "properties": {
+          "Data": {
+            "type": "number",
+            "format": "float"
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "HashboardCondition": {
+        "type": "object",
+        "required": ["Index", "Enabled", "Detected"],
+        "properties": {
+          "Detected": {
+            "type": "boolean"
+          },
+          "Enabled": {
+            "type": "boolean"
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "HashboardInfo": {
+        "type": "object",
+        "required": [
+          "Index",
+          "Input Voltage",
+          "Output Voltage",
+          "Input Current",
+          "Output Current",
+          "Input Power",
+          "Output Power",
+          "Core Clock",
+          "Hashrate",
+          "Core Clock Avg"
+        ],
+        "properties": {
+          "Core Clock": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "Core Clock Avg": {
+            "type": "number",
+            "format": "float"
+          },
+          "Hashrate": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Input Current": {
+            "type": "number",
+            "format": "float"
+          },
+          "Input Power": {
+            "type": "number",
+            "format": "float"
+          },
+          "Input Voltage": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Current": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Power": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Voltage": {
+            "type": "number",
+            "format": "float"
+          },
+          "Temperature": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          }
+        }
+      },
+      "HashrateHisData": {
+        "type": "object",
+        "required": ["Hashrate", "Timestamp"],
+        "properties": {
+          "Hashrate": {
+            "type": "number",
+            "format": "float"
+          },
+          "Timestamp": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "HashrateSplitInfoSchemaOnly": {
+        "type": "object",
+        "required": ["enabled", "hashrate_splits"],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "hashrate_splits": {
+            "$ref": "#/components/schemas/HashrateSplitSchemaOnly"
+          }
+        }
+      },
+      "HashrateSplitSchemaOnly": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CoinInfoCoinSchemaOnly"
+          },
+          {
+            "type": "object",
+            "required": ["ratio", "unique_worker_id_variant"],
+            "properties": {
+              "ratio": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              },
+              "unique_worker_id_variant": {
+                "$ref": "#/components/schemas/UniqueIdVariant"
+              }
+            }
+          }
+        ]
+      },
+      "HbClocks": {
+        "type": "object",
+        "required": ["Index", "Data"],
+        "properties": {
+          "Data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TupleHbClocksSchemaOnly"
+            },
+            "description": "For schema display only, SHOULD NOT be used for coding purposes."
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "HbDataF32SchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["Index", "Data", "Total"],
+        "properties": {
+          "Data": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Total": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "HbDataTupleCoreConfigSchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["Index", "Data", "Total"],
+        "properties": {
+          "Data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TupleCoreConfigSchemaOnly"
+            }
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Total": {
+            "$ref": "#/components/schemas/TupleCoreConfigSchemaOnly"
+          }
+        }
+      },
+      "HbDataTupleF32SchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["Index", "Data", "Total"],
+        "properties": {
+          "Data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TupleF32SchemaOnly"
+            }
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Total": {
+            "$ref": "#/components/schemas/TupleF32SchemaOnly"
+          }
+        }
+      },
+      "HbParams": {
+        "type": "object",
+        "required": ["HBs"],
+        "properties": {
+          "HBs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HashboardInfo"
+            }
+          }
+        }
+      },
+      "HistoryResponse": {
+        "type": "object",
+        "required": ["History"],
+        "properties": {
+          "History": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HashrateHisData"
+            }
+          }
+        }
+      },
+      "HwConfigInfo": {
+        "type": "object",
+        "required": ["Boards Target Clock"],
+        "properties": {
+          "Boards Target Clock": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenHbDataF32SchemaOnly"
+            }
+          }
+        }
+      },
+      "JsonRequest": {
+        "type": "object",
+        "required": ["param", "password"],
+        "properties": {
+          "param": {
+            "type": "object"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "JsonResponse": {
+        "type": "object",
+        "required": ["result"],
+        "properties": {
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              }
+            ],
+            "nullable": true
+          },
+          "result": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MinerError": {
+        "type": "string",
+        "enum": [
+          "{\"UserCoreConfigMismatch\":\"user chip core configs target mismatch size of actual chip core configs\"}",
+          "{\"NoCorePllConfig\":\"chip core pll config not supported/initialized\"}",
+          "{\"CoreClockIndexError\":\"tried getting a pll clock that was out of bounds\"}",
+          "{\"UserConfigPktError\":\"user chip config setting is out of bounds\"}",
+          "{\"UserClkPktError\":\"user clock setting is out of bounds\"}",
+          "{\"RxMissing\":\"missing mpsc receiver\"}",
+          "{\"NoHashboardsConnected\":\"there is no hashboard connected\"}",
+          "{\"MismatchingBoardTypes\":\"mismatching board types []\"}",
+          "{\"UartReadError\":\"uart read error chip_id 0\"}",
+          "{\"GReadEmptyData\":\"global read cmd did not receive any data when reading reg 00\"}",
+          "{\"GReadPanic\":\"global read cmd channel failed when reading reg 00 with error \"}",
+          "{\"ChipTypeParseError\":\"parsing chip type from string failed\"}",
+          "{\"TestParseError\":\"parsing test from string failed\"}",
+          "{\"CoinParseError\":\"parsing coin from string failed\"}",
+          "{\"NetworkInfoParseError\":\"parsing network from string failed\"}",
+          "{\"NoConfigFile\":\"no config file specified\"}",
+          "{\"SyncHbError\":\"synchronizing with hashboard took too long\"}",
+          "{\"NoNewWorkError\":\"haven't received new work in the last 2min\"}",
+          "{\"ChipDetectError\":\"chip detect failed\"}",
+          "{\"HbChipDetectError\":\"chip detect failed on hashboards []\"}",
+          "{\"ChipDetectTimeout\":\"chip detect timed out because of uart\"}",
+          "{\"ChipIdInitError\":\"\"}",
+          "{\"BoardTypeUndefined\":\"board type undefined\"}",
+          "{\"BadOTPError\":\"OTPs did not match key\"}",
+          "{\"BadSolutionError\":\"bad Solution\"}",
+          "{\"MinimumFansError\":\"Number of detected running fans(0) is below the minimum fans required\"}",
+          "{\"CriticalTempReached\":\"hb0 reached critical shutdown temp with max temp 0\"}",
+          "{\"ShutdownTempReached\":\"hb0 reached shutdown temp with max temp 0\"}",
+          "{\"ChipShutdownTempReached\":\"hb0 chip_ids [] reached shutdown temp\"}",
+          "{\"InitializationShutdown\":\"shutdown during initialization\"}",
+          "{\"NotEnoughMemory\":\"can't allocate memory for m4 buffers\"}",
+          "{\"LegacyChipDetectError\":\"legacy firmware does not support or read chip type\"}",
+          "{\"OutdatedChipDetectError\":\"use legacy firmware version for s19 or s19pro compatibility\"}",
+          "{\"NoSolutions\":\"solutions no longer being received from any hashboard\"}",
+          "{\"EepromMatchingError\":\"mismatched hashboard eeprom data\"}",
+          "{\"EepromParsingError\":\"error when gathering data from eeprom\"}",
+          "{\"GetPerfEstimatorError\":\"missing or mismatched hb performance estimators\"}",
+          "{\"UnableToReachTemp\":\"Unable to reach warmup target temp\"}",
+          "{\"SystemUpdateError\":\"error when updating system\"}",
+          "{\"ReachedCutoffVoltage\":\"hb 0 chip_id 0 voltage 0 reached cutoff voltage\"}",
+          "{\"UnsupportedChipType\":\"unsupported chip type \"}",
+          "{\"EepromDataParsingBad\":\"eeprom data was not parsed correctly for \"}",
+          "{\"MissingCliParam\":\"\"}",
+          "{\"ClkDivError\":\"\"}",
+          "{\"PsuStatusError\":\"PSU returned the following errors \"}",
+          "{\"NoTempSensors\":\"No Temp Sensors Detected\"}",
+          "{\"NoTempSensorsForChamber\":\"No Temp Sensors Detected for chamber []\"}",
+          "{\"UnknownError\":\"\"}",
+          "{\"MismatchingChipTypes\":\"Chip types are mismatching between boards\"}",
+          "{\"PsuError\":\"\"}",
+          "{\"LicenseError\":\"\"}",
+          "{\"PsuInitError\":\"No psu detected for chamber, disabling boards in chamber []\"}",
+          "{\"StaticIpError\":\"Not able to connect using static ip settings... reverting to previous settings\"}"
+        ]
+      },
+      "MinerState": {
+        "type": "string",
+        "enum": [
+          "AdjustingClockVoltage",
+          "Idling",
+          "Initializing",
+          "Loading",
+          "Mining",
+          "PreInitCooldown",
+          "Rebooting",
+          "SoftRebooting",
+          "Stopping",
+          "Testing",
+          "UpdatingFirmware"
+        ]
+      },
+      "MinerStatus": {
+        "type": "object",
+        "required": ["Operating State"],
+        "properties": {
+          "Last Command": {
+            "type": "string",
+            "nullable": true
+          },
+          "Last Command Result": {
+            "type": "string",
+            "nullable": true
+          },
+          "Last Error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MinerError"
+              }
+            ],
+            "nullable": true
+          },
+          "Operating State": {
+            "$ref": "#/components/schemas/MinerState"
+          }
+        }
+      },
+      "MiningParams": {
+        "type": "object",
+        "required": ["Coin", "Algorithm"],
+        "properties": {
+          "Algorithm": {
+            "type": "string"
+          },
+          "Coin": {
+            "type": "string"
+          }
+        }
+      },
+      "MiscInfo": {
+        "type": "object",
+        "required": ["Locate Miner State", "Shutdown Temp", "Critical Temp"],
+        "properties": {
+          "Critical Temp": {
+            "type": "number",
+            "format": "float"
+          },
+          "Locate Miner State": {
+            "type": "boolean"
+          },
+          "Shutdown Temp": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "Multipart": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "required": ["password", "checksum", "keepsettings", "update.zip"],
+        "properties": {
+          "checksum": {
+            "type": "string",
+            "description": "ALGORITHM: SHA256"
+          },
+          "keepsettings": {
+            "type": "boolean"
+          },
+          "password": {
+            "type": "string"
+          },
+          "update.zip": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "NetworkInfo": {
+        "type": "string",
+        "enum": [
+          {
+            "dhcp": null
+          },
+          {
+            "static": {
+              "address": "192.168.0.0",
+              "dns": "192.168.0.0",
+              "dns2": "192.168.0.0",
+              "gateway": "192.168.0.0",
+              "mac_address": "E2:FA:20:0A:43:1D",
+              "netmask": "255.255.255.0"
+            }
+          }
+        ]
+      },
+      "OpState": {
+        "type": "string",
+        "enum": ["Stop", "Autostart"]
+      },
+      "PerformanceEstimator": {
+        "type": "object",
+        "required": ["Chip Count", "Hashes Per Second Per Chip"],
+        "properties": {
+          "Chip Count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Hashes Per Second Per Chip": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "PerpetualTuneAlgorithm": {
+        "type": "string",
+        "enum": ["ChipTune", "VoltageOptimizer", "Power", "BoardTune"]
+      },
+      "PerpetualTuneInfo": {
+        "type": "object",
+        "required": ["Enable", "Running", "Current Algorithm", "Algorithms"],
+        "properties": {
+          "Algorithms": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AlgorithmStats"
+            }
+          },
+          "Current Algorithm": {
+            "$ref": "#/components/schemas/PerpetualTuneAlgorithm"
+          },
+          "Enable": {
+            "type": "boolean"
+          },
+          "Running": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PerpetualTuneOption": {
+        "type": "object",
+        "required": ["algorithm", "name", "description", "min", "max"],
+        "properties": {
+          "algorithm": {
+            "$ref": "#/components/schemas/PerpetualTuneAlgorithm"
+          },
+          "description": {
+            "type": "string"
+          },
+          "max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "min": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PerpetualTuneSummary": {
+        "type": "object",
+        "required": ["Running", "Algorithm"],
+        "properties": {
+          "Algorithm": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AlgorithmStats"
+            }
+          },
+          "Running": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PoolInfo": {
+        "type": "object",
+        "required": [
+          "pool",
+          "login",
+          "shares_accepted",
+          "shares_rejected",
+          "work_received",
+          "difficulty",
+          "is_stratum_connected"
+        ],
+        "properties": {
+          "difficulty": {
+            "type": "number",
+            "format": "float"
+          },
+          "hr_15_min": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "hr_1_hour": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "hr_24_hour": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "is_stratum_connected": {
+            "type": "boolean"
+          },
+          "last_accepted_share_time": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "last_accepted_share_timer": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "last_work_date": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "last_work_timer": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "login": {
+            "type": "string"
+          },
+          "pool": {
+            "type": "string"
+          },
+          "shares_accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "shares_rejected": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "work_received": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PresetParams": {
+        "type": "object",
+        "required": ["Target Power"],
+        "properties": {
+          "Target Power": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PsuInfo": {
+        "type": "object",
+        "required": ["PSU Type", "FW", "Min Vout", "Max Vout", "True Power"],
+        "properties": {
+          "FW": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "Max Vout": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Min Vout": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "PSU Type": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "True Power": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PsuStats": {
+        "type": "object",
+        "required": [
+          "Input Voltage",
+          "Output Voltage",
+          "Input Current",
+          "Output Current",
+          "Input Power",
+          "Output Power",
+          "Target Voltage"
+        ],
+        "properties": {
+          "Input Current": {
+            "type": "number",
+            "format": "float"
+          },
+          "Input Power": {
+            "type": "number",
+            "format": "float"
+          },
+          "Input Voltage": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Current": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Power": {
+            "type": "number",
+            "format": "float"
+          },
+          "Output Voltage": {
+            "type": "number",
+            "format": "float"
+          },
+          "Target Voltage": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "SessionParams": {
+        "type": "object",
+        "required": [
+          "Startup Timestamp",
+          "Startup String",
+          "Uptime",
+          "WorkReceived",
+          "Active HBs",
+          "Accepted",
+          "Rejected",
+          "Submitted",
+          "Difficulty"
+        ],
+        "properties": {
+          "Accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Active HBs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Average MHs": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "Difficulty": {
+            "type": "number",
+            "format": "float"
+          },
+          "Last Accepted Share Timer": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "Last Accepted Share Timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "Last Work Timer": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "Last Work Timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "LastAverageMHs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HashrateHisData"
+              }
+            ],
+            "nullable": true
+          },
+          "Rejected": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Startup String": {
+            "type": "string"
+          },
+          "Startup Timestamp": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "Submitted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Uptime": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "WorkReceived": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "SingleHbConfig": {
+        "type": "object",
+        "required": ["Index", "Data"],
+        "properties": {
+          "Data": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "allOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "type": "integer",
+                            "format": "int32",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "integer",
+                            "format": "int32",
+                            "minimum": 0
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "Index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "StaticNetworkInfo": {
+        "type": "object",
+        "required": ["address", "netmask", "gateway", "dns"],
+        "properties": {
+          "address": {
+            "type": "string",
+            "example": "192.168.0.0"
+          },
+          "dns": {
+            "type": "string",
+            "example": "192.168.0.0"
+          },
+          "dns2": {
+            "type": "string",
+            "example": "192.168.0.0",
+            "nullable": true
+          },
+          "gateway": {
+            "type": "string",
+            "example": "192.168.0.0"
+          },
+          "netmask": {
+            "type": "string",
+            "example": "255.255.255.0"
+          }
+        }
+      },
+      "StratumConfig": {
+        "type": "object",
+        "required": ["pool", "login"],
+        "properties": {
+          "login": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "pool": {
+            "type": "string"
+          }
+        }
+      },
+      "StratumParams": {
+        "type": "object",
+        "required": [
+          "Config Id",
+          "Current Pool",
+          "Current User",
+          "IsPoolConnected",
+          "Average Latency",
+          "Worker Unique Id",
+          "Worker Unique Id Variant"
+        ],
+        "properties": {
+          "Average Latency": {
+            "type": "number",
+            "format": "float"
+          },
+          "Config Id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Current Pool": {
+            "type": "string"
+          },
+          "Current User": {
+            "type": "string"
+          },
+          "IsPoolConnected": {
+            "type": "boolean"
+          },
+          "Worker Unique Id": {
+            "type": "boolean"
+          },
+          "Worker Unique Id Variant": {
+            "$ref": "#/components/schemas/UniqueIdVariant"
+          }
+        }
+      },
+      "SummaryResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HbParams"
+          },
+          {
+            "type": "object",
+            "required": [
+              "Status",
+              "Hostname",
+              "PresetInfo",
+              "Software",
+              "OS Type",
+              "Mining",
+              "Stratum",
+              "Session",
+              "HBStatus",
+              "Fans",
+              "Fans Rpm",
+              "Misc",
+              "StratumConfigs",
+              "PerpetualTune",
+              "Power Supply Stats",
+              "HwConfig",
+              "IdleOnConnectionLost",
+              "Overdrive",
+              "Disable Board On Failure",
+              "Enable Boards On Idle"
+            ],
+            "properties": {
+              "Disable Board On Failure": {
+                "type": "boolean"
+              },
+              "Enable Boards On Idle": {
+                "type": "boolean"
+              },
+              "Fans": {
+                "$ref": "#/components/schemas/FansInfo"
+              },
+              "Fans Rpm": {
+                "$ref": "#/components/schemas/FansRpmInfo"
+              },
+              "HBStatus": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/HashboardCondition"
+                }
+              },
+              "Hostname": {
+                "type": "string"
+              },
+              "HwConfig": {
+                "$ref": "#/components/schemas/HwConfigInfo"
+              },
+              "IdleOnConnectionLost": {
+                "type": "boolean"
+              },
+              "Last License Error": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/MinerError"
+                  }
+                ],
+                "nullable": true
+              },
+              "Mining": {
+                "$ref": "#/components/schemas/MiningParams"
+              },
+              "Misc": {
+                "$ref": "#/components/schemas/MiscInfo"
+              },
+              "OS Type": {
+                "type": "string"
+              },
+              "Overdrive": {
+                "type": "boolean"
+              },
+              "PerpetualTune": {
+                "$ref": "#/components/schemas/PerpetualTuneSummary"
+              },
+              "Power Supply Stats": {
+                "$ref": "#/components/schemas/PsuStats"
+              },
+              "PresetInfo": {
+                "$ref": "#/components/schemas/PresetParams"
+              },
+              "Session": {
+                "$ref": "#/components/schemas/SessionParams"
+              },
+              "Software": {
+                "type": "string"
+              },
+              "Status": {
+                "$ref": "#/components/schemas/MinerStatus"
+              },
+              "Stratum": {
+                "$ref": "#/components/schemas/StratumParams"
+              },
+              "StratumConfigs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StratumConfig"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "TempSensorInfo": {
+        "type": "object",
+        "required": ["Type", "Count"],
+        "properties": {
+          "Count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "Type": {
+            "$ref": "#/components/schemas/TempSensorType"
+          }
+        }
+      },
+      "TempSensorType": {
+        "type": "string",
+        "enum": ["Board", "Chip", "NotDetected"]
+      },
+      "TotalHashrate": {
+        "type": "object",
+        "required": ["hashrate", "timestamp"],
+        "properties": {
+          "hashrate": {
+            "type": "number",
+            "format": "float"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TuneOption": {
+        "type": "object",
+        "required": ["voltage", "clk", "hashrate"],
+        "properties": {
+          "clk": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hashrate": {
+            "type": "number",
+            "format": "float"
+          },
+          "power": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0
+          },
+          "voltage": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "TuneSingleHbClock": {
+        "type": "object",
+        "required": ["v"],
+        "properties": {
+          "v": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenHbDataF32SchemaOnly"
+            }
+          }
+        }
+      },
+      "TupleCoreConfigSchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "properties": {
+          "0": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "number",
+                  "format": "float"
+                }
+              ]
+            }
+          },
+          "1": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "number",
+                  "format": "int32"
+                }
+              ]
+            }
+          }
+        },
+        "example": [[], null]
+      },
+      "TupleF32SchemaOnly": {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "format": "float",
+          "description": "For schema display only, SHOULD NOT be used for coding purposes."
+        },
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "maxItems": 3,
+        "minItems": 3
+      },
+      "TupleHbClocksSchemaOnly": {
+        "type": "object",
+        "description": "For schema display only, SHOULD NOT be used for coding purposes.",
+        "properties": {
+          "0": {
+            "type": "number",
+            "format": "int32"
+          },
+          "1": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "number",
+                  "format": "float"
+                }
+              ]
+            }
+          }
+        },
+        "example": [0, []]
+      },
+      "UniqueIdVariant": {
+        "type": "string",
+        "enum": ["IpAddress", "MacAddress", "CpuId"]
+      },
+      "VoltageEstimator": {
+        "type": "object",
+        "required": ["Slope", "Y Intercept"],
+        "properties": {
+          "Slope": {
+            "type": "number",
+            "format": "float"
+          },
+          "Y Intercept": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      }
+    }
+  }
+}
+

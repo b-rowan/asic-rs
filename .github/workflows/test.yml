@@ -1,0 +1,19 @@
+name: Run Tests
+
+on:
+  push:
+
+jobs:
+  cargo-test:
+    name: Cargo Test
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests
+        run: cargo test --all --locked

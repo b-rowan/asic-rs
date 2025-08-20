@@ -761,3 +761,68 @@ impl GetPools for PowerPlayV1 {
         pools_vec
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::device::models::antminer::AntMinerModel::S19XP;
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::epic::v1::*;
+    use anyhow::Result;
+
+    #[tokio::test]
+    async fn parse_data_test_antminer_s19xp() -> Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19XP));
+
+        let mut results = HashMap::new();
+
+        let commands = vec![
+            ("summary", SUMMARY),
+            ("capabilities", CAPABILITIES),
+            ("temps", TEMPS),
+            ("network", NETWORK),
+            ("clocks", CHIP_CLOCKS),
+            ("temps/chip", CHIP_TEMPS),
+            ("voltages", CHIP_VOLTAGES),
+            ("hashrate", CHIP_HASHRATES),
+        ];
+
+        for (command, data) in commands {
+            let cmd: MinerCommand = MinerCommand::WebAPI {
+                command,
+                parameters: None,
+            };
+            results.insert(cmd, Value::from_str(data)?);
+        }
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(23170)));
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(2166.6174)));
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.hashboards[0].active, Some(false));
+        assert_eq!(miner_data.hashboards[1].chips.len(), 110);
+        assert_eq!(
+            miner_data.hashboards[1].chips[69].hashrate,
+            Some(HashRate {
+                value: 305937.8,
+                unit: HashRateUnit::MegaHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(
+            miner_data.hashboards[2].chips[72].hashrate,
+            Some(HashRate {
+                value: 487695.28,
+                unit: HashRateUnit::MegaHash,
+                algo: String::from("SHA256"),
+            })
+        );
+
+        Ok(())
+    }
+}
