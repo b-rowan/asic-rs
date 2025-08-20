@@ -10,7 +10,7 @@ use std::net::IpAddr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::BoardData;
-use crate::data::device::DeviceInfo;
+use crate::data::device::{DeviceInfo, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::MinerMessage;
@@ -19,6 +19,15 @@ use crate::miners::commands::MinerCommand;
 
 use crate::data::miner::MinerData;
 use crate::miners::data::{DataCollector, DataField, DataLocation};
+
+pub(crate) trait MinerConstructor {
+    #[allow(clippy::new_ret_no_self)]
+    fn new(
+        ip: IpAddr,
+        model: MinerModel,
+        version: Option<semver::Version>,
+    ) -> Box<dyn GetMinerData>;
+}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]

@@ -5,16 +5,16 @@ pub use v2_0_0::BitAxe200;
 pub use v2_9_0::BitAxe290;
 
 use crate::data::device::MinerModel;
-use crate::miners::backends::traits::GetMinerData;
+use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
 
 pub mod v2_0_0;
 pub mod v2_9_0;
 
 pub struct BitAxe;
 
-impl BitAxe {
+impl MinerConstructor for BitAxe {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(
+    fn new(
         ip: IpAddr,
         model: MinerModel,
         version: Option<semver::Version>,

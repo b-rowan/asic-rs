@@ -25,7 +25,7 @@ use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::bitaxe::BitAxe;
 use crate::miners::backends::epic::PowerPlay;
-use crate::miners::backends::traits::GetMinerData;
+use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
 use crate::miners::factory::traits::VersionSelection;

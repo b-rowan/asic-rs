@@ -6,7 +6,7 @@ pub use v2::WhatsMinerV2;
 pub use v3::WhatsMinerV3;
 
 use crate::data::device::MinerModel;
-use crate::miners::backends::traits::GetMinerData;
+use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
 
 pub mod v1;
 pub mod v2;
@@ -14,9 +14,9 @@ pub mod v3;
 
 pub struct WhatsMiner;
 
-impl WhatsMiner {
+impl MinerConstructor for WhatsMiner {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(
+    fn new(
         ip: IpAddr,
         model: MinerModel,
         version: Option<semver::Version>,
