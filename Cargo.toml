@@ -24,6 +24,16 @@ rand = "0.9"
 regex = "1.11"
 chrono = "0.4.41"
 
+pyo3 = { version = "0.25.1", features = [
+    "extension-module",
+    "experimental-async",
+    "experimental-inspect",
+] } # , optional = true }
+pyo3-async-runtimes = { version = "0.25.0", features = [
+    "tokio-runtime",
+] } # , optional = true }
+pyo3-introspection = { version = "0.26.0-dev" }
+
 [profile.release]
 opt-level = 3
 lto = "fat"
@@ -31,3 +41,10 @@ codegen-units = 1
 panic = "abort"
 incremental = false
 strip = true
+
+# [features]
+# python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection"]
+
+[lib]
+name = "pyasic_rs"
+crate-type = ["cdylib", "rlib"]

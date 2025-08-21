@@ -184,6 +184,7 @@ fn select_backend(
     }
 }
 
+#[derive(Clone)]
 pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
