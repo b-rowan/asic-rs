@@ -47,10 +47,7 @@ impl AvalonMinerRPCAPI {
         let message = status_array[0].get("Msg").and_then(|v| v.as_str());
         let status = RPCCommandStatus::from_str(status_str, message);
 
-        status.into_result().map_err(|e| {
-            dbg!("{}: API Command Error: {}", self.ip, &e);
-            anyhow!(e)
-        })?;
+        status.into_result().map_err(|e| anyhow!(e))?;
 
         if let Some(stats_arr) = val["STATS"].as_array_mut() {
             for item in stats_arr {

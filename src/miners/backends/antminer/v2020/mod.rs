@@ -770,7 +770,5 @@ mod tests {
                 algo: "SHA256".to_string(),
             }
         );
-
-        //dbg!(&miner_data);
     }
 }

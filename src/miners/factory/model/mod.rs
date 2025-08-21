@@ -300,3 +300,21 @@ pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Option<MinerModel> {
         None => None,
     }
 }
+
+pub(crate) async fn get_model_marathon(ip: IpAddr) -> Option<MinerModel> {
+    let response = util::send_rpc_command(&ip, "version").await;
+
+    match response {
+        Some(json_data) => {
+            let model: Option<&str> = json_data["VERSION"][0]["Model"].as_str();
+            model?;
+
+            let model = model.unwrap().to_uppercase();
+
+            MinerModelFactory::new()
+                .with_firmware(MinerFirmware::Marathon)
+                .parse_model(&model)
+        }
+        None => None,
+    }
+}

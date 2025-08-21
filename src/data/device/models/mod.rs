@@ -180,6 +180,12 @@ impl MinerModelFactory {
                     }
                     None
                 }
+                Some(MinerFirmware::Marathon) => {
+                    if let Ok(model) = AntMinerModel::from_str(model_str) {
+                        return Some(MinerModel::AntMiner(model));
+                    }
+                    None
+                }
                 None => None,
                 _ => None,
             },

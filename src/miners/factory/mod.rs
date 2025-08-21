@@ -26,6 +26,7 @@ use crate::miners::backends::antminer::AntMiner;
 use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::bitaxe::BitAxe;
 use crate::miners::backends::epic::PowerPlay;
+use crate::miners::backends::marathon::Marathon;
 use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
@@ -93,22 +94,24 @@ fn parse_type_from_socket(
     response: serde_json::Value,
 ) -> Option<(Option<MinerMake>, Option<MinerFirmware>)> {
     let json_string = response.to_string().to_uppercase();
-
     match () {
         _ if json_string.contains("BOSMINER") || json_string.contains("BOSER") => {
             Some((None, Some(MinerFirmware::BraiinsOS)))
         }
         _ if json_string.contains("LUXMINER") => Some((None, Some(MinerFirmware::LuxOS))),
+        _ if json_string.contains("MARAFW") || json_string.contains("KAONSU") => {
+            Some((None, Some(MinerFirmware::Marathon)))
+        }
+        _ if json_string.contains("VNISH") => Some((None, Some(MinerFirmware::VNish))),
         _ if json_string.contains("BITMICRO") || json_string.contains("BTMINER") => {
             Some((Some(MinerMake::WhatsMiner), Some(MinerFirmware::Stock)))
         }
-        _ if json_string.contains("ANTMINER") && !json_string.contains("DEVDETAILS") => {
+        _ if json_string.contains("ANTMINER") => {
             Some((Some(MinerMake::AntMiner), Some(MinerFirmware::Stock)))
         }
         _ if json_string.contains("AVALON") => {
             Some((Some(MinerMake::AvalonMiner), Some(MinerFirmware::Stock)))
         }
-        _ if json_string.contains("VNISH") => Some((None, Some(MinerFirmware::VNish))),
         _ => None,
     }
 }
@@ -121,12 +124,18 @@ fn parse_type_from_web(
         Some(header) => header.to_str().unwrap(),
         None => "",
     };
+    let algo_header = match resp_headers.get("algorithm") {
+        Some(header) => header.to_str().unwrap(),
+        None => "",
+    };
     let redirect_header = match resp_headers.get("location") {
         Some(header) => header.to_str().unwrap(),
         None => "",
     };
-
     match () {
+        _ if resp_status == 401 && algo_header.contains("MD5") => {
+            Some((None, Some(MinerFirmware::Marathon)))
+        }
         _ if resp_status == 401 && auth_header.contains("realm=\"antMiner") => {
             Some((Some(MinerMake::AntMiner), Some(MinerFirmware::Stock)))
         }
@@ -170,6 +179,7 @@ fn select_backend(
         }
         (Some(_), Some(MinerFirmware::VNish)) => Some(Vnish::new(ip, model?, version)),
         (Some(_), Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, model?, version)),
+        (Some(_), Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model?, version)),
         _ => None,
     }
 }
@@ -282,6 +292,7 @@ impl MinerFactory {
             Some((_, Some(firmware))) => {
                 let model = firmware.get_model(ip).await;
                 let version = firmware.get_version(ip).await;
+
                 if let Some(model) = model {
                     return Ok(select_backend(ip, Some(model), Some(firmware), version));
                 }

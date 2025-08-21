@@ -463,7 +463,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_espminer_200_data_parsers() {
-        dbg!(SYSTEM_INFO_COMMAND);
         let miner = BitAxe200::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::BitAxe(BitAxeModel::Supra),
