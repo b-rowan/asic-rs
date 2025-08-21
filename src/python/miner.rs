@@ -34,7 +34,7 @@ impl Miner {
     }
     #[getter]
     fn hardware(&self) -> MinerHardware {
-        MinerHardware::new(self.inner.get_device_info().hardware.clone())
+        MinerHardware::new(self.inner.get_device_info().hardware)
     }
 }
 
@@ -53,14 +53,14 @@ impl MinerHardware {
 impl MinerHardware {
     #[getter]
     fn chips(&self) -> Option<u16> {
-        self.inner.chips.clone()
+        self.inner.chips
     }
     #[getter]
     fn boards(&self) -> Option<u8> {
-        self.inner.boards.clone()
+        self.inner.boards
     }
     #[getter]
     fn fans(&self) -> Option<u8> {
-        self.inner.fans.clone()
+        self.inner.fans
     }
 }

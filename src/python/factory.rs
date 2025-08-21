@@ -42,7 +42,7 @@ pub mod factory {
             rt.block_on(async {
                 let miners = self.inner.scan().await;
                 match miners {
-                    Ok(miners) => Ok(miners.into_iter().map(|m| Miner::new(m)).collect()),
+                    Ok(miners) => Ok(miners.into_iter().map(Miner::new).collect()),
                     Err(e) => Err(PyValueError::new_err(e.to_string())),
                 }
             })
