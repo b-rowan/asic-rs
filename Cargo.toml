@@ -46,5 +46,9 @@ strip = true
 # python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection"]
 
 [lib]
-name = "pyasic_rs"
+name = "asic_rs"
 crate-type = ["cdylib", "rlib"]
+
+
+[package.metadata.maturin]
+name = "pyasic_rs"
