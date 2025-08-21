@@ -29,18 +29,12 @@ pub enum DataField {
     FirmwareVersion,
     /// Control board version of the miner.
     ControlBoardVersion,
-    /// Expected number of hashboards.
-    ExpectedHashboards,
     /// Details about the hashboards (e.g., temperatures, chips, etc.).
     Hashboards,
     /// Current hashrate reported by the miner.
     Hashrate,
     /// Expected hashrate for the miner.
     ExpectedHashrate,
-    /// Expected number of chips across all hashboards.
-    ExpectedChips,
-    /// Expected number of fans.
-    ExpectedFans,
     /// Fan speed or fan configuration.
     Fans,
     /// PSU fan speed or configuration.
