@@ -1,7 +1,11 @@
+use std::fmt::Display;
+
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[pyclass(str)]
 pub enum PoolScheme {
     StratumV1,
     StratumV1SSL,
@@ -19,7 +23,18 @@ impl From<String> for PoolScheme {
     }
 }
 
+impl Display for PoolScheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PoolScheme::StratumV1 => write!(f, "stratum+tcp"),
+            PoolScheme::StratumV1SSL => write!(f, "stratum+ssl"),
+            PoolScheme::StratumV2 => write!(f, "stratum2+tcp"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[pyclass(get_all, str)]
 pub struct PoolURL {
     /// The scheme being used to connect to this pool
     pub scheme: PoolScheme,
@@ -30,6 +45,16 @@ pub struct PoolURL {
     /// The public key for this pool
     /// Only used for Stratum V2 pools
     pub pubkey: Option<String>,
+}
+
+impl Display for PoolURL {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)?;
+        if let Some(pubkey) = &self.pubkey {
+            write!(f, "/{}", pubkey)?;
+        }
+        Ok(())
+    }
 }
 
 impl From<String> for PoolURL {
@@ -58,6 +83,7 @@ impl From<String> for PoolURL {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[pyclass(module = "asic_rs", get_all)]
 pub struct PoolData {
     pub position: Option<u16>,
     pub url: Option<PoolURL>,

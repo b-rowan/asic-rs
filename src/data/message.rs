@@ -1,6 +1,9 @@
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[pyclass(str)]
 pub enum MessageSeverity {
     Error,
     Warning,
@@ -8,6 +11,7 @@ pub enum MessageSeverity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[pyclass(get_all)]
 pub struct MinerMessage {
     /// The time this message was generated or occurred
     pub timestamp: u32,

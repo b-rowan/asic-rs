@@ -1,7 +1,9 @@
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[derive(Debug, Display, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Hash)]
+#[pyclass(module = "asic_rs", str)]
 pub enum AvalonMinerModel {
     #[serde(alias = "721")]
     Avalon721,

@@ -1,6 +1,8 @@
 use pyo3::prelude::*;
+use tokio::runtime::Runtime;
 
-use crate::data::device::MinerHardware as RsMinerHardware;
+use crate::data::device::{MinerFirmware, MinerHardware, MinerMake, MinerModel};
+use crate::data::miner::MinerData;
 use crate::miners::backends::traits::GetMinerData;
 
 #[pyclass]
@@ -21,46 +23,24 @@ impl Miner {
     }
 
     #[getter]
-    fn model(&self) -> String {
-        self.inner.get_device_info().model.clone().to_string()
+    fn model(&self) -> MinerModel {
+        self.inner.get_device_info().model
     }
     #[getter]
-    fn make(&self) -> String {
-        self.inner.get_device_info().make.clone().to_string()
+    fn make(&self) -> MinerMake {
+        self.inner.get_device_info().make
     }
     #[getter]
-    fn firmware(&self) -> String {
-        self.inner.get_device_info().firmware.clone().to_string()
+    fn firmware(&self) -> MinerFirmware {
+        self.inner.get_device_info().firmware
     }
     #[getter]
     fn hardware(&self) -> MinerHardware {
-        MinerHardware::new(self.inner.get_device_info().hardware)
+        self.inner.get_device_info().hardware
     }
-}
 
-#[pyclass]
-pub(crate) struct MinerHardware {
-    inner: RsMinerHardware,
-}
-
-impl MinerHardware {
-    pub fn new(inner: RsMinerHardware) -> Self {
-        Self { inner }
-    }
-}
-
-#[pymethods]
-impl MinerHardware {
-    #[getter]
-    fn chips(&self) -> Option<u16> {
-        self.inner.chips
-    }
-    #[getter]
-    fn boards(&self) -> Option<u8> {
-        self.inner.boards
-    }
-    #[getter]
-    fn fans(&self) -> Option<u8> {
-        self.inner.fans
+    async fn get_data(&self) -> MinerData {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async { self.inner.get_data().await })
     }
 }

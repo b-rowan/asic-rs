@@ -4,6 +4,7 @@ use avalon::AvalonMinerModel;
 use bitaxe::BitAxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
@@ -80,6 +81,7 @@ impl FromStr for EPicModel {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
+#[pyclass(module = "asic_rs", str)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
     WhatsMiner(WhatsMinerModel),

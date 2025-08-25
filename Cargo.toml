@@ -28,6 +28,7 @@ pyo3 = { version = "0.25.1", features = [
     "extension-module",
     "experimental-async",
     "experimental-inspect",
+    "multiple-pymethods",
 ] } # , optional = true }
 pyo3-async-runtimes = { version = "0.25.0", features = [
     "tokio-runtime",

@@ -7,6 +7,9 @@ use anyhow::Result;
 use futures::future::FutureExt;
 use futures::{Stream, StreamExt, pin_mut, stream};
 use ipnet::IpNet;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::types::PyType;
 use rand::seq::SliceRandom;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
@@ -16,6 +19,7 @@ use std::net::Ipv4Addr;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::net::TcpStream;
+use tokio::runtime::Runtime;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
 
@@ -31,6 +35,7 @@ use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
 use crate::miners::factory::traits::VersionSelection;
+use crate::python::miner::Miner as PyMiner;
 use std::net::SocketAddr;
 use traits::{DiscoveryCommands, ModelSelection};
 
@@ -185,6 +190,7 @@ fn select_backend(
 }
 
 #[derive(Clone)]
+#[pyclass(module = "asic_rs")]
 pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
@@ -596,6 +602,45 @@ impl MinerFactory {
     /// Scan for miners by IP range in the format "10.1-199.0.1-199"
     pub async fn scan_by_range(self, range_str: &str) -> Result<Vec<Box<dyn GetMinerData>>> {
         self.with_range(range_str)?.scan().await
+    }
+}
+
+#[pymethods]
+impl MinerFactory {
+    #[new]
+    pub fn py_new() -> Self {
+        Self::new()
+    }
+
+    #[classmethod]
+    #[pyo3(name = "with_subnet")]
+    pub fn py_with_subnet(_cls: &Bound<'_, PyType>, subnet: String) -> PyResult<Self> {
+        let factory = MinerFactory::new().with_subnet(&subnet);
+        match factory {
+            Ok(f) => Ok(f),
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
+        }
+    }
+
+    #[pyo3(name = "scan")]
+    async fn py_scan(&self) -> PyResult<Vec<PyMiner>> {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let miners = self.scan().await;
+            match miners {
+                Ok(miners) => Ok(miners.into_iter().map(PyMiner::new).collect()),
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
+            }
+        })
+    }
+
+    #[pyo3(name = "get_miner")]
+    async fn py_get_miner(&self, ip: String) -> Option<PyMiner> {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let miner = self.get_miner(IpAddr::from_str(&ip).ok()?).await.ok()?;
+            Some(PyMiner::new(miner?))
+        })
     }
 }
 

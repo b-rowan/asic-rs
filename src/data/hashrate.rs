@@ -1,4 +1,5 @@
 use measurements::Power;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -6,6 +7,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[pyclass(str)]
 pub enum HashRateUnit {
     Hash,
     KiloHash,
@@ -16,6 +18,13 @@ pub enum HashRateUnit {
     ExaHash,
     ZettaHash,
     YottaHash,
+}
+
+#[pymethods]
+impl HashRateUnit {
+    fn __int__(&self) -> u64 {
+        self.to_multiplier() as u64
+    }
 }
 
 impl HashRateUnit {
@@ -51,6 +60,7 @@ impl Display for HashRateUnit {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[pyclass(module = "asic_rs", get_all)]
 pub struct HashRate {
     /// The current amount of hashes being computed
     pub value: f64,

@@ -7,3 +7,5 @@ pub mod message;
 pub mod miner;
 pub mod pool;
 pub(crate) mod serialize;
+
+pub use miner::MinerData;

@@ -1,9 +1,11 @@
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
 pub mod models;
 pub use models::MinerModel;
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[pyclass(module = "asic_rs", str)]
 pub enum MinerFirmware {
     #[serde(rename = "Stock")]
     Stock,
@@ -24,6 +26,7 @@ pub enum MinerFirmware {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[pyclass(module = "asic_rs", str)]
 pub enum MinerMake {
     #[serde(rename = "AntMiner")]
     AntMiner,
@@ -40,6 +43,7 @@ pub enum MinerMake {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[pyclass(module = "asic_rs", str)]
 pub enum HashAlgorithm {
     #[serde(rename = "SHA256")]
     SHA256,
@@ -54,6 +58,7 @@ pub enum HashAlgorithm {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[pyclass(module = "asic_rs", get_all)]
 pub struct DeviceInfo {
     pub make: MinerMake,
     pub model: MinerModel,
@@ -80,6 +85,7 @@ impl DeviceInfo {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[pyclass(module = "asic_rs", get_all)]
 pub struct MinerHardware {
     pub chips: Option<u16>,
     pub fans: Option<u8>,
