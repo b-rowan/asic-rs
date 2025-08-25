@@ -21,6 +21,6 @@ pub struct FanData {
 impl FanData {
     #[getter]
     pub fn rpm(&self) -> Option<f64> {
-        self.rpm.and_then(|r| Some(r.as_rpm()))
+        self.rpm.map(|r| r.as_rpm())
     }
 }

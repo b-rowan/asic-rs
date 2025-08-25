@@ -112,22 +112,22 @@ pub struct MinerData {
 impl MinerData {
     #[getter]
     pub fn mac(&self) -> Option<String> {
-        self.mac.and_then(|m| Some(m.to_string()))
+        self.mac.map(|m| m.to_string())
     }
     #[getter]
     pub fn average_temperature(&self) -> Option<f64> {
-        self.average_temperature.and_then(|t| Some(t.as_celsius()))
+        self.average_temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn fluid_temperature(&self) -> Option<f64> {
-        self.fluid_temperature.and_then(|t| Some(t.as_celsius()))
+        self.fluid_temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn wattage(&self) -> Option<f64> {
-        self.wattage.and_then(|w| Some(w.as_watts()))
+        self.wattage.map(|w| w.as_watts())
     }
     #[getter]
     pub fn wattage_limit(&self) -> Option<f64> {
-        self.wattage_limit.and_then(|w| Some(w.as_watts()))
+        self.wattage_limit.map(|w| w.as_watts())
     }
 }

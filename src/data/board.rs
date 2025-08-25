@@ -37,15 +37,15 @@ pub struct ChipData {
 impl ChipData {
     #[getter]
     pub fn temperature(&self) -> Option<f64> {
-        self.temperature.and_then(|t| Some(t.as_celsius()))
+        self.temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn voltage(&self) -> Option<f64> {
-        self.voltage.and_then(|v| Some(v.as_volts()))
+        self.voltage.map(|v| v.as_volts())
     }
     #[getter]
     pub fn frequency(&self) -> Option<f64> {
-        self.frequency.and_then(|f| Some(f.as_megahertz()))
+        self.frequency.map(|f| f.as_megahertz())
     }
 }
 
@@ -106,22 +106,22 @@ pub struct BoardData {
 impl BoardData {
     #[getter]
     pub fn board_temperature(&self) -> Option<f64> {
-        self.board_temperature.and_then(|t| Some(t.as_celsius()))
+        self.board_temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn intake_temperature(&self) -> Option<f64> {
-        self.intake_temperature.and_then(|t| Some(t.as_celsius()))
+        self.intake_temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn outlet_temperature(&self) -> Option<f64> {
-        self.outlet_temperature.and_then(|t| Some(t.as_celsius()))
+        self.outlet_temperature.map(|t| t.as_celsius())
     }
     #[getter]
     pub fn voltage(&self) -> Option<f64> {
-        self.voltage.and_then(|v| Some(v.as_volts()))
+        self.voltage.map(|v| v.as_volts())
     }
     #[getter]
     pub fn frequency(&self) -> Option<f64> {
-        self.frequency.and_then(|f| Some(f.as_megahertz()))
+        self.frequency.map(|f| f.as_megahertz())
     }
 }
