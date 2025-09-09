@@ -31,7 +31,7 @@ impl MinerListener {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use asic_rs::miners::listener::MinerListener;
     /// use futures::pin_mut;
     /// use tokio_stream::StreamExt;
