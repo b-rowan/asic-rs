@@ -25,6 +25,8 @@ regex = "1.11"
 chrono = "0.4.41"
 tokio-stream = "0.1.17"
 async-stream = "0.3.6"
+sha2 = "0.10.9"
+base64 = "0.22.1"
 
 [profile.release]
 opt-level = 3

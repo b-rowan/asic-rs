@@ -33,6 +33,7 @@ pub(crate) trait MinerConstructor {
 #[async_trait]
 pub trait GetMinerData:
     CollectData
+    + MinerInterface
     + GetIP
     + GetDeviceInfo
     + GetExpectedHashboards
@@ -109,7 +110,8 @@ impl<
         + GetMessages
         + GetUptime
         + GetIsMining
-        + GetPools,
+        + GetPools
+        + MinerInterface,
 > GetMinerData for T
 {
     async fn get_data(&self) -> MinerData {
