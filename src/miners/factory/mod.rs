@@ -27,7 +27,7 @@ use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::bitaxe::BitAxe;
 use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::marathon::Marathon;
-use crate::miners::backends::traits::{GetMinerData, MinerConstructor};
+use crate::miners::backends::traits::*;
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
 use crate::miners::factory::traits::VersionSelection;
@@ -163,7 +163,7 @@ fn select_backend(
     model: Option<MinerModel>,
     firmware: Option<MinerFirmware>,
     version: Option<semver::Version>,
-) -> Option<Box<dyn GetMinerData>> {
+) -> Option<Box<dyn Miner>> {
     match (model, firmware) {
         (Some(MinerModel::WhatsMiner(_)), Some(MinerFirmware::Stock)) => {
             Some(WhatsMiner::new(ip, model?, version))
@@ -202,7 +202,7 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
-    pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
+    pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         // Quick port check first to avoid wasting time on dead IPs
         if (1..self.connectivity_retries).next().is_some() {
             if self.check_port && !check_port_open(ip, 80, self.connectivity_timeout).await {
@@ -214,7 +214,7 @@ impl MinerFactory {
         Ok(None)
     }
 
-    pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn GetMinerData>>> {
+    pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
             MinerMake::WhatsMiner,
@@ -511,7 +511,7 @@ impl MinerFactory {
     }
 
     /// Scan the IPs specified in the factory
-    pub async fn scan(&self) -> Result<Vec<Box<dyn GetMinerData>>> {
+    pub async fn scan(&self) -> Result<Vec<Box<dyn Miner>>> {
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
                 "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
@@ -522,7 +522,7 @@ impl MinerFactory {
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
 
-        let miners: Vec<Box<dyn GetMinerData>> = stream::iter(self.ips.iter().copied())
+        let miners: Vec<Box<dyn Miner>> = stream::iter(self.ips.iter().copied())
             .map(|ip| async move { self.scan_miner(ip).await.ok().flatten() })
             .buffer_unordered(concurrency)
             .filter_map(|miner_opt| async move { miner_opt })
@@ -532,7 +532,7 @@ impl MinerFactory {
         Ok(miners)
     }
 
-    pub fn scan_stream(&self) -> Result<impl Stream<Item = Box<dyn GetMinerData>>> {
+    pub fn scan_stream(&self) -> Result<impl Stream<Item = Box<dyn Miner>>> {
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
                 "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
@@ -557,7 +557,7 @@ impl MinerFactory {
 
     pub fn scan_stream_with_ip(
         &self,
-    ) -> Result<impl Stream<Item = (IpAddr, Option<Box<dyn GetMinerData>>)>> {
+    ) -> Result<impl Stream<Item = (IpAddr, Option<Box<dyn Miner>>)>> {
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
                 "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
@@ -586,14 +586,14 @@ impl MinerFactory {
         octet2: &str,
         octet3: &str,
         octet4: &str,
-    ) -> Result<Vec<Box<dyn GetMinerData>>> {
+    ) -> Result<Vec<Box<dyn Miner>>> {
         self.with_octets(octet1, octet2, octet3, octet4)?
             .scan()
             .await
     }
 
     /// Scan for miners by IP range in the format "10.1-199.0.1-199"
-    pub async fn scan_by_range(self, range_str: &str) -> Result<Vec<Box<dyn GetMinerData>>> {
+    pub async fn scan_by_range(self, range_str: &str) -> Result<Vec<Box<dyn Miner>>> {
         self.with_range(range_str)?.scan().await
     }
 }

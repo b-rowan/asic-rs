@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -771,6 +771,45 @@ impl GetPools for PowerPlayV1 {
         }
 
         pools_vec
+    }
+}
+
+#[async_trait]
+impl SetFaultLight for PowerPlayV1 {
+    #[allow(unused_variables)]
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for PowerPlayV1 {
+    #[allow(unused_variables)]
+    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Restart for PowerPlayV1 {
+    async fn restart(&self) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Pause for PowerPlayV1 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Resume for PowerPlayV1 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
     }
 }
 

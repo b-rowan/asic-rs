@@ -9,7 +9,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -616,5 +616,44 @@ impl GetPools for MaraV1 {
         }
 
         pools_vec
+    }
+}
+
+#[async_trait]
+impl SetFaultLight for MaraV1 {
+    #[allow(unused_variables)]
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for MaraV1 {
+    #[allow(unused_variables)]
+    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Restart for MaraV1 {
+    async fn restart(&self) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Pause for MaraV1 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Resume for MaraV1 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
     }
 }

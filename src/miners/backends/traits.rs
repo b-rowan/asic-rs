@@ -22,12 +22,16 @@ use crate::miners::data::{DataCollector, DataField, DataLocation};
 
 pub(crate) trait MinerConstructor {
     #[allow(clippy::new_ret_no_self)]
-    fn new(
-        ip: IpAddr,
-        model: MinerModel,
-        version: Option<semver::Version>,
-    ) -> Box<dyn GetMinerData>;
+    fn new(ip: IpAddr, model: MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
+
+pub trait Miner: GetMinerData + HasMinerControl {}
+
+impl<T: GetMinerData + HasMinerControl> Miner for T {}
+
+pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
+
+impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -500,6 +504,7 @@ pub trait GetLightFlashing: CollectData {
 pub trait SetFaultLight {
     async fn set_fault_light(&self, fault: bool) -> Result<bool>;
 }
+
 #[async_trait]
 pub trait SetPowerLimit {
     async fn set_power_limit(&self, limit: Power) -> Result<bool>;

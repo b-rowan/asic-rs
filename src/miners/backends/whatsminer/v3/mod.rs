@@ -471,3 +471,67 @@ impl GetPools for WhatsMinerV3 {
         pools
     }
 }
+
+#[async_trait]
+impl SetFaultLight for WhatsMinerV3 {
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+        let parameters = match fault {
+            true => Some(json!("auto")),
+            false => Some(json!([{"color": "red", "period": 60, "duration": 20, "start": 0}])),
+        };
+
+        let data = self
+            .rpc
+            .send_command("set.system.led", true, parameters)
+            .await;
+
+        Ok(data.is_ok())
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for WhatsMinerV3 {
+    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+        let data = self
+            .rpc
+            .send_command("set.miner.power_limit", true, Some(json!(limit)))
+            .await;
+
+        Ok(data.is_ok())
+    }
+}
+
+#[async_trait]
+impl Restart for WhatsMinerV3 {
+    async fn restart(&self) -> Result<bool> {
+        let data = self.rpc.send_command("set.system.reboot", true, None).await;
+
+        Ok(data.is_ok())
+    }
+}
+
+#[async_trait]
+impl Pause for WhatsMinerV3 {
+    async fn pause(&self, _at_time: Option<Duration>) -> Result<bool> {
+        // might not work as intended, if issues are found then switch to "enable" + "disable"
+        // see api docs - https://apidoc.whatsminer.com/#api-Miner-btminer_service_set
+        let data = self
+            .rpc
+            .send_command("set.miner.service", true, Some(json!("stop")))
+            .await;
+
+        Ok(data.is_ok())
+    }
+}
+
+#[async_trait]
+impl Resume for WhatsMinerV3 {
+    async fn resume(&self, _at_time: Option<Duration>) -> Result<bool> {
+        let data = self
+            .rpc
+            .send_command("set.miner.service", true, Some(json!("start")))
+            .await;
+
+        Ok(data.is_ok())
+    }
+}

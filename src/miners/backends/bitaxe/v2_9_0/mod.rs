@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -439,5 +439,44 @@ impl GetPools for BitAxe290 {
         };
 
         vec![main_pool_data, fallback_pool_data]
+    }
+}
+
+#[async_trait]
+impl SetFaultLight for BitAxe290 {
+    #[allow(unused_variables)]
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for BitAxe290 {
+    #[allow(unused_variables)]
+    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Restart for BitAxe290 {
+    async fn restart(&self) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Pause for BitAxe290 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
+    }
+}
+
+#[async_trait]
+impl Resume for BitAxe290 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+        bail!("Unsupported command");
     }
 }

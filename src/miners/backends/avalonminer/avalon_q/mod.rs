@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
@@ -173,6 +173,13 @@ impl SetPowerLimit for AvalonQMiner {
         }
 
         Err(anyhow!("Failed to set power limit"))
+    }
+}
+
+#[async_trait]
+impl Restart for AvalonQMiner {
+    async fn restart(&self) -> Result<bool> {
+        bail!("Unsupported command");
     }
 }
 
