@@ -2,7 +2,8 @@ use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
+use reqwest::Method;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -778,7 +779,15 @@ impl GetPools for PowerPlayV1 {
 impl SetFaultLight for PowerPlayV1 {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+        self.web
+            .send_command(
+                "identify",
+                false,
+                Some(json!({ "param": if fault { "true" } else { "false" } })),
+                Method::POST,
+            )
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 }
 
@@ -793,7 +802,10 @@ impl SetPowerLimit for PowerPlayV1 {
 #[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+        self.web
+            .send_command("reboot", false, Some(json!({"param": "0"})), Method::POST)
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 }
 
@@ -801,7 +813,10 @@ impl Restart for PowerPlayV1 {
 impl Pause for PowerPlayV1 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        self.web
+            .send_command("miner", false, Some(json!({"param": "Stop"})), Method::POST)
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 }
 
@@ -809,7 +824,15 @@ impl Pause for PowerPlayV1 {
 impl Resume for PowerPlayV1 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        self.web
+            .send_command(
+                "miner",
+                false,
+                Some(json!({ "param": "Autostart" })),
+                Method::POST,
+            )
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 }
 
