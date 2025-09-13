@@ -783,7 +783,7 @@ impl SetFaultLight for PowerPlayV1 {
             .send_command(
                 "identify",
                 false,
-                Some(json!({ "param": if fault { "true" } else { "false" } })),
+                Some(json!({ "param": fault })),
                 Method::POST,
             )
             .await
