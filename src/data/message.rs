@@ -1,12 +1,18 @@
-use serde::{Deserialize, Serialize};
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+use serde::{Deserialize, Serialize};
+use strum::Display;
+
+#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
 pub enum MessageSeverity {
     Error,
     Warning,
     Info,
 }
 
+#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MinerMessage {
     /// The time this message was generated or occurred

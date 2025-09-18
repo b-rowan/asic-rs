@@ -1,6 +1,11 @@
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+use std::fmt::{Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PoolScheme {
     StratumV1,
@@ -19,6 +24,17 @@ impl From<String> for PoolScheme {
     }
 }
 
+impl Display for PoolScheme {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PoolScheme::StratumV1 => write!(f, "stratum+tcp"),
+            PoolScheme::StratumV1SSL => write!(f, "stratum+ssl"),
+            PoolScheme::StratumV2 => write!(f, "stratum2+tcp"),
+        }
+    }
+}
+
+#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolURL {
     /// The scheme being used to connect to this pool
@@ -57,6 +73,7 @@ impl From<String> for PoolURL {
     }
 }
 
+#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolData {
     pub position: Option<u16>,

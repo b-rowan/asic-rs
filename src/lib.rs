@@ -4,3 +4,6 @@ pub use crate::miners::listener::MinerListener;
 pub mod data;
 pub mod miners;
 pub(crate) mod test;
+
+#[cfg(feature = "python")]
+mod python;

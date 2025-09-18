@@ -1,3 +1,6 @@
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use measurements::Power;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -5,6 +8,7 @@ use std::{
     ops::Div,
 };
 
+#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HashRateUnit {
     Hash,
@@ -50,6 +54,7 @@ impl Display for HashRateUnit {
     }
 }
 
+#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HashRate {
     /// The current amount of hashes being computed
