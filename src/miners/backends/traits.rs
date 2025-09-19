@@ -394,6 +394,7 @@ pub trait GetHashrate: CollectData {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Hashrate]).await;
         self.parse_hashrate(&data)
+            .map(|hr| hr.as_unit(HashRateUnit::default()))
     }
     #[allow(unused_variables)]
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
@@ -408,6 +409,7 @@ pub trait GetExpectedHashrate: CollectData {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::ExpectedHashrate]).await;
         self.parse_expected_hashrate(&data)
+            .map(|hr| hr.as_unit(HashRateUnit::default()))
     }
     #[allow(unused_variables)]
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {

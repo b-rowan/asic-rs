@@ -436,6 +436,12 @@ impl MinerFactory {
         self.shuffle_ips();
         Ok(self)
     }
+    pub fn set_subnet(&mut self, subnet: &str) -> Result<&Self> {
+        let ips = self.hosts_from_subnet(subnet)?;
+        self.ips = ips;
+        self.shuffle_ips();
+        Ok(self)
+    }
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
         Ok(network.hosts().collect())
@@ -456,6 +462,19 @@ impl MinerFactory {
         octet3: &str,
         octet4: &str,
     ) -> Result<Self> {
+        let ips = self.hosts_from_octets(octet1, octet2, octet3, octet4)?;
+        self.ips = ips;
+        self.shuffle_ips();
+        self.update_adaptive_concurrency();
+        Ok(self)
+    }
+    pub fn set_octets(
+        &mut self,
+        octet1: &str,
+        octet2: &str,
+        octet3: &str,
+        octet4: &str,
+    ) -> Result<&Self> {
         let ips = self.hosts_from_octets(octet1, octet2, octet3, octet4)?;
         self.ips = ips;
         self.shuffle_ips();

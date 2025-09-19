@@ -23,8 +23,22 @@ impl MinerFactory {
     }
 
     #[classmethod]
-    pub fn with_subnet(_cls: &Bound<'_, PyType>, subnet: String) -> PyResult<Self> {
+    pub fn from_subnet(_cls: &Bound<'_, PyType>, subnet: String) -> PyResult<Self> {
         let factory = MinerFactory_Base::new().with_subnet(&subnet);
+        match factory {
+            Ok(f) => Ok(Self { inner: Arc::new(f) }),
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
+        }
+    }
+    #[classmethod]
+    pub fn from_octets(
+        _cls: &Bound<'_, PyType>,
+        octet1: String,
+        octet2: String,
+        octet3: String,
+        octet4: String,
+    ) -> PyResult<Self> {
+        let factory = MinerFactory_Base::new().with_octets(&octet1, &octet2, &octet3, &octet4);
         match factory {
             Ok(f) => Ok(Self { inner: Arc::new(f) }),
             Err(e) => Err(PyValueError::new_err(e.to_string())),

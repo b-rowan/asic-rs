@@ -32,11 +32,13 @@ pyo3 = { version = "0.26.0", features = [
     "experimental-async",
     "experimental-inspect",
     "multiple-pymethods",
+    "time"
 ], optional = true }
 pyo3-async-runtimes = { version = "0.26.0", optional = true, features = ["tokio-runtime"] }
+pyo3-introspection = { version = "0.26.0", optional = true }
 
 [features]
-python = ["dep:pyo3", "dep:pyo3-async-runtimes"]
+python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection"]
 
 [profile.release]
 opt-level = 3

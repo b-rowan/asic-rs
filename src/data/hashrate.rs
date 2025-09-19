@@ -22,6 +22,12 @@ pub enum HashRateUnit {
     YottaHash,
 }
 
+impl Default for HashRateUnit {
+    fn default() -> Self {
+        Self::TeraHash
+    }
+}
+
 impl HashRateUnit {
     fn to_multiplier(&self) -> f64 {
         match self {
