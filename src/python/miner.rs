@@ -1,6 +1,7 @@
 use super::data::{BoardData, FanData, MinerData};
 use crate::data::device::{HashAlgorithm, MinerFirmware, MinerHardware, MinerMake, MinerModel};
 use crate::miners::backends::traits::Miner as MinerTrait;
+use std::net::IpAddr;
 
 use pyo3::prelude::*;
 use std::sync::Arc;
@@ -28,7 +29,18 @@ impl From<Box<dyn MinerTrait>> for Miner {
 #[pymethods]
 impl Miner {
     fn __repr__(&self) -> String {
-        format!("{} {} ({})", self.make(), self.model(), self.firmware())
+        format!(
+            "{} {} ({}): {}",
+            self.make(),
+            self.model(),
+            self.firmware(),
+            self.ip(),
+        )
+    }
+
+    #[getter]
+    fn ip(&self) -> IpAddr {
+        self.inner.get_ip()
     }
 
     #[getter]
