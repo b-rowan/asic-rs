@@ -1,5 +1,5 @@
 use super::data::{BoardData, FanData, MinerData};
-use crate::data::device::{MinerFirmware, MinerHardware, MinerMake, MinerModel};
+use crate::data::device::{HashAlgorithm, MinerFirmware, MinerHardware, MinerMake, MinerModel};
 use crate::miners::backends::traits::Miner as MinerTrait;
 
 use pyo3::prelude::*;
@@ -42,6 +42,10 @@ impl Miner {
     #[getter]
     fn firmware(&self) -> MinerFirmware {
         self.inner.get_device_info().firmware
+    }
+    #[getter]
+    fn algo(&self) -> HashAlgorithm {
+        self.inner.get_device_info().algo
     }
     #[getter]
     fn hardware(&self) -> MinerHardware {

@@ -14,7 +14,7 @@ class MinerFactory:
 
     @classmethod
     def from_octets(cls, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
-        return cls(inner=_rs_MinerFactory.from_subnet(str(octet_1), str(octet_2), str(octet_3), str(octet_4)))
+        return cls(inner=_rs_MinerFactory.from_octets(str(octet_1), str(octet_2), str(octet_3), str(octet_4)))
 
     async def get_miner(self, ip: str) -> Miner | None:
         base = await self.__inner.get_miner(ip)

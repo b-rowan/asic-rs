@@ -10,4 +10,13 @@ mod asic_rs {
     use super::factory::MinerFactory;
     #[pymodule_export]
     use super::miner::Miner;
+
+    #[pymodule_export]
+    use super::data::HashAlgorithm;
+    #[pymodule_export]
+    use super::data::MinerFirmware;
+    #[pymodule_export]
+    use super::data::MinerMake;
+    #[pymodule_export]
+    use super::data::MinerModel;
 }

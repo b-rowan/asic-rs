@@ -1,7 +1,7 @@
 use crate::miners::factory::MinerFactory as MinerFactory_Base;
 use crate::python::miner::Miner;
 
-use pyo3::exceptions::{PyConnectionError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::net::IpAddr;
@@ -41,7 +41,7 @@ impl MinerFactory {
         let factory = MinerFactory_Base::new().with_octets(&octet1, &octet2, &octet3, &octet4);
         match factory {
             Ok(f) => Ok(Self { inner: Arc::new(f) }),
-            Err(e) => Err(PyValueError::new_err(e.to_string())),
+            Err(e) => Err(PyErr::from(e)),
         }
     }
 
@@ -51,7 +51,7 @@ impl MinerFactory {
             let miners = inner.scan().await;
             match miners {
                 Ok(miners) => Ok(miners.into_iter().map(Miner::from).collect::<Vec<Miner>>()),
-                Err(e) => Err(PyValueError::new_err(e.to_string())),
+                Err(e) => Err(PyErr::from(e)),
             }
         })
     }
@@ -63,7 +63,7 @@ impl MinerFactory {
             match miner {
                 Ok(Some(miner)) => Ok(Some(Miner::from(miner))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(PyConnectionError::new_err(e.to_string())),
+                Err(e) => Err(PyErr::from(e)),
             }
         })
     }

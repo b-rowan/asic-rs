@@ -1,12 +1,47 @@
 from datetime import timedelta
 
 from pyasic_rs.asic_rs import Miner as _rs_Miner
+from pyasic_rs.asic_rs import MinerModel as _rs_MinerModel
+from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
+from pyasic_rs.asic_rs import MinerFirmware as _rs_MinerFirmware
+from pyasic_rs.asic_rs import MinerMake as _rs_MinerMake
 from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolData
 
 
 class Miner:
     def __init__(self, *, inner: _rs_Miner):
         self.__inner = inner
+
+    def __repr__(self):
+        return self.__inner.__repr__()
+
+    @property
+    def model(self) -> _rs_MinerModel:
+        return self.__inner.model
+
+    @property
+    def make(self) -> _rs_MinerMake:
+        return self.__inner.make
+
+    @property
+    def firmware(self) -> _rs_MinerMake:
+        return self.__inner.firmware
+
+    @property
+    def algo(self) -> _rs_HashAlgorithm:
+        return self.__inner.algo
+
+    @property
+    def expected_hashboards(self) -> int:
+        return self.__inner.expected_hashboards
+
+    @property
+    def expected_chips(self) -> int:
+        return self.__inner.expected_chips
+
+    @property
+    def expected_fans(self) -> int:
+        return self.__inner.expected_fans
 
     async def get_data(self) -> MinerData:
         return MinerData.model_validate(await self.__inner.get_data())
