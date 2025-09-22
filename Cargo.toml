@@ -27,6 +27,11 @@ tokio-stream = "0.1.17"
 async-stream = "0.3.6"
 sha2 = "0.10.9"
 base64 = "0.22.1"
+aes = "0.8.4"
+hex = "0.4.3"
+ecb = "0.1.2"
+md5crypt = "1.0.0"
+
 pyo3 = { version = "0.26.0", features = [
     "extension-module",
     "experimental-async",

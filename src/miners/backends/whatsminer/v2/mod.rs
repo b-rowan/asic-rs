@@ -1,8 +1,8 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -491,24 +491,38 @@ impl GetPools for WhatsMinerV2 {
 
 #[async_trait]
 impl SetFaultLight for WhatsMinerV2 {
-    #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+        let parameters = match fault {
+            false => Some(
+                json!({"auto": true, "color": "red", "period": 60, "duration": 20, "start": 0}),
+            ),
+            true => Some(
+                json!({"auto": false, "color": "red", "period": 60, "duration": 20, "start": 0}),
+            ),
+        };
+
+        let data = self.rpc.send_command("set_led", true, parameters).await;
+        Ok(data.is_ok())
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for WhatsMinerV2 {
-    #[allow(unused_variables)]
     async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+        let parameters = Some(json!({"power_limit": limit.as_watts().to_string()}));
+        let data = self
+            .rpc
+            .send_command("adjust_power_limit", true, parameters)
+            .await;
+        Ok(data.is_ok())
     }
 }
 
 #[async_trait]
 impl Restart for WhatsMinerV2 {
     async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+        let data = self.rpc.send_command("reboot", true, None).await;
+        Ok(data.is_ok())
     }
 }
 
@@ -516,7 +530,11 @@ impl Restart for WhatsMinerV2 {
 impl Pause for WhatsMinerV2 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        let data = self
+            .rpc
+            .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
+            .await;
+        Ok(data.is_ok())
     }
 }
 
@@ -524,6 +542,7 @@ impl Pause for WhatsMinerV2 {
 impl Resume for WhatsMinerV2 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        let data = self.rpc.send_command("power_on", true, None).await;
+        Ok(data.is_ok())
     }
 }
