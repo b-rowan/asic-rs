@@ -565,7 +565,7 @@ impl GetPools for MaraV1 {
             && let Some(pools_array) = pools_data.as_array()
         {
             let mut active_pool_index = None;
-            let mut highest_priority = std::i32::MAX;
+            let mut highest_priority = i32::MAX;
 
             for pool_info in pools_array {
                 if let (Some(status), Some(priority), Some(index)) = (

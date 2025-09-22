@@ -320,7 +320,7 @@ impl GetHashrate for BitAxe290 {
 
 impl GetExpectedHashrate for BitAxe290 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::TeraHash,
             algo: String::from("SHA256"),

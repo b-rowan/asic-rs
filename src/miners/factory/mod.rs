@@ -26,6 +26,7 @@ use crate::miners::backends::antminer::AntMiner;
 use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::bitaxe::BitAxe;
 use crate::miners::backends::epic::PowerPlay;
+use crate::miners::backends::luxminer::LuxMiner;
 use crate::miners::backends::marathon::Marathon;
 use crate::miners::backends::traits::*;
 use crate::miners::backends::vnish::Vnish;
@@ -180,6 +181,7 @@ fn select_backend(
         (Some(_), Some(MinerFirmware::VNish)) => Some(Vnish::new(ip, model?, version)),
         (Some(_), Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, model?, version)),
         (Some(_), Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model?, version)),
+        (Some(_), Some(MinerFirmware::LuxOS)) => Some(LuxMiner::new(ip, model?, version)),
         _ => None,
     }
 }

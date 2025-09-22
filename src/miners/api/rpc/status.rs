@@ -1,4 +1,5 @@
 use crate::miners::api::rpc::errors::RPCError;
+use serde_json::Value;
 
 pub enum RPCCommandStatus {
     Success,
@@ -26,5 +27,23 @@ impl RPCCommandStatus {
             "E" => RPCCommandStatus::Error(message.unwrap_or("Unknown error").to_string()),
             _ => RPCCommandStatus::Unknown,
         }
+    }
+
+    pub fn from_luxminer(response: &str) -> Result<Self, RPCError> {
+        let json: Value = serde_json::from_str(response)
+            .map_err(|_| RPCError::StatusCheckFailed("Invalid JSON response".to_string()))?;
+
+        let status = json
+            .pointer("/STATUS/0/STATUS")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                RPCError::StatusCheckFailed(
+                    "Failed to parse status from LuxMiner response".to_string(),
+                )
+            })?;
+
+        let message = json.pointer("/STATUS/0/Msg").and_then(|v| v.as_str());
+
+        Ok(Self::from_str(status, message))
     }
 }
