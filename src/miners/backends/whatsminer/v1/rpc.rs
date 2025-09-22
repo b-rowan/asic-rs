@@ -82,7 +82,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
             }
             Some(other) => {
                 // Wrap non-objects into the "param" key
-                json!({ "command": command, "paramater": other })
+                json!({ "command": command, "parameter": other })
             }
             None => {
                 // No parameters at all
