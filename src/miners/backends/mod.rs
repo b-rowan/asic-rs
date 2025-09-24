@@ -1,6 +1,7 @@
 pub mod antminer;
 pub mod avalonminer;
 pub mod bitaxe;
+pub mod braiins;
 pub mod epic;
 pub mod luxminer;
 pub mod marathon;

@@ -25,6 +25,7 @@ use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::antminer::AntMiner;
 use crate::miners::backends::avalonminer::AvalonMiner;
 use crate::miners::backends::bitaxe::Bitaxe;
+use crate::miners::backends::braiins::Braiins;
 use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::luxminer::LuxMiner;
 use crate::miners::backends::marathon::Marathon;
@@ -182,6 +183,7 @@ fn select_backend(
         (Some(_), Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, model?, version)),
         (Some(_), Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model?, version)),
         (Some(_), Some(MinerFirmware::LuxOS)) => Some(LuxMiner::new(ip, model?, version)),
+        (Some(_), Some(MinerFirmware::BraiinsOS)) => Some(Braiins::new(ip, model?, version)),
         _ => None,
     }
 }
