@@ -9,17 +9,17 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
+use reqwest::Method;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-
 use web::BraiinsWebAPI;
 
 mod web;
@@ -546,24 +546,39 @@ impl GetMessages for BraiinsV2507 {
 
 #[async_trait]
 impl SetFaultLight for BraiinsV2507 {
-    #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .send_command("actions/locate", true, Some(json!(fault)), Method::PUT)
+            .await
+            .is_ok())
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for BraiinsV2507 {
-    #[allow(unused_variables)]
     async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .send_command(
+                "performance/power-target",
+                true,
+                Some(json!({"watt": limit.as_watts() as u64})),
+                Method::PUT,
+            )
+            .await
+            .is_ok())
     }
 }
 
 #[async_trait]
 impl Restart for BraiinsV2507 {
     async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .send_command("actions/reboot", true, None, Method::PUT)
+            .await
+            .is_ok())
     }
 }
 
@@ -571,7 +586,11 @@ impl Restart for BraiinsV2507 {
 impl Pause for BraiinsV2507 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .send_command("actions/pause", true, None, Method::PUT)
+            .await
+            .is_ok())
     }
 }
 
@@ -579,6 +598,10 @@ impl Pause for BraiinsV2507 {
 impl Resume for BraiinsV2507 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .send_command("actions/resume", true, None, Method::PUT)
+            .await
+            .is_ok())
     }
 }
