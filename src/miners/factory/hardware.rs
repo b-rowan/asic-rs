@@ -1,7 +1,7 @@
 use crate::data::device::MinerHardware;
 use crate::data::device::models::antminer::AntMinerModel;
 use crate::data::device::models::avalon::AvalonMinerModel;
-use crate::data::device::models::bitaxe::BitAxeModel;
+use crate::data::device::models::bitaxe::BitaxeModel;
 use crate::data::device::models::braiins::BraiinsModel;
 use crate::data::device::models::epic::EPicModel;
 use crate::data::device::models::whatsminer::WhatsMinerModel;
@@ -1915,8 +1915,8 @@ impl From<&WhatsMinerModel> for MinerHardware {
     }
 }
 
-impl From<&BitAxeModel> for MinerHardware {
-    fn from(_model: &BitAxeModel) -> Self {
+impl From<&BitaxeModel> for MinerHardware {
+    fn from(_model: &BitaxeModel) -> Self {
         Self {
             chips: Some(1),
             fans: Some(1),

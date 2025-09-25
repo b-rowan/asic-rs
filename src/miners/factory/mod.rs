@@ -24,7 +24,7 @@ use super::util::{send_rpc_command, send_web_command};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::backends::antminer::AntMiner;
 use crate::miners::backends::avalonminer::AvalonMiner;
-use crate::miners::backends::bitaxe::BitAxe;
+use crate::miners::backends::bitaxe::Bitaxe;
 use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::luxminer::LuxMiner;
 use crate::miners::backends::marathon::Marathon;
@@ -143,7 +143,7 @@ fn parse_type_from_web(
         _ if resp_text.contains("Braiins OS") => Some((None, Some(MinerFirmware::BraiinsOS))),
         _ if resp_text.contains("Luxor Firmware") => Some((None, Some(MinerFirmware::LuxOS))),
         _ if resp_text.contains("AxeOS") => {
-            Some((Some(MinerMake::BitAxe), Some(MinerFirmware::Stock)))
+            Some((Some(MinerMake::Bitaxe), Some(MinerFirmware::Stock)))
         }
         _ if resp_text.contains("Miner Web Dashboard") => Some((None, Some(MinerFirmware::EPic))),
         _ if resp_text.contains("Avalon") => {
@@ -169,8 +169,8 @@ fn select_backend(
         (Some(MinerModel::WhatsMiner(_)), Some(MinerFirmware::Stock)) => {
             Some(WhatsMiner::new(ip, model?, version))
         }
-        (Some(MinerModel::BitAxe(_)), Some(MinerFirmware::Stock)) => {
-            Some(BitAxe::new(ip, model?, version))
+        (Some(MinerModel::Bitaxe(_)), Some(MinerFirmware::Stock)) => {
+            Some(Bitaxe::new(ip, model?, version))
         }
         (Some(MinerModel::AvalonMiner(_)), Some(MinerFirmware::Stock)) => {
             Some(AvalonMiner::new(ip, model?, version))
@@ -223,7 +223,7 @@ impl MinerFactory {
             MinerMake::AvalonMiner,
             MinerMake::EPic,
             MinerMake::Braiins,
-            MinerMake::BitAxe,
+            MinerMake::Bitaxe,
         ]);
         let search_firmwares = self.search_firmwares.clone().unwrap_or(vec![
             MinerFirmware::Stock,

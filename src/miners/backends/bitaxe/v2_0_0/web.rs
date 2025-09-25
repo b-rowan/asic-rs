@@ -8,9 +8,9 @@ use tokio::time::timeout;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 
-/// BitAxe WebAPI client for communicating with BitAxe and similar miners
+/// Bitaxe WebAPI client for communicating with Bitaxe and similar miners
 #[derive(Debug)]
-pub struct BitAxeWebAPI {
+pub struct BitaxeWebAPI {
     client: Client,
     pub ip: IpAddr,
     port: u16,
@@ -20,7 +20,7 @@ pub struct BitAxeWebAPI {
 
 #[async_trait]
 #[allow(dead_code)]
-trait BitAxe200WebAPI: WebAPIClient {
+trait Bitaxe200WebAPI: WebAPIClient {
     /// Get system information
     async fn system_info(&self) -> Result<Value> {
         self.send_command("system/info", false, None, Method::GET)
@@ -47,7 +47,7 @@ trait BitAxe200WebAPI: WebAPIClient {
 }
 
 #[async_trait]
-impl APIClient for BitAxeWebAPI {
+impl APIClient for BitaxeWebAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI {
@@ -63,7 +63,7 @@ impl APIClient for BitAxeWebAPI {
 }
 
 #[async_trait]
-impl WebAPIClient for BitAxeWebAPI {
+impl WebAPIClient for BitaxeWebAPI {
     /// Send a command to the miner
     async fn send_command(
         &self,
@@ -86,12 +86,12 @@ impl WebAPIClient for BitAxeWebAPI {
                             Ok(json_data) => return Ok(json_data),
                             Err(e) => {
                                 if attempt == self.retries {
-                                    return Err(BitAxeError::ParseError(e.to_string()))?;
+                                    return Err(BitaxeError::ParseError(e.to_string()))?;
                                 }
                             }
                         }
                     } else if attempt == self.retries {
-                        return Err(BitAxeError::HttpError(response.status().as_u16()))?;
+                        return Err(BitaxeError::HttpError(response.status().as_u16()))?;
                     }
                 }
                 Err(e) => {
@@ -102,14 +102,14 @@ impl WebAPIClient for BitAxeWebAPI {
             }
         }
 
-        Err(BitAxeError::MaxRetriesExceeded)?
+        Err(BitaxeError::MaxRetriesExceeded)?
     }
 }
 
-impl BitAxe200WebAPI for BitAxeWebAPI {}
+impl Bitaxe200WebAPI for BitaxeWebAPI {}
 
-impl BitAxeWebAPI {
-    /// Create a new BitAxe WebAPI client
+impl BitaxeWebAPI {
+    /// Create a new Bitaxe WebAPI client
     pub fn new(ip: IpAddr, port: u16) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
@@ -131,7 +131,7 @@ impl BitAxeWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, BitAxeError> {
+    ) -> Result<Response, BitaxeError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => {
@@ -148,25 +148,25 @@ impl BitAxeWebAPI {
                 }
                 builder
             }
-            _ => return Err(BitAxeError::UnsupportedMethod(method.to_string())),
+            _ => return Err(BitaxeError::UnsupportedMethod(method.to_string())),
         };
 
         let request = request_builder
             .timeout(self.timeout)
             .build()
-            .map_err(|e| BitAxeError::RequestError(e.to_string()))?;
+            .map_err(|e| BitaxeError::RequestError(e.to_string()))?;
 
         let response = timeout(self.timeout, self.client.execute(request))
             .await
-            .map_err(|_| BitAxeError::Timeout)?
-            .map_err(|e| BitAxeError::NetworkError(e.to_string()))?;
+            .map_err(|_| BitaxeError::Timeout)?
+            .map_err(|e| BitaxeError::NetworkError(e.to_string()))?;
         Ok(response)
     }
 }
 
-/// Error types for BitAxe WebAPI operations
+/// Error types for Bitaxe WebAPI operations
 #[derive(Debug, Clone)]
-pub enum BitAxeError {
+pub enum BitaxeError {
     /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),
     /// HTTP error with status code
@@ -183,21 +183,21 @@ pub enum BitAxeError {
     MaxRetriesExceeded,
 }
 
-impl std::fmt::Display for BitAxeError {
+impl std::fmt::Display for BitaxeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BitAxeError::NetworkError(msg) => write!(f, "Network error: {msg}"),
-            BitAxeError::HttpError(code) => write!(f, "HTTP error: {code}"),
-            BitAxeError::ParseError(msg) => write!(f, "Parse error: {msg}"),
-            BitAxeError::RequestError(msg) => write!(f, "Request error: {msg}"),
-            BitAxeError::Timeout => write!(f, "Request timeout"),
-            BitAxeError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
-            BitAxeError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
+            BitaxeError::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            BitaxeError::HttpError(code) => write!(f, "HTTP error: {code}"),
+            BitaxeError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            BitaxeError::RequestError(msg) => write!(f, "Request error: {msg}"),
+            BitaxeError::Timeout => write!(f, "Request timeout"),
+            BitaxeError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
+            BitaxeError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
         }
     }
 }
 
-impl std::error::Error for BitAxeError {}
+impl std::error::Error for BitaxeError {}
 
 // Usage example
 #[cfg(test)]

@@ -225,7 +225,7 @@ pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> Option<MinerModel> {
     let model = response["ASICModel"].as_str()?;
 
     MinerModelFactory::new()
-        .with_make(MinerMake::BitAxe)
+        .with_make(MinerMake::Bitaxe)
         .parse_model(model)
 }
 pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {

@@ -6,7 +6,7 @@ use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
-pub enum BitAxeModel {
+pub enum BitaxeModel {
     #[serde(alias = "BM1368")]
     Supra,
     #[serde(alias = "BM1370")]

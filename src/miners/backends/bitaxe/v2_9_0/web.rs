@@ -5,11 +5,11 @@ use serde_json::Value;
 
 use crate::miners::backends::traits::*;
 
-pub use super::super::v2_0_0::web::BitAxeWebAPI;
+pub use super::super::v2_0_0::web::BitaxeWebAPI;
 
 #[async_trait]
 #[allow(dead_code)]
-trait BitAxe290WebAPI: WebAPIClient {
+trait Bitaxe290WebAPI: WebAPIClient {
     /// Get ASIC information
     async fn asic_info(&self) -> Result<Value> {
         self.send_command("system/asic", false, None, Method::GET)
@@ -17,4 +17,4 @@ trait BitAxe290WebAPI: WebAPIClient {
     }
 }
 
-impl BitAxe290WebAPI for BitAxeWebAPI {}
+impl Bitaxe290WebAPI for BitaxeWebAPI {}

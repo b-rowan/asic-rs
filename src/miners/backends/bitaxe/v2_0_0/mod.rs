@@ -22,24 +22,24 @@ use crate::miners::data::{
     get_by_pointer,
 };
 
-use web::BitAxeWebAPI;
+use web::BitaxeWebAPI;
 
 pub(crate) mod web;
 
 #[derive(Debug)]
-pub struct BitAxe200 {
+pub struct Bitaxe200 {
     ip: IpAddr,
-    web: BitAxeWebAPI,
+    web: BitaxeWebAPI,
     device_info: DeviceInfo,
 }
 
-impl BitAxe200 {
+impl Bitaxe200 {
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
-        BitAxe200 {
+        Bitaxe200 {
             ip,
-            web: BitAxeWebAPI::new(ip, 80),
+            web: BitaxeWebAPI::new(ip, 80),
             device_info: DeviceInfo::new(
-                MinerMake::BitAxe,
+                MinerMake::Bitaxe,
                 model,
                 MinerFirmware::Stock,
                 HashAlgorithm::SHA256,
@@ -49,17 +49,17 @@ impl BitAxe200 {
 }
 
 #[async_trait]
-impl APIClient for BitAxe200 {
+impl APIClient for Bitaxe200 {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for BitAxe API")),
+            _ => Err(anyhow!("Unsupported command type for Bitaxe API")),
         }
     }
 }
 
 #[async_trait]
-impl GetDataLocations for BitAxe200 {
+impl GetDataLocations for Bitaxe200 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         let system_info_command: MinerCommand = MinerCommand::WebAPI {
             command: "system/info",
@@ -176,54 +176,54 @@ impl GetDataLocations for BitAxe200 {
     }
 }
 
-impl GetIP for BitAxe200 {
+impl GetIP for Bitaxe200 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
-impl GetDeviceInfo for BitAxe200 {
+impl GetDeviceInfo for Bitaxe200 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info
     }
 }
 
-impl CollectData for BitAxe200 {
+impl CollectData for Bitaxe200 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for BitAxe200 {
+impl GetMAC for Bitaxe200 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetSerialNumber for BitAxe200 {
+impl GetSerialNumber for Bitaxe200 {
     // N/A
 }
-impl GetHostname for BitAxe200 {
+impl GetHostname for Bitaxe200 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
-impl GetApiVersion for BitAxe200 {
+impl GetApiVersion for Bitaxe200 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
-impl GetFirmwareVersion for BitAxe200 {
+impl GetFirmwareVersion for Bitaxe200 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
-impl GetControlBoardVersion for BitAxe200 {
+impl GetControlBoardVersion for Bitaxe200 {
     fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ControlBoardVersion)
     }
 }
-impl GetHashboards for BitAxe200 {
+impl GetHashboards for Bitaxe200 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         // Extract nested values with type conversion
         let board_voltage = data.extract_nested_map::<f64, _>(
@@ -302,7 +302,7 @@ impl GetHashboards for BitAxe200 {
         vec![board_data]
     }
 }
-impl GetHashrate for BitAxe200 {
+impl GetHashrate for Bitaxe200 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
@@ -311,7 +311,7 @@ impl GetHashrate for BitAxe200 {
         })
     }
 }
-impl GetExpectedHashrate for BitAxe200 {
+impl GetExpectedHashrate for Bitaxe200 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let total_chips =
             data.extract_nested_map::<u64, _>(DataField::ExpectedHashrate, "asicCount", |u| {
@@ -338,7 +338,7 @@ impl GetExpectedHashrate for BitAxe200 {
         })
     }
 }
-impl GetFans for BitAxe200 {
+impl GetFans for Bitaxe200 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         data.extract_map_or::<f64, _>(DataField::Fans, Vec::new(), |f| {
             vec![FanData {
@@ -348,24 +348,24 @@ impl GetFans for BitAxe200 {
         })
     }
 }
-impl GetPsuFans for BitAxe200 {
+impl GetPsuFans for Bitaxe200 {
     // N/A
 }
-impl GetFluidTemperature for BitAxe200 {
+impl GetFluidTemperature for Bitaxe200 {
     // N/A
 }
-impl GetWattage for BitAxe200 {
+impl GetWattage for Bitaxe200 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetWattageLimit for BitAxe200 {
+impl GetWattageLimit for Bitaxe200 {
     // N/A
 }
-impl GetLightFlashing for BitAxe200 {
+impl GetLightFlashing for Bitaxe200 {
     // N/A
 }
-impl GetMessages for BitAxe200 {
+impl GetMessages for Bitaxe200 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
         let timestamp = SystemTime::now()
@@ -387,18 +387,18 @@ impl GetMessages for BitAxe200 {
     }
 }
 
-impl GetUptime for BitAxe200 {
+impl GetUptime for Bitaxe200 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for BitAxe200 {
+impl GetIsMining for Bitaxe200 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         let hashrate = self.parse_hashrate(data);
         hashrate.as_ref().is_some_and(|hr| hr.value > 0.0)
     }
 }
-impl GetPools for BitAxe200 {
+impl GetPools for Bitaxe200 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         let main_url =
             data.extract_nested_or::<String>(DataField::Pools, "stratumURL", String::new());
@@ -455,7 +455,7 @@ impl GetPools for BitAxe200 {
 }
 
 #[async_trait]
-impl SetFaultLight for BitAxe200 {
+impl SetFaultLight for Bitaxe200 {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
         bail!("Unsupported command");
@@ -463,7 +463,7 @@ impl SetFaultLight for BitAxe200 {
 }
 
 #[async_trait]
-impl SetPowerLimit for BitAxe200 {
+impl SetPowerLimit for Bitaxe200 {
     #[allow(unused_variables)]
     async fn set_power_limit(&self, limit: Power) -> Result<bool> {
         bail!("Unsupported command");
@@ -471,14 +471,14 @@ impl SetPowerLimit for BitAxe200 {
 }
 
 #[async_trait]
-impl Restart for BitAxe200 {
+impl Restart for Bitaxe200 {
     async fn restart(&self) -> Result<bool> {
         bail!("Unsupported command");
     }
 }
 
 #[async_trait]
-impl Pause for BitAxe200 {
+impl Pause for Bitaxe200 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
         bail!("Unsupported command");
@@ -486,7 +486,7 @@ impl Pause for BitAxe200 {
 }
 
 #[async_trait]
-impl Resume for BitAxe200 {
+impl Resume for Bitaxe200 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
         bail!("Unsupported command");
@@ -496,15 +496,15 @@ impl Resume for BitAxe200 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::device::models::bitaxe::BitAxeModel;
+    use crate::data::device::models::bitaxe::BitaxeModel;
     use crate::test::api::MockAPIClient;
     use crate::test::json::bitaxe::v2_0_0::SYSTEM_INFO_COMMAND;
 
     #[tokio::test]
     async fn test_espminer_200_data_parsers() {
-        let miner = BitAxe200::new(
+        let miner = Bitaxe200::new(
             IpAddr::from([127, 0, 0, 1]),
-            MinerModel::BitAxe(BitAxeModel::Supra),
+            MinerModel::Bitaxe(BitaxeModel::Supra),
         );
         let mut results = HashMap::new();
         let system_info_command: MinerCommand = MinerCommand::WebAPI {
