@@ -9,7 +9,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::data::board::BoardData;
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
+use crate::data::device::{
+    DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
+};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
@@ -210,6 +212,11 @@ impl GetDataLocations for AntMinerV2020 {
             parameters: None,
         };
 
+        let web_miner_type_cmd = MinerCommand::WebAPI {
+            command: "miner_type",
+            parameters: None,
+        };
+
         match data_field {
             DataField::Mac => vec![(
                 system_info_cmd,
@@ -240,6 +247,14 @@ impl GetDataLocations for AntMinerV2020 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hostname"),
+                    tag: None,
+                },
+            )],
+            DataField::ControlBoardVersion => vec![(
+                web_miner_type_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/subtype"),
                     tag: None,
                 },
             )],
@@ -595,7 +610,15 @@ impl GetSerialNumber for AntMinerV2020 {
     }
 }
 
-impl GetControlBoardVersion for AntMinerV2020 {}
+impl GetControlBoardVersion for AntMinerV2020 {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
+        data.extract::<String>(DataField::ControlBoardVersion)
+            .and_then(|s| MinerControlBoard::from_str(&s.split("_").collect::<Vec<&str>>()[0]).ok())
+    }
+}
 
 impl GetWattage for AntMinerV2020 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {

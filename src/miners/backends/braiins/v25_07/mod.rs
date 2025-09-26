@@ -1,5 +1,7 @@
 use crate::data::board::BoardData;
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
+use crate::data::device::{
+    DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
+};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
@@ -485,16 +487,19 @@ impl GetSerialNumber for BraiinsV2507 {
 }
 
 impl GetControlBoardVersion for BraiinsV2507 {
-    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
         let cb_type = data.extract::<u64>(DataField::ControlBoardVersion)?;
         match cb_type {
-            0 => Some("Unknown".to_string()),
-            1 => Some("CVITEK".to_string()),
-            2 => Some("BBB".to_string()),
-            3 => Some("AMLogic".to_string()),
-            4 => Some("Xilinx".to_string()),
-            5 => Some("BCB100".to_string()),
-            _ => Some("Unknown".to_string()),
+            0 => Some(MinerControlBoard::Unknown("".to_string())),
+            1 => Some(MinerControlBoard::CVITek),
+            2 => Some(MinerControlBoard::BeagleBoneBlack),
+            3 => Some(MinerControlBoard::AMLogic),
+            4 => Some(MinerControlBoard::Xilinx),
+            5 => Some(MinerControlBoard::BraiinsCB),
+            _ => Some(MinerControlBoard::Unknown("".to_string())),
         }
     }
 }

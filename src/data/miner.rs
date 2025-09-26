@@ -8,6 +8,7 @@ use super::{
     board::BoardData, device::DeviceInfo, fan::FanData, hashrate::HashRate, message::MinerMessage,
     pool::PoolData,
 };
+use crate::data::device::MinerControlBoard;
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
@@ -37,7 +38,7 @@ pub struct MinerData {
     /// The firmware version of the miner
     pub firmware_version: Option<String>,
     /// The type of control board on the miner
-    pub control_board_version: Option<String>,
+    pub control_board_version: Option<MinerControlBoard>,
     /// The expected number of boards in the miner.
     pub expected_hashboards: Option<u8>,
     /// Per-hashboard data for this miner

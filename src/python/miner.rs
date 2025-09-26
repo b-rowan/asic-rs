@@ -125,7 +125,10 @@ impl Miner {
     pub fn get_control_board_version<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.get_control_board_version().await;
+            let data = inner
+                .get_control_board_version()
+                .await
+                .map(|cb| cb.to_string());
             Ok(data)
         })
     }

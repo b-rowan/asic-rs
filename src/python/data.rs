@@ -137,7 +137,7 @@ impl From<&MinerData_Base> for MinerData {
             hostname: base.hostname.clone(),
             api_version: base.api_version.clone(),
             firmware_version: base.firmware_version.clone(),
-            control_board_version: base.control_board_version.clone(),
+            control_board_version: base.control_board_version.clone().map(|cb| cb.to_string()),
             expected_hashboards: base.expected_hashboards,
             hashboards: base.hashboards.iter().map(BoardData::from).collect(),
             hashrate: base.hashrate.clone(),

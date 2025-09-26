@@ -1,5 +1,7 @@
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
+use crate::data::device::{
+    DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
+};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
@@ -834,8 +836,12 @@ impl GetSerialNumber for LuxMinerV1 {
 }
 
 impl GetControlBoardVersion for LuxMinerV1 {
-    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
+            .and_then(|s| MinerControlBoard::from_str(&s).ok())
     }
 }
 

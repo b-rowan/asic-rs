@@ -1,5 +1,7 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+use std::fmt::Display;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -104,6 +106,112 @@ impl From<&MinerModel> for MinerHardware {
             MinerModel::Bitaxe(model_name) => Self::from(model_name),
             MinerModel::EPic(model_name) => Self::from(model_name),
             MinerModel::AvalonMiner(model_name) => Self::from(model_name),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
+pub enum MinerControlBoard {
+    // Antminer control boards
+    #[serde(rename = "Xilinx")]
+    Xilinx,
+    #[serde(rename = "BeagleBoneBlack")]
+    BeagleBoneBlack,
+    #[serde(rename = "AMLogic")]
+    AMLogic,
+    #[serde(rename = "CVITek")]
+    CVITek,
+    // Whatsminer control boards
+    #[serde(rename = "H3")]
+    H3,
+    #[serde(rename = "H6")]
+    H6,
+    #[serde(rename = "H6OS")]
+    H6OS,
+    #[serde(rename = "H616")]
+    H616,
+    // Avalon control boards
+    #[serde(rename = "MM3v2X3")]
+    MM3v2X3,
+    // Bitaxe control boards
+    #[serde(rename = "B102")]
+    B102,
+    #[serde(rename = "B201")]
+    B201,
+    #[serde(rename = "B202")]
+    B202,
+    #[serde(rename = "B203")]
+    B203,
+    #[serde(rename = "B204")]
+    B204,
+    #[serde(rename = "B205")]
+    B205,
+    #[serde(rename = "B207")]
+    B207,
+    #[serde(rename = "B401")]
+    B401,
+    #[serde(rename = "B402")]
+    B402,
+    #[serde(rename = "B403")]
+    B403,
+    #[serde(rename = "B601")]
+    B601,
+    #[serde(rename = "B602")]
+    B602,
+    #[serde(rename = "B800")]
+    B800,
+    // Custom control boards
+    #[serde(rename = "BraiinsCB")]
+    BraiinsCB,
+    // Unknown
+    Unknown(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ControlBoardParseError;
+
+impl Display for ControlBoardParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Failed to parse control board type")
+    }
+}
+
+impl FromStr for MinerControlBoard {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut cb_model = s.trim().replace(" ", "").to_uppercase();
+        cb_model.retain(|c| !c.is_whitespace());
+        match cb_model.as_ref() {
+            "XILINX" => Ok(Self::Xilinx),
+            "BBB" => Ok(Self::BeagleBoneBlack),
+            "BB" => Ok(Self::BeagleBoneBlack),
+            "BEAGLEBONE" => Ok(Self::BeagleBoneBlack),
+            "BEAGLEBONEBLACK" => Ok(Self::BeagleBoneBlack),
+            "CVITEK" => Ok(Self::CVITek),
+            "CVCTRL" => Ok(Self::CVITek),
+            "AMLOGIC" => Ok(Self::AMLogic),
+            "AML" => Ok(Self::AMLogic),
+            "H3" => Ok(Self::H3),
+            "H6" => Ok(Self::H6),
+            "H6OS" => Ok(Self::H6OS),
+            "H616" => Ok(Self::H616),
+            "MM3V2_X3" => Ok(Self::MM3v2X3),
+            "B102" => Ok(Self::B102),
+            "B201" => Ok(Self::B201),
+            "B202" => Ok(Self::B202),
+            "B203" => Ok(Self::B203),
+            "B204" => Ok(Self::B204),
+            "B205" => Ok(Self::B205),
+            "B207" => Ok(Self::B207),
+            "B401" => Ok(Self::B401),
+            "B402" => Ok(Self::B402),
+            "B403" => Ok(Self::B403),
+            "B601" => Ok(Self::B601),
+            "B602" => Ok(Self::B602),
+            "B800" => Ok(Self::B800),
+            "BraiinsCB" => Ok(Self::BraiinsCB),
+            _ => Ok(Self::Unknown(s.to_string())),
         }
     }
 }

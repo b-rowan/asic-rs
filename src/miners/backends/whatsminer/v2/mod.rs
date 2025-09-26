@@ -9,8 +9,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::data::board::BoardData;
-use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
+use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
@@ -270,8 +270,12 @@ impl GetFirmwareVersion for WhatsMinerV2 {
     }
 }
 impl GetControlBoardVersion for WhatsMinerV2 {
-    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
+            .and_then(|s| MinerControlBoard::from_str(&s).ok())
     }
 }
 impl GetHashboards for WhatsMinerV2 {

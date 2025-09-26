@@ -10,7 +10,7 @@ use std::net::IpAddr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::BoardData;
-use crate::data::device::{DeviceInfo, MinerModel};
+use crate::data::device::{DeviceInfo, MinerControlBoard, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::MinerMessage;
@@ -363,13 +363,16 @@ pub trait GetFirmwareVersion: CollectData {
 // Control Board Version
 #[async_trait]
 pub trait GetControlBoardVersion: CollectData {
-    async fn get_control_board_version(&self) -> Option<String> {
+    async fn get_control_board_version(&self) -> Option<MinerControlBoard> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::ControlBoardVersion]).await;
         self.parse_control_board_version(&data)
     }
     #[allow(unused_variables)]
-    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
         None
     }
 }

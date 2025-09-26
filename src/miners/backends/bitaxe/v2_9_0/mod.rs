@@ -9,8 +9,8 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
+use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
@@ -232,8 +232,12 @@ impl GetFirmwareVersion for Bitaxe290 {
     }
 }
 impl GetControlBoardVersion for Bitaxe290 {
-    fn parse_control_board_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
+            .and_then(|s| MinerControlBoard::from_str(&s).ok())
     }
 }
 impl GetHashboards for Bitaxe290 {
