@@ -180,8 +180,7 @@ impl FromStr for MinerControlBoard {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut cb_model = s.trim().replace(" ", "").to_uppercase();
-        cb_model.retain(|c| !c.is_whitespace());
+        let cb_model = s.trim().replace(" ", "").to_uppercase();
         match cb_model.as_ref() {
             "XILINX" => Ok(Self::Xilinx),
             "BBB" => Ok(Self::BeagleBoneBlack),

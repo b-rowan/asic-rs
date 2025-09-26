@@ -2,7 +2,8 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
-use std::{net::IpAddr, sync::RwLock, time::Duration};
+use std::{net::IpAddr, time::Duration};
+use tokio::sync::RwLock;
 
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
@@ -88,23 +89,20 @@ impl BraiinsWebAPI {
 
     /// Ensure authentication token is present, authenticate if needed
     async fn ensure_authenticated(&self) -> Result<(), BraiinsError> {
-        if self.bearer_token.read().unwrap().is_none() && self.password.is_some() {
-            if let Some(ref password) = self.password {
-                match self.authenticate(password).await {
-                    Ok(token) => {
-                        *self.bearer_token.write().unwrap() = Some(token);
-                        Ok(())
-                    }
-                    Err(e) => Err(e),
-                }
-            } else {
-                Err(BraiinsError::AuthenticationFailed)
-            }
-        } else {
-            Ok(())
+        if self.bearer_token.read().await.is_some() {
+            return Ok(());
         }
-    }
 
+        let password = self
+            .password
+            .as_ref()
+            .ok_or(BraiinsError::AuthenticationFailed)?;
+
+        let token = self.authenticate(password).await?;
+        *self.bearer_token.write().await = Some(token);
+
+        Ok(())
+    }
     async fn authenticate(&self, password: &str) -> Result<String, BraiinsError> {
         let unlock_payload = serde_json::json!({ "password": password, "username": "root" });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
@@ -170,7 +168,7 @@ impl BraiinsWebAPI {
         let mut request_builder = request_builder.timeout(self.timeout);
 
         // Add authentication headers if provided
-        if let Some(ref token) = *self.bearer_token.read().unwrap() {
+        if let Some(ref token) = *self.bearer_token.read().await {
             request_builder = request_builder.header("Authorization", token.to_string());
         }
 

@@ -2,7 +2,8 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
-use std::{net::IpAddr, sync::RwLock, time::Duration};
+use std::{net::IpAddr, time::Duration};
+use tokio::sync::RwLock;
 
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
@@ -86,11 +87,11 @@ impl VnishWebAPI {
 
     /// Ensure authentication token is present, authenticate if needed
     async fn ensure_authenticated(&self) -> Result<(), VnishError> {
-        if self.bearer_token.read().unwrap().is_none() && self.password.is_some() {
+        if self.bearer_token.read().await.is_none() && self.password.is_some() {
             if let Some(ref password) = self.password {
                 match self.authenticate(password).await {
                     Ok(token) => {
-                        *self.bearer_token.write().unwrap() = Some(token);
+                        *self.bearer_token.write().await = Some(token);
                         Ok(())
                     }
                     Err(e) => Err(e),
@@ -161,7 +162,7 @@ impl VnishWebAPI {
         let mut request_builder = request_builder.timeout(self.timeout);
 
         // Add authentication headers if provided
-        if let Some(ref token) = *self.bearer_token.read().unwrap() {
+        if let Some(ref token) = *self.bearer_token.read().await {
             request_builder = request_builder.header("Authorization", format!("Bearer {token}"));
         }
 

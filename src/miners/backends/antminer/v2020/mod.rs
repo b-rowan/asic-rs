@@ -616,7 +616,7 @@ impl GetControlBoardVersion for AntMinerV2020 {
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| MinerControlBoard::from_str(&s.split("_").collect::<Vec<&str>>()[0]).ok())
+            .and_then(|s| MinerControlBoard::from_str(s.split("_").collect::<Vec<&str>>()[0]).ok())
     }
 }
 
