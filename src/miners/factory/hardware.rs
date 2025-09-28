@@ -2207,6 +2207,11 @@ impl From<&AntMinerModel> for MinerHardware {
                 fans: Some(4),
                 boards: Some(3),
             },
+            AntMinerModel::S21XP => Self {
+                chips: Some(91),
+                fans: Some(4),
+                boards: Some(3),
+            },
             AntMinerModel::T21 => Self {
                 chips: Some(108),
                 fans: Some(4),

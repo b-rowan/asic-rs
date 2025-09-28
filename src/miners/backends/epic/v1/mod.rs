@@ -306,8 +306,11 @@ impl GetControlBoardVersion for PowerPlayV1 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| MinerControlBoard::from_str(&s).ok())
+        let cb_type = data.extract::<String>(DataField::ControlBoardVersion)?;
+        match cb_type.as_str() {
+            s if s.to_uppercase().contains("AMLOGIC") => Some(MinerControlBoard::AMLogic),
+            _ => Some(MinerControlBoard::EPicUMC),
+        }
     }
 }
 

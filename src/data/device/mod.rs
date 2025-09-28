@@ -163,6 +163,8 @@ pub enum MinerControlBoard {
     // Custom control boards
     #[serde(rename = "BraiinsCB")]
     BraiinsCB,
+    #[serde(rename = "ePIC UMC")]
+    EPicUMC,
     // Unknown
     Unknown(String),
 }
@@ -210,6 +212,7 @@ impl FromStr for MinerControlBoard {
             "B602" => Ok(Self::B602),
             "B800" => Ok(Self::B800),
             "BraiinsCB" => Ok(Self::BraiinsCB),
+            "ePIC UMC" => Ok(Self::EPicUMC),
             _ => Ok(Self::Unknown(s.to_string())),
         }
     }
