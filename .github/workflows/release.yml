@@ -11,9 +11,9 @@ jobs:
       image: rust:latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Publish GH release
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v2.3.3
       - name: Publish Crate
         run: cargo publish
         env:
