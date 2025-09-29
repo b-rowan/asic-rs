@@ -42,19 +42,11 @@ jobs:
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: auto
-          before-script-linux: |
-            case "${{ matrix.target }}" in
-              "aarch64" | "armv7" | "s390x" | "ppc64le")
-                # NOTE: pypa/manylinux docker images are Debian based
-                sudo apt-get update
-                sudo apt-get install -y pkg-config libssl-dev
-                ;;
-              "x86" | "x86_64")
-                # NOTE: rust-cross/manylinux docker images are CentOS based
-                yum update -y
-                yum install -y openssl openssl-devel
-                ;;
-            esac
+        env:
+          # Force vendored OpenSSL for all targets to avoid cross-compilation issues
+          OPENSSL_STATIC: '1'
+          OPENSSL_VENDORED: '1'
+          OPENSSL_NO_PKG_CONFIG: '1'
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -87,18 +79,22 @@ jobs:
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
           manylinux: musllinux_1_2
           before-script-linux: |
-            case "${{ matrix.target }}" in
-              "aarch64" | "armv7" | "s390x" | "ppc64le")
-                # NOTE: pypa/manylinux docker images are Debian based
-                sudo apt-get update
-                sudo apt-get install -y pkg-config libssl-dev
-                ;;
-              "x86" | "x86_64")
-                # NOTE: rust-cross/manylinux docker images are CentOS based
-                yum update -y
-                yum install -y openssl openssl-devel
-                ;;
-            esac
+            # Install OpenSSL in the musllinux container for native builds
+            if [ "${{ matrix.platform.target }}" = "x86_64" ]; then
+              if command -v apk &> /dev/null; then
+                apk add --no-cache openssl-dev pkgconfig
+              elif command -v yum &> /dev/null; then
+                yum install -y openssl-devel pkgconfig
+              elif command -v apt-get &> /dev/null; then
+                apt-get update && apt-get install -y libssl-dev pkg-config
+              fi
+            fi
+        env:
+          # Use vendored OpenSSL for cross-compilation targets
+          OPENSSL_STATIC: ${{ matrix.platform.target != 'x86_64' && '1' || '' }}
+          OPENSSL_VENDORED: ${{ matrix.platform.target != 'x86_64' && '1' || '' }}
+          # Additional environment variables to force vendored builds
+          OPENSSL_NO_PKG_CONFIG: ${{ matrix.platform.target != 'x86_64' && '1' || '' }}
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -116,35 +112,38 @@ jobs:
             target: x86
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform.target }}
+      - name: Install OpenSSL (Windows)
+        run: |
+          # Install OpenSSL via vcpkg (comes pre-installed on GitHub runners)
+          vcpkg install openssl:x64-windows-static-md
+        shell: cmd
+        if: matrix.platform.target == 'x64'
+      - name: Install OpenSSL (Windows x86)
+        run: |
+          vcpkg install openssl:x86-windows-static-md
+        shell: cmd
+        if: matrix.platform.target == 'x86'
+      - name: Set OpenSSL environment variables
+        run: |
+          echo "OPENSSL_DIR=C:/vcpkg/installed/x64-windows-static-md" >> $GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+        if: matrix.platform.target == 'x64'
+      - name: Set OpenSSL environment variables (x86)
+        run: |
+          echo "OPENSSL_DIR=C:/vcpkg/installed/x86-windows-static-md" >> $GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+        if: matrix.platform.target == 'x86'
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          before-script-linux: |
-            case "${{ matrix.target }}" in
-              "aarch64" | "armv7" | "s390x" | "ppc64le")
-                # NOTE: pypa/manylinux docker images are Debian based
-                sudo apt-get update
-                sudo apt-get install -y pkg-config libssl-dev
-                ;;
-              "x86" | "x86_64")
-                # NOTE: rust-cross/manylinux docker images are CentOS based
-                yum update -y
-                yum install -y openssl openssl-devel
-                ;;
-            esac
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-${{ matrix.platform.target }}
           path: dist
-
   macos:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
@@ -156,6 +155,13 @@ jobs:
             target: aarch64
     steps:
       - uses: actions/checkout@v4
+      - name: Install OpenSSL (macOS)
+        run: |
+          # OpenSSL is typically available via Homebrew on GitHub runners
+          # but we'll ensure it's installed and set the path
+          brew install openssl@3 pkg-config
+          echo "OPENSSL_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
@@ -165,19 +171,6 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter
           sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          before-script-linux: |
-            case "${{ matrix.target }}" in
-              "aarch64" | "armv7" | "s390x" | "ppc64le")
-                # NOTE: pypa/manylinux docker images are Debian based
-                sudo apt-get update
-                sudo apt-get install -y pkg-config libssl-dev
-                ;;
-              "x86" | "x86_64")
-                # NOTE: rust-cross/manylinux docker images are CentOS based
-                yum update -y
-                yum install -y openssl openssl-devel
-                ;;
-            esac
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:

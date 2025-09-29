@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Simple ASIC management in Rust"
 
 [dependencies]
+openssl = { version = "0.10.73", features = ["vendored"] }
 diqwest = "3.1"
 futures = "0.3"
 macaddr = { version = "1.0", features = ["serde_std"] }
