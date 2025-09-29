@@ -46,11 +46,11 @@ jobs:
             # Install OpenSSL in the musllinux container for native builds
             if [ "${{ matrix.platform.target }}" = "x86_64" ]; then
               if command -v apk &> /dev/null; then
-                apk add --no-cache openssl-dev pkgconfig perl perl-base perl-modules
+                apk add --no-cache openssl-dev pkgconfig perl perl-modules
               elif command -v yum &> /dev/null; then
-                yum install -y openssl-devel pkgconfig perl perl-base perl-modules
+                yum install -y openssl-devel pkgconfig perl perl-modules
               elif command -v apt-get &> /dev/null; then
-                apt-get update && apt-get install -y libssl-dev pkg-config perl perl-base perl-modules
+                apt-get update && apt-get install -y libssl-dev pkg-config perl perl-modules
               fi
             fi
         env:
@@ -93,11 +93,11 @@ jobs:
             # Install OpenSSL in the musllinux container for native builds
             if [ "${{ matrix.platform.target }}" = "x86_64" ]; then
               if command -v apk &> /dev/null; then
-                apk add --no-cache openssl-dev pkgconfig perl perl-base perl-modules
+                apk add --no-cache openssl-dev pkgconfig perl perl-modules
               elif command -v yum &> /dev/null; then
-                yum install -y openssl-devel pkgconfig perl perl-base perl-modules
+                yum install -y openssl-devel pkgconfig perl perl-modules
               elif command -v apt-get &> /dev/null; then
-                apt-get update && apt-get install -y libssl-dev pkg-config perl perl-base perl-modules
+                apt-get update && apt-get install -y libssl-dev pkg-config perl perl-modules
               fi
             fi
         env:
