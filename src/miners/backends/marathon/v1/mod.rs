@@ -1,6 +1,6 @@
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::MinerMake;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
+use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolURL};
@@ -253,7 +253,19 @@ impl GetFirmwareVersion for MaraV1 {
     }
 }
 
-impl GetControlBoardVersion for MaraV1 {}
+impl GetControlBoardVersion for MaraV1 {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
+        let cb = data.extract::<String>(DataField::ControlBoardVersion)?;
+        if cb.starts_with("MaraCB") {
+            // Ignore version (eg `MaraCB_v1.4`)
+            return Some(MinerControlBoard::MaraCB);
+        };
+        MinerControlBoard::from_str(cb.as_str()).ok()
+    }
+}
 
 impl MaraV1 {
     fn parse_chip_data(asic_infos: &Value) -> Vec<ChipData> {

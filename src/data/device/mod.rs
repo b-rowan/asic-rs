@@ -133,6 +133,10 @@ pub enum MinerControlBoard {
     // Avalon control boards
     #[serde(rename = "MM3v2X3")]
     MM3v2X3,
+    #[serde(rename = "MM3v1X3")]
+    MM3v1X3,
+    #[serde(rename = "MM3v1")]
+    MM3v1,
     // Bitaxe control boards
     #[serde(rename = "B102")]
     B102,
@@ -165,6 +169,8 @@ pub enum MinerControlBoard {
     BraiinsCB,
     #[serde(rename = "ePIC UMC")]
     EPicUMC,
+    #[serde(rename = "MaraCB")]
+    MaraCB,
     // Unknown
     Unknown(String),
 }
@@ -198,6 +204,8 @@ impl FromStr for MinerControlBoard {
             "H6OS" => Ok(Self::H6OS),
             "H616" => Ok(Self::H616),
             "MM3V2_X3" => Ok(Self::MM3v2X3),
+            "MM3V1_X3" => Ok(Self::MM3v1X3),
+            "MM3V1" => Ok(Self::MM3v1),
             "B102" => Ok(Self::B102),
             "B201" => Ok(Self::B201),
             "B202" => Ok(Self::B202),
