@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pyasic_rs"
-version = "0.1.0"
+version = "0.1.3"
 description = "Python bindings for asic-rs"
 authors = [{ name = "Brett Rowan", email = "121075405+b-rowan@users.noreply.github.com" }]
 license = "Apache 2.0"
@@ -15,7 +15,6 @@ dependencies = [
 
 
 [tool.maturin]
-# maturin will build the Rust cdylib and install it inside the package
 package-name = "pyasic_rs"
 module-name = "pyasic_rs.asic_rs"
 features = ["python"]
