@@ -5,6 +5,7 @@ use crate::data::board::ChipData as ChipData_Base;
 pub(crate) use crate::data::device::{HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
 use crate::data::fan::FanData as FanData_Base;
 use crate::data::miner::MinerData as MinerData_Base;
+use crate::data::pool::PoolURL;
 use crate::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage, pool::PoolData};
 use serde::{Deserialize, Serialize};
 use std::{net::IpAddr, time::Duration};
@@ -191,6 +192,13 @@ impl MinerFirmware {
 
 #[pymethods]
 impl HashAlgorithm {
+    pub fn __repr__<'a>(&self) -> String {
+        self.to_string()
+    }
+}
+
+#[pymethods]
+impl PoolURL {
     pub fn __repr__<'a>(&self) -> String {
         self.to_string()
     }

@@ -203,8 +203,8 @@ class MinerData(BaseModel):
     psu_fans: list[FanData]
     average_temperature: float | None
     fluid_temperature: float | None
-    wattage: int | None
-    wattage_limit: int | None
+    wattage: float | None
+    wattage_limit: float | None
     efficiency: float | None
     light_flashing: bool | None
     messages: list[MinerMessage]

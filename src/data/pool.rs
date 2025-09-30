@@ -73,6 +73,15 @@ impl From<String> for PoolURL {
     }
 }
 
+impl Display for PoolURL {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.pubkey {
+            Some(key) => write!(f, "{}://{}:{}/{}", self.scheme, self.host, self.port, key),
+            _ => write!(f, "{}://{}:{}", self.scheme, self.host, self.port),
+        }
+    }
+}
+
 #[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolData {
