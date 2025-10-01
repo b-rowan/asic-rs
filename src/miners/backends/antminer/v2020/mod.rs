@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -34,6 +34,24 @@ pub struct AntMinerV2020 {
     pub rpc: AntMinerRPCAPI,
     pub web: AntMinerWebAPI,
     pub device_info: DeviceInfo,
+}
+
+enum MinerMode {
+    Sleep,
+    Low,
+    Normal,
+    High,
+}
+
+impl ToString for MinerMode {
+    fn to_string(&self) -> String {
+        match self {
+            MinerMode::Normal => "0".to_string(),
+            MinerMode::Sleep => "1".to_string(),
+            MinerMode::Low => "3".to_string(),
+            _ => "0".to_string(),
+        }
+    }
 }
 
 impl AntMinerV2020 {
@@ -721,7 +739,7 @@ impl GetMessages for AntMinerV2020 {
 impl SetFaultLight for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self.web.blink(fault).await.is_ok())
     }
 }
 
@@ -736,7 +754,7 @@ impl SetPowerLimit for AntMinerV2020 {
 #[async_trait]
 impl Restart for AntMinerV2020 {
     async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self.web.reboot().await.is_ok())
     }
 }
 
@@ -744,7 +762,11 @@ impl Restart for AntMinerV2020 {
 impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
+            .await
+            .is_ok())
     }
 }
 
@@ -752,7 +774,11 @@ impl Pause for AntMinerV2020 {
 impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self
+            .web
+            .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
+            .await
+            .is_ok())
     }
 }
 
