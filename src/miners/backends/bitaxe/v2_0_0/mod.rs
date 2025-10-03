@@ -310,7 +310,7 @@ impl GetHashrate for Bitaxe200 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
-            unit: HashRateUnit::TeraHash,
+            unit: HashRateUnit::GigaHash,
             algo: String::from("SHA256"),
         })
     }
@@ -548,7 +548,7 @@ mod tests {
         assert_eq!(
             &miner_data.hashrate,
             &Some(HashRate {
-                value: 0f64,
+                value: 1f64,
                 unit: HashRateUnit::TeraHash,
                 algo: "SHA256".to_string(),
             })

@@ -4,7 +4,7 @@
   "current": 521.25,
   "temp": 27,
   "vrTemp": 0,
-  "hashRate": 0,
+  "hashRate": 1000,
   "bestDiff": "483k",
   "bestSessionDiff": "0",
   "stratumDiff": 0,
