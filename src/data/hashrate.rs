@@ -61,7 +61,7 @@ impl Display for HashRateUnit {
 }
 
 #[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HashRate {
     /// The current amount of hashes being computed
     pub value: f64,
@@ -88,6 +88,15 @@ impl Display for HashRate {
         write!(f, "{} {}", self.value, self.unit)
     }
 }
+
+impl PartialEq for HashRate {
+    fn eq(&self, other: &Self) -> bool {
+        other.clone().as_unit(self.unit.clone()).value == self.value
+    }
+}
+
+impl Eq for HashRate {}
+
 impl Div<HashRate> for Power {
     type Output = f64;
 
