@@ -1,0 +1,18 @@
+{
+  "STATUS": [
+    {
+      "Code": 307,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "Get Voltage",
+      "STATUS": "S",
+      "When": 1760244165
+    }
+  ],
+  "VOLTAGE": [
+    {
+      "Board": 1,
+      "Voltage": 11.88
+    }
+  ],
+  "id": 1
+}

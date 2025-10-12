@@ -1,0 +1,21 @@
+{
+  "STATUS": [
+    {
+      "Code": 22,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "LUXminer versions",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "VERSION": [
+    {
+      "API": "3.7",
+      "CompileTime": "Tue Apr  8 22:05:35 UTC 2025",
+      "LUXminer": "2025.4.8.220305-57b389c7",
+      "Miner": "2025.4.8.220305",
+      "Type": "Antminer S19k Pro"
+    }
+  ],
+  "id": 1
+}

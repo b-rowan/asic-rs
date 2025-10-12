@@ -1,0 +1,47 @@
+{
+  "STATUS": [
+    {
+      "Code": 11,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "Summary",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Accepted": 1483,
+      "Best Share": 32768,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.0,
+      "Difficulty Accepted": 42323968,
+      "Difficulty Rejected": 32768,
+      "Difficulty Stale": 0,
+      "Discarded": 0,
+      "Elapsed": 3453,
+      "Found Blocks": 0,
+      "GHS 15m": 61506.37,
+      "GHS 1m": 60829.48,
+      "GHS 24h": 55400.8,
+      "GHS 30m": 61154.22,
+      "GHS 5m": 61589.5,
+      "GHS 5s": 59756.06,
+      "GHS av": 56917.91,
+      "Get Failures": 0,
+      "Getworks": 656,
+      "Hardware Errors": 0,
+      "Last getwork": 1760242390,
+      "Local Work": 0,
+      "Network Blocks": 0,
+      "Pool Rejected%": 0.0773,
+      "Pool Stale%": 0.0,
+      "Rejected": 1,
+      "Remote Failures": 0,
+      "Stale": 0,
+      "Total MH": 56917916.07165668,
+      "Utility": 26.03,
+      "Work Utility": 11.5
+    }
+  ],
+  "id": 1
+}

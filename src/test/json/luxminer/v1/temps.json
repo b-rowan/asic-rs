@@ -1,0 +1,70 @@
+{
+  "METADATA": [
+    {
+      "BottomLeft": {
+        "Label": "Board Exhaust (bottom)",
+        "Position": [
+          1,
+          0
+        ]
+      },
+      "BottomRight": {
+        "Label": "Board Intake (bottom)",
+        "Position": [
+          1,
+          1
+        ]
+      },
+      "TopLeft": {
+        "Label": "Board Exhaust (top)",
+        "Position": [
+          0,
+          0
+        ]
+      },
+      "TopRight": {
+        "Label": "Board Intake (top)",
+        "Position": [
+          0,
+          1
+        ]
+      }
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 201,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "3 Temp(s)",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "TEMPS": [
+    {
+      "BottomLeft": 47.0,
+      "BottomRight": 34.0,
+      "ID": 0,
+      "TEMP": 0,
+      "TopLeft": 47.0,
+      "TopRight": 34.0
+    },
+    {
+      "BottomLeft": 47.0,
+      "BottomRight": 33.0,
+      "ID": 1,
+      "TEMP": 1,
+      "TopLeft": 47.0,
+      "TopRight": 33.0
+    },
+    {
+      "BottomLeft": 47.0,
+      "BottomRight": 34.0,
+      "ID": 2,
+      "TEMP": 2,
+      "TopLeft": 47.0,
+      "TopRight": 34.0
+    }
+  ],
+  "id": 1
+}

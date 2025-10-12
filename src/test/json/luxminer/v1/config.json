@@ -1,0 +1,59 @@
+{
+  "CONFIG": [
+    {
+      "ASC Count": 3,
+      "BcastAddr": "192.168.86.255",
+      "ControlBoardType": "cvitek",
+      "Cooling": "Air",
+      "CurtailMode": "None",
+      "DHCP": true,
+      "DNS Servers": "",
+      "Device Code": "",
+      "FPGABuildIdHex": "0x18351835",
+      "FPGABuildIdStr": "2018-35-18 35:00",
+      "FeeStatus": "Ok",
+      "Gateway": "192.168.86.1",
+      "GreenLed": "auto",
+      "Hostname": "UrlacherS19k",
+      "Hotplug": "None",
+      "IPAddr": "192.168.86.46",
+      "ImmersionMode": false,
+      "IsAtmEnabled": true,
+      "IsPowerSupplyOn": true,
+      "IsSingleVoltage": true,
+      "IsTuning": true,
+      "Log Interval": 0,
+      "LogFileLevel": "info",
+      "MACAddr": "62:f7:5e:b7:10:46",
+      "Model": "Antminer S19k Pro",
+      "NameplateTHS": 121.8,
+      "Netmask": "255.255.255.0",
+      "OS": "LuxOS",
+      "PGA Count": 0,
+      "PSUHwVersion": "75",
+      "PSULabel": "APW121215e",
+      "Pool Count": 4,
+      "Profile": "290MHz",
+      "ProfileStep": "-12",
+      "RedLed": "auto",
+      "SerialNumber": "JYZZB0UBDJABF06RB",
+      "Strategy": "Failover",
+      "SystemStatus": "Normal",
+      "UpdateOnStartup": "off",
+      "UpdateOnTimeout": "off",
+      "UpdateOnUser": "full",
+      "UpdateSource": "https://storage.googleapis.com/luxor-firmware/stable",
+      "UpdateTimeout": 60
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 33,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "LUXminer config",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "id": 1
+}

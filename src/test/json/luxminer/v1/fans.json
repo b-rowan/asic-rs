@@ -1,0 +1,44 @@
+{
+  "FANCTRL": [
+    {
+      "MinFans": 3,
+      "PowerOffSpeed": 20
+    }
+  ],
+  "FANS": [
+    {
+      "FAN": "FAN4",
+      "ID": 0,
+      "RPM": 1920,
+      "Speed": 20
+    },
+    {
+      "FAN": "FAN2",
+      "ID": 1,
+      "RPM": 1920,
+      "Speed": 20
+    },
+    {
+      "FAN": "FAN1",
+      "ID": 2,
+      "RPM": 2340,
+      "Speed": 20
+    },
+    {
+      "FAN": "FAN3",
+      "ID": 3,
+      "RPM": 2340,
+      "Speed": 20
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 202,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "4 Fan(s)",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "id": 1
+}

@@ -217,7 +217,7 @@ impl GetDataLocations for LuxMinerV1 {
                 (
                     MinerCommand::RPC {
                         command: "voltageget",
-                        parameters: Some(Value::String("0,true".to_string())),
+                        parameters: Some(Value::String("0".to_string())),
                     },
                     DataExtractor {
                         func: get_by_pointer,
@@ -228,7 +228,7 @@ impl GetDataLocations for LuxMinerV1 {
                 (
                     MinerCommand::RPC {
                         command: "voltageget",
-                        parameters: Some(Value::String("1,true".to_string())),
+                        parameters: Some(Value::String("1".to_string())),
                     },
                     DataExtractor {
                         func: get_by_pointer,
@@ -239,7 +239,7 @@ impl GetDataLocations for LuxMinerV1 {
                 (
                     MinerCommand::RPC {
                         command: "voltageget",
-                        parameters: Some(Value::String("2,true".to_string())),
+                        parameters: Some(Value::String("2".to_string())),
                     },
                     DataExtractor {
                         func: get_by_pointer,
@@ -907,7 +907,6 @@ impl GetMessages for LuxMinerV1 {
 
 #[async_trait]
 impl SetFaultLight for LuxMinerV1 {
-    #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
         let mode = match fault {
             true => "blink",
@@ -945,5 +944,160 @@ impl Resume for LuxMinerV1 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
         Ok(self.rpc.wakeup().await.is_ok())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::device::models::antminer::AntMinerModel::S19KPro;
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::luxminer::v1::{
+        CONFIG, DEVS, FANS, HEALTHCHIPGET_0, HEALTHCHIPGET_1, HEALTHCHIPGET_2, POOLS, POWER,
+        PROFILES, STATS, SUMMARY, TEMPS, VERSION, VOLTAGEGET_0, VOLTAGEGET_1, VOLTAGEGET_2,
+    };
+
+    #[tokio::test]
+
+    async fn test_luxminer_v1() -> Result<()> {
+        let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19KPro));
+
+        let mut results = HashMap::new();
+        let version_cmd = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+
+        let stats_cmd = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+
+        let summary_cmd = MinerCommand::RPC {
+            command: "summary",
+            parameters: None,
+        };
+
+        let pools_cmd = MinerCommand::RPC {
+            command: "pools",
+            parameters: None,
+        };
+
+        let config_cmd = MinerCommand::RPC {
+            command: "config",
+            parameters: None,
+        };
+
+        let fans_cmd = MinerCommand::RPC {
+            command: "fans",
+            parameters: None,
+        };
+
+        let power_cmd = MinerCommand::RPC {
+            command: "power",
+            parameters: None,
+        };
+
+        let profiles_cmd = MinerCommand::RPC {
+            command: "profiles",
+            parameters: None,
+        };
+
+        let temps_cmd = MinerCommand::RPC {
+            command: "temps",
+            parameters: None,
+        };
+
+        let devs_cmd = MinerCommand::RPC {
+            command: "devs",
+            parameters: None,
+        };
+
+        results.insert(version_cmd, Value::from_str(VERSION)?);
+        results.insert(stats_cmd, Value::from_str(STATS)?);
+        results.insert(summary_cmd, Value::from_str(SUMMARY)?);
+        results.insert(pools_cmd, Value::from_str(POOLS)?);
+        results.insert(config_cmd, Value::from_str(CONFIG)?);
+        results.insert(fans_cmd, Value::from_str(FANS)?);
+        results.insert(power_cmd, Value::from_str(POWER)?);
+        results.insert(profiles_cmd, Value::from_str(PROFILES)?);
+        results.insert(temps_cmd, Value::from_str(TEMPS)?);
+        results.insert(devs_cmd, Value::from_str(DEVS)?);
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "voltageget",
+                parameters: Some(Value::String("0".to_string())),
+            },
+            Value::from_str(VOLTAGEGET_0)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "voltageget",
+                parameters: Some(Value::String("1".to_string())),
+            },
+            Value::from_str(VOLTAGEGET_1)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "voltageget",
+                parameters: Some(Value::String("2".to_string())),
+            },
+            Value::from_str(VOLTAGEGET_2)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "healthchipget",
+                parameters: Some(Value::String("0".to_string())),
+            },
+            Value::from_str(HEALTHCHIPGET_0)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "healthchipget",
+                parameters: Some(Value::String("1".to_string())),
+            },
+            Value::from_str(HEALTHCHIPGET_1)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "healthchipget",
+                parameters: Some(Value::String("2".to_string())),
+            },
+            Value::from_str(HEALTHCHIPGET_2)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("62:f7:5e:b7:10:46")?)
+        );
+        assert_eq!(
+            miner_data.serial_number,
+            Some("JYZZB0UBDJABF06RB".to_string())
+        );
+        assert_eq!(miner_data.hostname, Some("UrlacherS19k".to_string()));
+        assert_eq!(miner_data.api_version, Some("3.7".to_string()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2025.4.8.220305".to_string())
+        );
+        assert_eq!(
+            miner_data.control_board_version,
+            Some(MinerControlBoard::CVITek)
+        );
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(1051f64)));
+        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(1188f64)));
+        assert_eq!(miner_data.fans.len(), 4);
+        assert_eq!(miner_data.hashboards[0].chips.len(), 77);
+        assert_eq!(miner_data.pools.len(), 4);
+
+        Ok(())
     }
 }

@@ -1,0 +1,18 @@
+{
+  "POWER": [
+    {
+      "PSU": false,
+      "Watts": 1051
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 311,
+      "Description": "LUXminer 2025.4.8.220305-57b389c7",
+      "Msg": "Power usage",
+      "STATUS": "S",
+      "When": 1760242394
+    }
+  ],
+  "id": 1
+}
