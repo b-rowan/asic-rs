@@ -109,8 +109,8 @@ impl GetDataLocations for LuxMinerV1 {
         };
 
         let profiles_cmd = MinerCommand::RPC {
-            command: "profileget",
-            parameters: Some(Value::String("default".to_string())),
+            command: "profiles",
+            parameters: None,
         };
 
         let temps_cmd = MinerCommand::RPC {
@@ -315,14 +315,24 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
-                profiles_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/PROFILE/0/Watts"),
-                    tag: None,
-                },
-            )],
+            DataField::WattageLimit => vec![
+                (
+                    config_cmd,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/CONFIG/0/Profile"),
+                        tag: Some("Profile"),
+                    },
+                ),
+                (
+                    profiles_cmd,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/PROFILES"),
+                        tag: Some("Profiles"),
+                    },
+                ),
+            ],
             DataField::SerialNumber => vec![(
                 config_cmd,
                 DataExtractor {
@@ -853,7 +863,17 @@ impl GetWattage for LuxMinerV1 {
 
 impl GetWattageLimit for LuxMinerV1 {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        let wattage_limit_data = data.get(&DataField::WattageLimit)?;
+        let profile_name = wattage_limit_data.get("Profile")?.as_str()?;
+        let profiles = wattage_limit_data.get("Profiles")?.as_array()?;
+
+        let profile = profiles
+            .iter()
+            .find(|item| item.get("Profile Name").and_then(|v| v.as_str()) == Some(profile_name))?;
+
+        let watts = profile.get("Watts")?.as_f64()?;
+
+        Some(Power::from_watts(watts))
     }
 }
 
