@@ -203,7 +203,10 @@ impl<
             expected_hashrate,
 
             // Chip information
-            expected_chips: device_info.hardware.chips,
+            expected_chips: Some(
+                device_info.hardware.chips.unwrap_or(0)
+                    * device_info.hardware.boards.map(|u| u as u16).unwrap_or(0),
+            ),
             total_chips,
 
             // Cooling information
