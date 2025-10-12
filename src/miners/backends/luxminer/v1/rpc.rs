@@ -381,7 +381,8 @@ impl RPCAPIClient for LUXMinerRPCAPI {
         if privileged {
             if let Ok(token) = &self.auth().await {
                 if let Some(params) = parameters {
-                    request["parameter"] = json!(format!("{},{}", token, params));
+                    request["parameter"] =
+                        json!(format!("{},{}", token, params.as_str().unwrap_or_default()));
                 } else {
                     request["parameter"] = Value::String(token.clone());
                 }

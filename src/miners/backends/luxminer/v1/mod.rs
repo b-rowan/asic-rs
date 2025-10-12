@@ -909,7 +909,11 @@ impl GetMessages for LuxMinerV1 {
 impl SetFaultLight for LuxMinerV1 {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+        let mode = match fault {
+            true => "blink",
+            false => "auto",
+        };
+        Ok(self.rpc.ledset("red", mode).await.is_ok())
     }
 }
 
@@ -924,7 +928,7 @@ impl SetPowerLimit for LuxMinerV1 {
 #[async_trait]
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self.rpc.reboot_device().await.is_ok())
     }
 }
 
@@ -932,7 +936,7 @@ impl Restart for LuxMinerV1 {
 impl Pause for LuxMinerV1 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self.rpc.sleep().await.is_ok())
     }
 }
 
@@ -940,6 +944,6 @@ impl Pause for LuxMinerV1 {
 impl Resume for LuxMinerV1 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+        Ok(self.rpc.wakeup().await.is_ok())
     }
 }
