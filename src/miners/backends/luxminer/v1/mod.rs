@@ -782,7 +782,7 @@ impl GetFans for LuxMinerV1 {
 impl GetLightFlashing for LuxMinerV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<String>(DataField::LightFlashing)
-            .map(|s| s.to_lowercase() != "off")
+            .map(|s| s.to_lowercase() != "auto")
     }
 }
 
