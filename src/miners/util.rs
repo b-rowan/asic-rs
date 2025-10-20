@@ -61,7 +61,9 @@ pub(crate) async fn send_web_command(
 }
 
 fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
-    let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
+    // Fix for WM V1, can have newlines in version which breaks the json parser
+    let response = response.replace("\n", "");
+    let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
     let success_codes = ["S", "I"];
 
     match parsed.ok() {
