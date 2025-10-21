@@ -1,6 +1,7 @@
 use crate::miners::api::rpc::errors::RPCError;
 use serde_json::Value;
 
+#[derive(Debug)]
 pub enum RPCCommandStatus {
     Success,
     Information,

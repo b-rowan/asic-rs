@@ -33,9 +33,7 @@ impl APIClient for WhatsMinerRPCAPI {
 
 impl RPCCommandStatus {
     fn from_btminer_v1(response: &str) -> Result<Self, RPCError> {
-        // Fix for WM V1, can have newlines in version which breaks the json parser
-        let response = response.replace("\n", "");
-        let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
+        let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
 
         if let Ok(data) = &parsed {
             let command_status = data["STATUS"][0]["STATUS"]
@@ -101,7 +99,9 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
 
         let response = String::from_utf8_lossy(&buffer)
             .into_owned()
-            .replace('\0', "");
+            .replace('\0', "")
+            .replace("\n", "") // Fix for WM V1, can have newlines in version which breaks the json parser
+            .replace(",}", "}"); // Fix for WM V1, can have trailing commas which breaks the json parser
 
         self.parse_rpc_result(&response)
     }

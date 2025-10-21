@@ -110,10 +110,10 @@ impl GetDataLocations for WhatsMinerV1 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                get_version_cmd,
+                summary_cmd,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/Msg/platform"),
+                    key: Some("/SUMMARY/0/CB Platform"),
                     tag: None,
                 },
             )],
@@ -247,6 +247,7 @@ impl GetHostname for WhatsMinerV1 {}
 impl GetApiVersion for WhatsMinerV1 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
+            .and_then(|s| Some(s.strip_prefix("whatsminer v")?.to_string()))
     }
 }
 impl GetFirmwareVersion for WhatsMinerV1 {
@@ -260,7 +261,9 @@ impl GetControlBoardVersion for WhatsMinerV1 {
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| MinerControlBoard::from_str(&s).ok())
+            .and_then(|s| {
+                MinerControlBoard::from_str(s.to_uppercase().strip_prefix("ALLWINNER_")?).ok()
+            })
     }
 }
 impl GetHashboards for WhatsMinerV1 {
@@ -538,5 +541,101 @@ impl Resume for WhatsMinerV1 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
         bail!("Unsupported command");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::device::models::whatsminer::WhatsMinerModel;
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::btminer::v1::{
+        DEVS_COMMAND, GET_PSU_COMMAND, GET_VERSION_COMMAND, POOLS_COMMAND, STATUS_COMMAND,
+        SUMMARY_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_whatsminer_v1_data_parsers() -> Result<()> {
+        let miner = WhatsMinerV1::new(
+            IpAddr::from([127, 0, 0, 1]),
+            MinerModel::WhatsMiner(WhatsMinerModel::M20SV10),
+        );
+        let mut results = HashMap::new();
+        let summary_command: MinerCommand = MinerCommand::RPC {
+            command: "summary",
+            parameters: None,
+        };
+        let status_command: MinerCommand = MinerCommand::RPC {
+            command: "status",
+            parameters: None,
+        };
+        let pools_command: MinerCommand = MinerCommand::RPC {
+            command: "pools",
+            parameters: None,
+        };
+        let devs_command: MinerCommand = MinerCommand::RPC {
+            command: "devs",
+            parameters: None,
+        };
+        let get_version_command: MinerCommand = MinerCommand::RPC {
+            command: "get_version",
+            parameters: None,
+        };
+        let get_psu_command: MinerCommand = MinerCommand::RPC {
+            command: "get_psu",
+            parameters: None,
+        };
+
+        results.insert(summary_command, Value::from_str(SUMMARY_COMMAND)?);
+        results.insert(status_command, Value::from_str(STATUS_COMMAND)?);
+        results.insert(pools_command, Value::from_str(POOLS_COMMAND)?);
+        results.insert(devs_command, Value::from_str(DEVS_COMMAND)?);
+        results.insert(get_version_command, Value::from_str(GET_VERSION_COMMAND)?);
+        results.insert(get_psu_command, Value::from_str(GET_PSU_COMMAND)?);
+
+        let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(&miner_data.ip, &miner.ip);
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("C4:08:28:00:A4:19")?)
+        );
+        assert_eq!(miner_data.api_version, Some("1.4.0".to_string()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("20210322.22.REL".to_string())
+        );
+        assert_eq!(
+            miner_data.control_board_version,
+            Some(MinerControlBoard::H3)
+        );
+        assert_eq!(
+            miner_data.hashrate,
+            Some(HashRate {
+                value: 67.39480097,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(
+            miner_data.expected_hashrate,
+            Some(HashRate {
+                value: 68.796,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3417f64)));
+        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(3500f64)));
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(10154)));
+        assert_eq!(miner_data.fans.len(), 2);
+        assert_eq!(miner_data.pools.len(), 3);
+
+        Ok(())
     }
 }
