@@ -433,19 +433,27 @@ impl MinerFactory {
     }
 
     // Subnet handlers
-    /// Set IPs from a subnet
+    /// Create a new `MinerFactory` with a subnet
+    pub fn from_subnet(subnet: &str) -> Result<Self> {
+        Self::new().with_subnet(subnet)
+    }
+
+    /// Add a subnet to the IP range
     pub fn with_subnet(mut self, subnet: &str) -> Result<Self> {
         let ips = self.hosts_from_subnet(subnet)?;
-        self.ips = ips;
+        self.ips.extend(ips);
         self.shuffle_ips();
         Ok(self)
     }
+
+    /// Set the subnet range to use, removing all other IPs
     pub fn set_subnet(&mut self, subnet: &str) -> Result<&Self> {
         let ips = self.hosts_from_subnet(subnet)?;
         self.ips = ips;
         self.shuffle_ips();
         Ok(self)
     }
+
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
         Ok(network.hosts().collect())
@@ -458,7 +466,12 @@ impl MinerFactory {
     }
 
     // Octet handlers
-    /// Set IPs from octet ranges
+    /// Create a new `MinerFactory` with an octet range
+    pub fn from_octets(octet1: &str, octet2: &str, octet3: &str, octet4: &str) -> Result<Self> {
+        Self::new().with_octets(octet1, octet2, octet3, octet4)
+    }
+
+    /// Add an octet range to the IP range
     pub fn with_octets(
         mut self,
         octet1: &str,
@@ -467,11 +480,12 @@ impl MinerFactory {
         octet4: &str,
     ) -> Result<Self> {
         let ips = self.hosts_from_octets(octet1, octet2, octet3, octet4)?;
-        self.ips = ips;
+        self.ips.extend(ips);
         self.shuffle_ips();
-        self.update_adaptive_concurrency();
         Ok(self)
     }
+
+    /// Set the octet range to use, removing all other IPs
     pub fn set_octets(
         &mut self,
         octet1: &str,
@@ -482,9 +496,9 @@ impl MinerFactory {
         let ips = self.hosts_from_octets(octet1, octet2, octet3, octet4)?;
         self.ips = ips;
         self.shuffle_ips();
-        self.update_adaptive_concurrency();
         Ok(self)
     }
+
     fn hosts_from_octets(
         &self,
         octet1: &str,
@@ -505,9 +519,29 @@ impl MinerFactory {
         ))
     }
 
-    // Range handler
-    /// Set IPs from a range string in the format "10.1-199.0.1-199"
-    pub fn with_range(self, range_str: &str) -> Result<Self> {
+    // Range handlers
+    /// Create a new `MinerFactory` with a range string in the format "10.1-199.0.1-199"
+    pub fn from_range(range_str: &str) -> Result<Self> {
+        Self::new().with_range(range_str)
+    }
+
+    /// Add a range string in the format "10.1-199.0.1-199"
+    pub fn with_range(mut self, range_str: &str) -> Result<Self> {
+        let ips = self.hosts_from_range(range_str)?;
+        self.ips.extend(ips);
+        self.shuffle_ips();
+        Ok(self)
+    }
+
+    /// Set the range string in the format "10.1-199.0.1-199", replacing all other IPs
+    pub fn set_range(&mut self, range_str: &str) -> Result<&Self> {
+        let ips = self.hosts_from_range(range_str)?;
+        self.ips = ips;
+        self.shuffle_ips();
+        Ok(self)
+    }
+
+    fn hosts_from_range(&self, range_str: &str) -> Result<Vec<IpAddr>> {
         let parts: Vec<&str> = range_str.split('.').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(
@@ -515,7 +549,17 @@ impl MinerFactory {
             ));
         }
 
-        self.with_octets(parts[0], parts[1], parts[2], parts[3])
+        let octet1_range = parse_octet_range(parts[0])?;
+        let octet2_range = parse_octet_range(parts[1])?;
+        let octet3_range = parse_octet_range(parts[2])?;
+        let octet4_range = parse_octet_range(parts[3])?;
+
+        Ok(generate_ips_from_ranges(
+            &octet1_range,
+            &octet2_range,
+            &octet3_range,
+            &octet4_range,
+        ))
     }
 
     /// Return current scan IPs
