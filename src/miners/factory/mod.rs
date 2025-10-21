@@ -43,11 +43,10 @@ const CONNECTIVITY_RETRIES: u32 = 3;
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     // Adaptive concurrency based on scale
     match ip_count {
-        0..=100 => 100,      // Small networks - conservative
-        101..=1000 => 250,   // Medium networks - moderate
-        1001..=5000 => 500,  // Large networks - aggressive
-        5001..=10000 => 750, // Very large networks - high throughput
-        _ => 1000,           // Massive mining operations - maximum throughput
+        0..=1000 => 1000,     // Medium networks - moderate
+        1001..=5000 => 2500,  // Large networks - aggressive
+        5001..=10000 => 5000, // Very large networks - high throughput
+        _ => 10000,           // Massive mining operations - maximum throughput
     }
 }
 
@@ -209,9 +208,23 @@ impl MinerFactory {
     pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         // Quick port check first to avoid wasting time on dead IPs
         if (1..self.connectivity_retries).next().is_some() {
-            if self.check_port && !check_port_open(ip, 80, self.connectivity_timeout).await {
-                return Ok(None);
-            } else {
+            if !self.check_port {
+                return self.get_miner(ip).await;
+            }
+            // Check for web UI
+            if check_port_open(ip, 80, self.connectivity_timeout).await {
+                return self.get_miner(ip).await;
+            }
+            // Check for CGMiner RPC API
+            if check_port_open(ip, 4028, self.connectivity_timeout).await {
+                return self.get_miner(ip).await;
+            }
+            // Check for alternate CGMiner RPC API
+            if check_port_open(ip, 4029, self.connectivity_timeout).await {
+                return self.get_miner(ip).await;
+            }
+            // Check for whatsminer tool API
+            if check_port_open(ip, 8889, self.connectivity_timeout).await {
                 return self.get_miner(ip).await;
             }
         }
@@ -343,7 +356,7 @@ impl MinerFactory {
         self
     }
 
-    fn update_adaptive_concurrency(&mut self) {
+    pub fn update_adaptive_concurrency(&mut self) {
         if self.concurrent.is_none() {
             self.concurrent = Some(calculate_optimal_concurrency(self.ips.len()));
         }
