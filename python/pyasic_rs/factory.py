@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Self, AsyncIterable
 
 from pyasic_rs.asic_rs import MinerFactory as _rs_MinerFactory
 from .miner import Miner
@@ -8,9 +8,17 @@ class MinerFactory:
     def __init__(self, *, inner: _rs_MinerFactory = _rs_MinerFactory()):
         self.__inner = inner
 
+    def with_subnet(self, subnet: str) -> Self:
+        self.__inner.with_subnet(subnet)
+        return self
+
     @classmethod
     def from_subnet(cls, subnet: str) -> Self:
         return cls(inner=_rs_MinerFactory.from_subnet(subnet))
+
+    def with_octets(self, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
+        self.__inner.with_octets(octet_1, octet_2, octet_3, octet_4)
+        return self
 
     @classmethod
     def from_octets(cls, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
@@ -25,3 +33,9 @@ class MinerFactory:
     async def scan(self) -> list[Miner]:
         bases = await self.__inner.scan()
         return [Miner(inner=m) for m in filter(lambda x: x is not None, bases)]
+
+    def scan_stream(self) -> AsyncIterable[Miner]:
+        return self.__inner.scan_stream()
+
+    def scan_stream_with_ip(self) -> AsyncIterable[Miner]:
+        return self.__inner.scan_stream_with_ip()

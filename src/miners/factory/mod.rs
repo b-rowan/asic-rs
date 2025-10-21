@@ -34,6 +34,8 @@ use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
 use crate::miners::factory::traits::VersionSelection;
 use std::net::SocketAddr;
+use std::pin::Pin;
+use std::sync::Arc;
 use traits::{DiscoveryCommands, ModelSelection};
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -187,6 +189,7 @@ fn select_backend(
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct MinerFactory {
     search_makes: Option<Vec<MinerMake>>,
     search_firmwares: Option<Vec<MinerFirmware>>,
@@ -612,51 +615,47 @@ impl MinerFactory {
         Ok(miners)
     }
 
-    pub fn scan_stream(&self) -> Result<impl Stream<Item = Box<dyn Miner>>> {
-        if self.ips.is_empty() {
-            return Err(anyhow::anyhow!(
-                "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
-            ));
-        }
-
+    pub fn scan_stream(&self) -> Pin<Box<impl Stream<Item = Box<dyn Miner>> + Send + use<>>> {
         let concurrency = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
 
-        let stream = stream::iter(
-            self.ips
-                .iter()
-                .copied()
-                .map(move |ip| async move { self.scan_miner(ip).await.ok().flatten() }),
-        )
-        .buffer_unordered(concurrency)
-        .filter_map(|miner_opt| async move { miner_opt });
+        let factory = Arc::new(self.clone());
+        let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
 
-        Ok(Box::pin(stream))
+        let ip_count = ips.len();
+        let stream = stream::iter(0..ip_count)
+            .map(move |i| {
+                let factory = Arc::clone(&factory);
+                let ips = Arc::clone(&ips);
+                async move { factory.scan_miner(ips[i]).await.ok().flatten() }
+            })
+            .buffer_unordered(concurrency)
+            .filter_map(|miner_opt| async move { miner_opt });
+
+        Box::pin(stream)
     }
 
     pub fn scan_stream_with_ip(
         &self,
-    ) -> Result<impl Stream<Item = (IpAddr, Option<Box<dyn Miner>>)>> {
-        if self.ips.is_empty() {
-            return Err(anyhow::anyhow!(
-                "No IPs to scan. Use with_subnet, with_octets, or with_range to set IPs."
-            ));
-        }
-
+    ) -> Pin<Box<impl Stream<Item = (IpAddr, Option<Box<dyn Miner>>)> + Send + use<>>> {
         let concurrency = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
 
-        let stream = stream::iter(
-            self.ips
-                .iter()
-                .copied()
-                .map(move |ip| async move { (ip, self.scan_miner(ip).await.ok().flatten()) }),
-        )
-        .buffer_unordered(concurrency);
+        let factory = Arc::new(self.clone());
+        let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
 
-        Ok(Box::pin(stream))
+        let ip_count = ips.len();
+        let stream = stream::iter(0..ip_count)
+            .map(move |i| {
+                let factory = Arc::clone(&factory);
+                let ips = Arc::clone(&ips);
+                async move { (ips[i], factory.scan_miner(ips[i]).await.ok().flatten()) }
+            })
+            .buffer_unordered(concurrency);
+
+        Box::pin(stream)
     }
 
     /// Scan for miners by specific octets
