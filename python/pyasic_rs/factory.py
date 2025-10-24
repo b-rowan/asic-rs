@@ -24,6 +24,14 @@ class MinerFactory:
     def from_octets(cls, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
         return cls(inner=_rs_MinerFactory.from_octets(str(octet_1), str(octet_2), str(octet_3), str(octet_4)))
 
+    def with_range(self, ip_range: str) -> Self:
+        self.__inner.with_range(ip_range)
+        return self
+
+    @classmethod
+    def from_range(cls, ip_range: str) -> Self:
+        return cls(inner=_rs_MinerFactory.from_range(ip_range))
+
     async def get_miner(self, ip: str) -> Miner | None:
         base = await self.__inner.get_miner(ip)
         if base is not None:

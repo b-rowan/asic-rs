@@ -144,6 +144,25 @@ impl MinerFactory {
         Ok(())
     }
 
+    #[classmethod]
+    pub fn from_range(_cls: &Bound<'_, PyType>, range: String) -> PyResult<Self> {
+        let factory = MinerFactory_Base::new().with_range(&range);
+        match factory {
+            Ok(f) => Ok(Self { inner: Arc::new(f) }),
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
+        }
+    }
+
+    pub fn with_range(&mut self, range: &str) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(
+            inner
+                .with_range(range)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
+        );
+        Ok(())
+    }
+
     pub fn scan<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
