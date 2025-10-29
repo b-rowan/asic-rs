@@ -57,7 +57,7 @@ impl From<String> for PoolURL {
         };
         let parsed = Url::parse(&stratum_url).expect("Invalid pool URL");
         let scheme = PoolScheme::from(parsed.scheme().to_string());
-        let host = parsed.host_str().unwrap().to_string();
+        let host = parsed.host_str().unwrap_or("").to_string();
         let port = parsed.port().unwrap_or(80);
         let path = parsed.path();
         let pubkey = match path {
