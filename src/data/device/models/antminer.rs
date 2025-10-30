@@ -79,6 +79,8 @@ pub enum AntMinerModel {
     S19ProPlus,
     #[serde(alias = "ANTMINER S19J PRO")]
     S19jPro,
+    #[serde(alias = "ANTMINER S19J PRO+")]
+    S19jProPlus,
     #[serde(alias = "ANTMINER S19 XP")]
     S19XP,
     #[serde(alias = "ANTMINER S19A")]
