@@ -20,11 +20,11 @@ pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
     match response {
         Some(data) => {
             let json_data = data.json::<serde_json::Value>().await.ok()?;
-            let model = json_data["model"].as_str().unwrap_or("");
+            let model = json_data["miner"].as_str().unwrap_or("").to_uppercase();
 
             // VnishOS typically runs on AntMiner hardware
             let mut factory = MinerModelFactory::new();
-            factory.with_make(MinerMake::AntMiner).parse_model(model)
+            factory.with_make(MinerMake::AntMiner).parse_model(&model)
         }
         None => None,
     }
