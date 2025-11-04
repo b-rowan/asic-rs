@@ -109,6 +109,10 @@ class HashRate(BaseModel):
     def __float__(self):
         return self.value
 
+    def __format__(self, format_spec: str):
+        formatted_value = format(self.value, format_spec)
+        return f"{formatted_value} {self.unit}"
+
     @model_serializer
     def serialize_hashrate(self):
         return self.into_unit(unit=HashRateUnit.default).value
