@@ -62,7 +62,7 @@ See [`MinerFactory`][__link1] for more details.
 #### Data gathering
 
 Getting data is very simple with asic-rs, everything you need can be gathered with a single call.
-Extending the [Getting a miner][__link2] example:
+Extending the “Getting a miner” example:
 
 ```rust
 use asic_rs::MinerFactory;
@@ -89,14 +89,14 @@ If you only want specific data, that can be done with individual function calls:
         let mac = miner.get_mac().await;
 ```
 
-Most data points from [`MinerData`][__link3] have a corresponding `get_...` function.
-See the [`GetMinerData`][__link4] trait for more info.
+Most data points from [`MinerData`][__link2] have a corresponding `get_...` function.
+See the [`GetMinerData`][__link3] trait for more info.
 
 #### Miner control
 
 Controlling a miner is very similar to getting data in asic-rs.
-Each miner has some control functions defined by the [`HasMinerControl`][__link5] trait.
-Again extending the [Getting a miner][__link6] example:
+Each miner has some control functions defined by the [`HasMinerControl`][__link4] trait.
+Again extending the “Getting a miner” example:
 
 ```rust
 use asic_rs::MinerFactory;
@@ -121,11 +121,9 @@ async fn main() {
 ```
 
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG_W_Gn_kaocAGwCcVPfenh7eGy6gYLEwyIe4G6-xw_FwcbpjYXKEGx0P-8CWlUtkG-J7RA4nWZcWG2hOFOaAhbKRG9nFa61H1ehzYWSBg2dhc2ljLXJzZTAuMS40Z2FzaWNfcnM
+ [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG_W_Gn_kaocAGwCcVPfenh7eGy6gYLEwyIe4G6-xw_FwcbpjYXKEG5D_qVKckslCGxwIeK2B_3HPG0dVylfZ-fxqG8PBiqF0DLdRYWSBg2dhc2ljLXJzZTAuMS40Z2FzaWNfcnM
  [__link0]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::factory::MinerFactory
  [__link1]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::factory::MinerFactory
- [__link2]: crate#getting-a-miner
- [__link3]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=data::miner::MinerData
- [__link4]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::GetMinerData
- [__link5]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::HasMinerControl
- [__link6]: crate#getting-a-miner
+ [__link2]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=data::miner::MinerData
+ [__link3]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::GetMinerData
+ [__link4]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::HasMinerControl

@@ -66,7 +66,7 @@
 //!
 //! ### Data gathering
 //! Getting data is very simple with asic-rs, everything you need can be gathered with a single call.
-//! Extending the [Getting a miner](crate#getting-a-miner) example:
+//! Extending the "Getting a miner" example:
 //! ```no_run
 //! use asic_rs::MinerFactory;
 //! use std::str::FromStr;
@@ -111,7 +111,7 @@
 //! ### Miner control
 //! Controlling a miner is very similar to getting data in asic-rs.
 //! Each miner has some control functions defined by the [`HasMinerControl`][`miners::backends::traits::HasMinerControl`] trait.
-//! Again extending the [Getting a miner](crate#getting-a-miner) example:
+//! Again extending the "Getting a miner" example:
 //! ```no_run
 //! use asic_rs::MinerFactory;
 //! use std::str::FromStr;
