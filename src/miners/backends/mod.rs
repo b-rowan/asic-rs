@@ -1,3 +1,5 @@
+//! Miner specific implementations of control functionality and data gathering.
+
 pub mod antminer;
 pub mod avalonminer;
 pub mod bitaxe;
