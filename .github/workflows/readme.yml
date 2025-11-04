@@ -1,0 +1,19 @@
+name: Update README
+
+permissions:
+  contents: write
+
+on:
+  push:
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Run doc2readme
+        uses: docker://codeberg.org/msrd0/cargo-doc2readme
+        with:
+          entrypoint: cargo
+          args: doc2readme --check

@@ -41,7 +41,6 @@
 //! # use asic_rs::MinerFactory;
 //! # use std::str::FromStr;
 //! # use tokio;
-//! #
 //! # #[tokio::main]
 //! # async fn main() {
 //! #     let subnet = "192.168.1.0/24";
@@ -54,7 +53,6 @@
 //! # use asic_rs::MinerFactory;
 //! # use std::str::FromStr;
 //! # use tokio;
-//! #
 //! # #[tokio::main]
 //! # async fn main() {
 //! #     let subnet = "192.168.1.0/24";
@@ -94,7 +92,6 @@
 //! # use std::str::FromStr;
 //! # use std::net::IpAddr;
 //! # use tokio;
-//! #
 //! # #[tokio::main]
 //! # async fn main() {
 //! #     let factory = MinerFactory::new();
