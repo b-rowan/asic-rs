@@ -80,7 +80,16 @@ impl HashRate {
 
 impl Display for HashRate {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.value, self.unit)
+        let precision = f.precision();
+
+        match precision {
+            Some(precision) => {
+                write!(f, "{:.*} {}", precision, self.value, self.unit)
+            }
+            None => {
+                write!(f, "{} {}", self.value, self.unit)
+            }
+        }
     }
 }
 
