@@ -1,4 +1,4 @@
-use crate::data::device::models::MinerModelFactory;
+use crate::data::device::models::{MinerModelFactory, ModelSelectionError};
 use crate::data::device::{MinerFirmware, MinerMake, MinerModel};
 use crate::miners::factory::model::whatsminer::{get_model_whatsminer_v2, get_model_whatsminer_v3};
 use crate::miners::util;
@@ -7,10 +7,11 @@ use diqwest::WithDigestAuth;
 use reqwest::{Client, Response};
 use semver;
 use std::net::IpAddr;
+use std::result::Result as StdResult;
 
 pub mod whatsminer;
 
-pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_vnish(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/api/v1/info"))
         .send()
@@ -19,14 +20,20 @@ pub(crate) async fn get_model_vnish(ip: IpAddr) -> Option<MinerModel> {
 
     match response {
         Some(data) => {
-            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let json_data = data.json::<serde_json::Value>().await.ok();
+
+            if json_data.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let json_data = json_data.unwrap();
+
             let model = json_data["miner"].as_str().unwrap_or("").to_uppercase();
 
             // VnishOS typically runs on AntMiner hardware
             let mut factory = MinerModelFactory::new();
             factory.with_make(MinerMake::AntMiner).parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 
@@ -55,7 +62,7 @@ pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_epic(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_epic(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}:4028/capabilities"))
         .send()
@@ -64,14 +71,19 @@ pub(crate) async fn get_model_epic(ip: IpAddr) -> Option<MinerModel> {
 
     match response {
         Some(data) => {
-            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let json_data = data.json::<serde_json::Value>().await.ok();
+            if json_data.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let json_data = json_data.unwrap();
+
             let model = json_data["Model"].as_str().unwrap_or("").to_uppercase();
 
             MinerModelFactory::new()
                 .with_firmware(MinerFirmware::EPic)
                 .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 pub(crate) async fn get_version_epic(ip: IpAddr) -> Option<semver::Version> {
@@ -96,7 +108,7 @@ pub(crate) async fn get_version_epic(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_antminer(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
         .send_with_digest_auth("root", "root")
@@ -104,14 +116,19 @@ pub(crate) async fn get_model_antminer(ip: IpAddr) -> Option<MinerModel> {
         .ok();
     match response {
         Some(data) => {
-            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let json_data = data.json::<serde_json::Value>().await.ok();
+            if json_data.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let json_data = json_data.unwrap();
+
             let model = json_data["minertype"].as_str().unwrap_or("").to_uppercase();
 
             MinerModelFactory::new()
                 .with_make(MinerMake::AntMiner)
                 .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 
@@ -143,20 +160,22 @@ pub(crate) async fn get_version_antminer(ip: IpAddr) -> Option<semver::Version> 
     }
 }
 
-pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "get_version").await;
 
     match response {
         Some(json_data) => {
             let fw_version: Option<&str> = json_data["Msg"]["fw_ver"].as_str();
-            fw_version?;
+            if fw_version.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
 
             let fw_version = fw_version.unwrap();
 
             // Parse the firmware version format: YYYYMMDD.XX.REL
             // Extract the date components
             if fw_version.len() < 8 {
-                return None;
+                return Err(ModelSelectionError::UnexpectedModelResponse);
             }
 
             let date_part = &fw_version[..8];
@@ -176,10 +195,10 @@ pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Option<MinerModel> {
                     get_model_whatsminer_v2(ip).await
                 }
             } else {
-                None
+                Err(ModelSelectionError::UnexpectedModelResponse)
             }
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 
@@ -215,18 +234,29 @@ pub(crate) async fn get_version_whatsminer(ip: IpAddr) -> Option<semver::Version
     }
 }
 
-pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> Option<MinerModel> {
-    let raw_json = util::send_web_command(&ip, "/api/system/info")
-        .await
-        .unwrap()
-        .0;
-    let response: serde_json::Value = serde_json::from_str(&raw_json).ok()?;
+pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+    let response = util::send_web_command(&ip, "/api/system/info").await;
 
-    let model = response["ASICModel"].as_str()?;
+    match response {
+        Some((raw_json, _, _)) => {
+            let json_data: Option<serde_json::Value> = serde_json::from_str(&raw_json).ok();
+            if json_data.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let json_data = json_data.unwrap();
 
-    MinerModelFactory::new()
-        .with_make(MinerMake::Bitaxe)
-        .parse_model(model)
+            let model = json_data["ASICModel"].as_str();
+            if model.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let model = model.unwrap().to_uppercase();
+
+            MinerModelFactory::new()
+                .with_make(MinerMake::Bitaxe)
+                .parse_model(&model)
+        }
+        None => Err(ModelSelectionError::NoModelResponse),
+    }
 }
 pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     let raw_json = util::send_web_command(&ip, "/api/system/info")
@@ -246,47 +276,52 @@ pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_avalonminer(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_avalonminer(
+    ip: IpAddr,
+) -> StdResult<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
 
     match response {
         Some(json_data) => {
-            if let Some(model_field) = json_data.pointer("/VERSION/0/MODEL")
-                && let Some(model_str) = model_field.as_str()
-            {
-                let model = model_str.split("-").collect::<Vec<&str>>()[0].to_uppercase();
-                return MinerModelFactory::new()
-                    .with_make(MinerMake::AvalonMiner)
-                    .parse_model(&model);
+            let model = json_data["VERSION"][0]["MODEL"].as_str();
+            if model.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
             }
+            let model = model.unwrap().split("-").collect::<Vec<&str>>()[0].to_uppercase();
 
-            None
+            MinerModelFactory::new()
+                .with_make(MinerMake::AvalonMiner)
+                .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
-pub(crate) async fn get_model_luxos(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_luxos(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
     match response {
         Some(json_data) => {
             let model = json_data["VERSION"][0]["Type"].as_str();
-            model?;
+            if model.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
             let model = model.unwrap().to_uppercase();
 
             MinerModelFactory::new()
                 .with_firmware(MinerFirmware::LuxOS)
                 .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 
-pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "devdetails").await;
     match response {
         Some(json_data) => {
             let model = json_data["DEVDETAILS"][0]["Model"].as_str();
-            model?;
+            if model.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
             let model = model
                 .unwrap()
                 .to_uppercase()
@@ -297,17 +332,19 @@ pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Option<MinerModel> {
                 .with_firmware(MinerFirmware::BraiinsOS)
                 .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }
 
-pub(crate) async fn get_model_marathon(ip: IpAddr) -> Option<MinerModel> {
+pub(crate) async fn get_model_marathon(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
 
     match response {
         Some(json_data) => {
             let model: Option<&str> = json_data["VERSION"][0]["Model"].as_str();
-            model?;
+            if model.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
 
             let model = model.unwrap().to_uppercase();
 
@@ -315,6 +352,6 @@ pub(crate) async fn get_model_marathon(ip: IpAddr) -> Option<MinerModel> {
                 .with_firmware(MinerFirmware::Marathon)
                 .parse_model(&model)
         }
-        None => None,
+        None => Err(ModelSelectionError::NoModelResponse),
     }
 }

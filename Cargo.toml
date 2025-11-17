@@ -55,4 +55,4 @@ strip = true
 
 [lib]
 name = "asic_rs"
-crate-type = ["cdylib", "rlib", "lib"]
+crate-type = ["cdylib", "lib"]
