@@ -23,7 +23,7 @@ impl MinerConstructor for WhatsMiner {
                 .matches(&v)
             {
                 Box::new(WhatsMinerV3::new(ip, model))
-            } else if semver::VersionReq::parse(">= 2022.9.20")
+            } else if semver::VersionReq::parse(">= 2022.7.29")
                 .unwrap()
                 .matches(&v)
             {

@@ -1,13 +1,3 @@
-use anyhow::{Result, anyhow};
-use async_trait::async_trait;
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
-
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
@@ -19,7 +9,18 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
+use chrono::{DateTime, NaiveDateTime, Utc};
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::Duration;
 
+use crate::data::message::{MessageSeverity, MinerMessage};
 use rpc::WhatsMinerRPCAPI;
 
 mod rpc;
@@ -84,6 +85,10 @@ impl GetDataLocations for WhatsMinerV2 {
         };
         let get_psu_cmd: MinerCommand = MinerCommand::RPC {
             command: "get_psu",
+            parameters: None,
+        };
+        let get_error_code_cmd: MinerCommand = MinerCommand::RPC {
+            command: "get_error_code",
             parameters: None,
         };
 
@@ -221,6 +226,14 @@ impl GetDataLocations for WhatsMinerV2 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/btmineroff"),
+                    tag: None,
+                },
+            )],
+            DataField::Messages => vec![(
+                get_error_code_cmd,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Msg/error_code"),
                     tag: None,
                 },
             )],
@@ -430,7 +443,43 @@ impl GetLightFlashing for WhatsMinerV2 {
         data.extract_map::<String, _>(DataField::LightFlashing, |l| l != "auto")
     }
 }
-impl GetMessages for WhatsMinerV2 {} // TODO
+impl GetMessages for WhatsMinerV2 {
+    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
+        let mut messages = Vec::new();
+
+        let errors_raw = data.get(&DataField::Messages);
+
+        if let Some(errors_response) = errors_raw {
+            for obj in errors_response.as_array().unwrap_or(&Vec::new()).iter() {
+                let object = obj.as_object();
+                if let Some(obj) = object {
+                    for (code, time) in obj.iter() {
+                        dbg!(time);
+                        let timestamp = NaiveDateTime::parse_from_str(
+                            time.as_str().unwrap(),
+                            "%Y-%m-%d %H:%M:%S",
+                        )
+                        .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
+                        .map(|dt| dt.timestamp_millis() as u32);
+
+                        dbg!(&timestamp);
+
+                        if let Ok(ts) = timestamp {
+                            messages.push(MinerMessage {
+                                timestamp: ts,
+                                code: code.parse::<u64>().unwrap_or(0),
+                                message: "".to_string(),
+                                severity: MessageSeverity::Error,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        messages
+    }
+}
 impl GetUptime for WhatsMinerV2 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
