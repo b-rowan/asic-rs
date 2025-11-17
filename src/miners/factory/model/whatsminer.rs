@@ -11,7 +11,14 @@ use std::result::Result as StdResult;
 pub(crate) async fn get_model_whatsminer_v2(
     ip: IpAddr,
 ) -> StdResult<MinerModel, ModelSelectionError> {
-    let response = util::send_rpc_command(&ip, "devdetails").await;
+    let mut response = None;
+    for _ in 0..3 {
+        response = util::send_rpc_command(&ip, "devdetails").await;
+        if response.is_some() {
+            break;
+        }
+    }
+
     match response {
         Some(json_data) => {
             let model = json_data["DEVDETAILS"][0]["Model"].as_str();
