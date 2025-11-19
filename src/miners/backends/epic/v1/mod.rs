@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -49,10 +49,12 @@ impl PowerPlayV1 {
 
 #[async_trait]
 impl APIClient for PowerPlayV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for ePIC PowerPlay API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for ePIC PowerPlay API"
+            )),
         }
     }
 }
@@ -785,7 +787,7 @@ impl GetPools for PowerPlayV1 {
 #[async_trait]
 impl SetFaultLight for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         self.web
             .send_command(
                 "identify",
@@ -801,14 +803,14 @@ impl SetFaultLight for PowerPlayV1 {
 #[async_trait]
 impl SetPowerLimit for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for PowerPlayV1 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         self.web
             .send_command("reboot", false, Some(json!({"param": "0"})), Method::POST)
             .await
@@ -819,7 +821,7 @@ impl Restart for PowerPlayV1 {
 #[async_trait]
 impl Pause for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
             .send_command("miner", false, Some(json!({"param": "Stop"})), Method::POST)
             .await
@@ -830,7 +832,7 @@ impl Pause for PowerPlayV1 {
 #[async_trait]
 impl Resume for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
             .send_command(
                 "miner",
@@ -849,10 +851,10 @@ mod tests {
     use crate::data::device::models::antminer::AntMinerModel::S19XP;
     use crate::test::api::MockAPIClient;
     use crate::test::json::epic::v1::*;
-    use anyhow::Result;
+    use anyhow;
 
     #[tokio::test]
-    async fn parse_data_test_antminer_s19xp() -> Result<()> {
+    async fn parse_data_test_antminer_s19xp() -> anyhow::Result<()> {
         let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19XP));
 
         let mut results = HashMap::new();

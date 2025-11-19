@@ -2,6 +2,7 @@ mod commands;
 mod hardware;
 mod model;
 mod traits;
+
 use anyhow::Result;
 use futures::future::FutureExt;
 use futures::{Stream, StreamExt, pin_mut, stream};

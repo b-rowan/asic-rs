@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
@@ -49,10 +49,12 @@ impl WhatsMinerV1 {
 
 #[async_trait]
 impl APIClient for WhatsMinerV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for WhatsMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for WhatsMiner API"
+            )),
         }
     }
 }
@@ -508,39 +510,39 @@ impl GetPools for WhatsMinerV1 {
 #[async_trait]
 impl SetFaultLight for WhatsMinerV1 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for WhatsMinerV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for WhatsMinerV1 {
-    async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Pause for WhatsMinerV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Resume for WhatsMinerV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
@@ -555,7 +557,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_whatsminer_v1_data_parsers() -> Result<()> {
+    async fn test_whatsminer_v1_data_parsers() -> anyhow::Result<()> {
         let miner = WhatsMinerV1::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::WhatsMiner(WhatsMinerModel::M20SV10),

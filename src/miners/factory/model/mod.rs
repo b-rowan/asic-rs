@@ -7,11 +7,10 @@ use diqwest::WithDigestAuth;
 use reqwest::{Client, Response};
 use semver;
 use std::net::IpAddr;
-use std::result::Result as StdResult;
 
 pub mod whatsminer;
 
-pub(crate) async fn get_model_vnish(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_vnish(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/api/v1/info"))
         .send()
@@ -62,7 +61,7 @@ pub(crate) async fn get_version_vnish(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_epic(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_epic(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}:4028/capabilities"))
         .send()
@@ -108,7 +107,7 @@ pub(crate) async fn get_version_epic(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_antminer(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_antminer(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
         .send_with_digest_auth("root", "root")
@@ -160,7 +159,7 @@ pub(crate) async fn get_version_antminer(ip: IpAddr) -> Option<semver::Version> 
     }
 }
 
-pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_whatsminer(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "get_version").await;
 
     match response {
@@ -234,7 +233,7 @@ pub(crate) async fn get_version_whatsminer(ip: IpAddr) -> Option<semver::Version
     }
 }
 
-pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_bitaxe(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_web_command(&ip, "/api/system/info").await;
 
     match response {
@@ -276,9 +275,7 @@ pub(crate) async fn get_version_bitaxe(ip: IpAddr) -> Option<semver::Version> {
     }
 }
 
-pub(crate) async fn get_model_avalonminer(
-    ip: IpAddr,
-) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_avalonminer(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
 
     match response {
@@ -296,7 +293,7 @@ pub(crate) async fn get_model_avalonminer(
         None => Err(ModelSelectionError::NoModelResponse),
     }
 }
-pub(crate) async fn get_model_luxos(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_luxos(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
     match response {
         Some(json_data) => {
@@ -314,7 +311,7 @@ pub(crate) async fn get_model_luxos(ip: IpAddr) -> StdResult<MinerModel, ModelSe
     }
 }
 
-pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "devdetails").await;
     match response {
         Some(json_data) => {
@@ -336,7 +333,7 @@ pub(crate) async fn get_model_braiins_os(ip: IpAddr) -> StdResult<MinerModel, Mo
     }
 }
 
-pub(crate) async fn get_model_marathon(ip: IpAddr) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_marathon(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response = util::send_rpc_command(&ip, "version").await;
 
     match response {

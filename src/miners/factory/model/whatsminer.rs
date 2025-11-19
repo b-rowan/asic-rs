@@ -6,11 +6,8 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::util;
 use serde_json::json;
 use std::net::IpAddr;
-use std::result::Result as StdResult;
 
-pub(crate) async fn get_model_whatsminer_v2(
-    ip: IpAddr,
-) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_whatsminer_v2(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let mut response = None;
     for _ in 0..3 {
         response = util::send_rpc_command(&ip, "devdetails").await;
@@ -39,9 +36,7 @@ pub(crate) async fn get_model_whatsminer_v2(
     }
 }
 
-pub(crate) async fn get_model_whatsminer_v3(
-    ip: IpAddr,
-) -> StdResult<MinerModel, ModelSelectionError> {
+pub(crate) async fn get_model_whatsminer_v3(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let rpc = v3::WhatsMinerRPCAPI::new(ip, None);
     let response = rpc
         .get_api_result(&MinerCommand::RPC {

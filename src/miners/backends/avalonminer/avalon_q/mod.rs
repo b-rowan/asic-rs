@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
@@ -46,7 +46,7 @@ impl AvalonQMiner {
     }
 
     /// Reboot the miner
-    pub async fn reboot(&self) -> Result<bool> {
+    pub async fn reboot(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("restart", false, None).await?;
 
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_str()) {
@@ -59,17 +59,19 @@ impl AvalonQMiner {
 
 #[async_trait]
 impl APIClient for AvalonQMiner {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for AvalonMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for AvalonMiner API"
+            )),
         }
     }
 }
 
 #[async_trait]
 impl Pause for AvalonQMiner {
-    async fn pause(&self, after: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, after: Option<Duration>) -> anyhow::Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
 
@@ -101,7 +103,7 @@ impl Pause for AvalonQMiner {
 }
 #[async_trait]
 impl Resume for AvalonQMiner {
-    async fn resume(&self, after: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, after: Option<Duration>) -> anyhow::Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
 
@@ -132,7 +134,7 @@ impl Resume for AvalonQMiner {
 }
 #[async_trait]
 impl SetFaultLight for AvalonQMiner {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let command = if fault { "1-1" } else { "1-0" };
 
         let data = self
@@ -149,13 +151,13 @@ impl SetFaultLight for AvalonQMiner {
             return Ok(msg == "ASC 0 set OK");
         }
 
-        Err(anyhow!("Failed to set fault light to {}", command))
+        Err(anyhow::anyhow!("Failed to set fault light to {}", command))
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for AvalonQMiner {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -172,14 +174,14 @@ impl SetPowerLimit for AvalonQMiner {
             return Ok(msg == "ASC 0 set OK");
         }
 
-        Err(anyhow!("Failed to set power limit"))
+        Err(anyhow::anyhow!("Failed to set power limit"))
     }
 }
 
 #[async_trait]
 impl Restart for AvalonQMiner {
-    async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
@@ -565,7 +567,7 @@ mod tests {
 
     #[tokio::test]
 
-    async fn test_avalon_home_q() -> Result<()> {
+    async fn test_avalon_home_q() -> anyhow::Result<()> {
         let miner = AvalonQMiner::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::AvalonMiner(AvalonHomeQ),

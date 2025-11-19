@@ -9,7 +9,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use macaddr::MacAddr;
@@ -49,10 +49,12 @@ impl WhatsMinerV2 {
 
 #[async_trait]
 impl APIClient for WhatsMinerV2 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for WhatsMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for WhatsMiner API"
+            )),
         }
     }
 }
@@ -544,7 +546,7 @@ impl GetPools for WhatsMinerV2 {
 
 #[async_trait]
 impl SetFaultLight for WhatsMinerV2 {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let parameters = match fault {
             false => Some(
                 json!({"auto": true, "color": "red", "period": 60, "duration": 20, "start": 0}),
@@ -561,7 +563,7 @@ impl SetFaultLight for WhatsMinerV2 {
 
 #[async_trait]
 impl SetPowerLimit for WhatsMinerV2 {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let parameters = Some(json!({"power_limit": limit.as_watts().to_string()}));
         let data = self
             .rpc
@@ -573,7 +575,7 @@ impl SetPowerLimit for WhatsMinerV2 {
 
 #[async_trait]
 impl Restart for WhatsMinerV2 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("reboot", true, None).await;
         Ok(data.is_ok())
     }
@@ -582,7 +584,7 @@ impl Restart for WhatsMinerV2 {
 #[async_trait]
 impl Pause for WhatsMinerV2 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let data = self
             .rpc
             .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
@@ -594,7 +596,7 @@ impl Pause for WhatsMinerV2 {
 #[async_trait]
 impl Resume for WhatsMinerV2 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("power_on", true, None).await;
         Ok(data.is_ok())
     }
