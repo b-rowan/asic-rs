@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
@@ -49,10 +49,12 @@ impl WhatsMinerV3 {
 
 #[async_trait]
 impl APIClient for WhatsMinerV3 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for WhatsMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for WhatsMiner API"
+            )),
         }
     }
 }
@@ -478,7 +480,7 @@ impl GetPools for WhatsMinerV3 {
 
 #[async_trait]
 impl SetFaultLight for WhatsMinerV3 {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let parameters = match fault {
             true => Some(json!("auto")),
             false => Some(json!([{"color": "red", "period": 60, "duration": 20, "start": 0}])),
@@ -495,7 +497,7 @@ impl SetFaultLight for WhatsMinerV3 {
 
 #[async_trait]
 impl SetPowerLimit for WhatsMinerV3 {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let data = self
             .rpc
             .send_command("set.miner.power_limit", true, Some(json!(limit)))
@@ -507,7 +509,7 @@ impl SetPowerLimit for WhatsMinerV3 {
 
 #[async_trait]
 impl Restart for WhatsMinerV3 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("set.system.reboot", true, None).await;
 
         Ok(data.is_ok())
@@ -516,7 +518,7 @@ impl Restart for WhatsMinerV3 {
 
 #[async_trait]
 impl Pause for WhatsMinerV3 {
-    async fn pause(&self, _at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         // might not work as intended, if issues are found then switch to "enable" + "disable"
         // see api docs - https://apidoc.whatsminer.com/#api-Miner-btminer_service_set
         let data = self
@@ -530,7 +532,7 @@ impl Pause for WhatsMinerV3 {
 
 #[async_trait]
 impl Resume for WhatsMinerV3 {
-    async fn resume(&self, _at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         let data = self
             .rpc
             .send_command("set.miner.service", true, Some(json!("start")))

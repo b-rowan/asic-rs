@@ -11,7 +11,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -63,10 +63,10 @@ impl LuxMinerV1 {
 
 #[async_trait]
 impl APIClient for LuxMinerV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for LuxMiner API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
         }
     }
 }
@@ -907,7 +907,7 @@ impl GetMessages for LuxMinerV1 {
 
 #[async_trait]
 impl SetFaultLight for LuxMinerV1 {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let mode = match fault {
             true => "blink",
             false => "auto",
@@ -919,14 +919,14 @@ impl SetFaultLight for LuxMinerV1 {
 #[async_trait]
 impl SetPowerLimit for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for LuxMinerV1 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.rpc.reboot_device().await.is_ok())
     }
 }
@@ -934,7 +934,7 @@ impl Restart for LuxMinerV1 {
 #[async_trait]
 impl Pause for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.sleep().await.is_ok())
     }
 }
@@ -942,7 +942,7 @@ impl Pause for LuxMinerV1 {
 #[async_trait]
 impl Resume for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.wakeup().await.is_ok())
     }
 }
@@ -959,7 +959,7 @@ mod tests {
 
     #[tokio::test]
 
-    async fn test_luxminer_v1() -> Result<()> {
+    async fn test_luxminer_v1() -> anyhow::Result<()> {
         let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19KPro));
 
         let mut results = HashMap::new();

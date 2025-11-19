@@ -8,7 +8,6 @@ use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;
 use serde::{Deserialize, Serialize};
-use std::result::Result as StdResult;
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
 
@@ -152,10 +151,7 @@ impl MinerModelFactory {
         self
     }
 
-    pub(crate) fn parse_model(
-        &self,
-        model_str: &str,
-    ) -> StdResult<MinerModel, ModelSelectionError> {
+    pub(crate) fn parse_model(&self, model_str: &str) -> Result<MinerModel, ModelSelectionError> {
         match self.make {
             Some(MinerMake::AntMiner) => {
                 let model = AntMinerModel::from_str(model_str)?;

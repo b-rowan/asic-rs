@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
@@ -234,7 +234,7 @@ impl<
 
 #[async_trait]
 pub trait APIClient: Send + Sync {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value>;
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value>;
 }
 
 #[async_trait]
@@ -245,7 +245,7 @@ pub trait WebAPIClient: APIClient {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value>;
+    ) -> anyhow::Result<Value>;
 }
 
 #[async_trait]
@@ -255,7 +255,7 @@ pub trait RPCAPIClient: APIClient {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value>;
+    ) -> anyhow::Result<Value>;
 }
 
 // Data traits
@@ -510,27 +510,27 @@ pub trait GetLightFlashing: CollectData {
 // Setters
 #[async_trait]
 pub trait SetFaultLight {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool>;
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait SetPowerLimit {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool>;
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Restart {
-    async fn restart(&self) -> Result<bool>;
+    async fn restart(&self) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Pause {
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool>;
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Resume {
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool>;
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
 }
 
 // Messages

@@ -11,7 +11,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use macaddr::MacAddr;
@@ -50,10 +50,10 @@ impl BraiinsV2507 {
 
 #[async_trait]
 impl APIClient for BraiinsV2507 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for Braiins API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
         }
     }
 }
@@ -551,7 +551,7 @@ impl GetMessages for BraiinsV2507 {
 
 #[async_trait]
 impl SetFaultLight for BraiinsV2507 {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         Ok(self
             .web
             .send_command("actions/locate", true, Some(json!(fault)), Method::PUT)
@@ -562,7 +562,7 @@ impl SetFaultLight for BraiinsV2507 {
 
 #[async_trait]
 impl SetPowerLimit for BraiinsV2507 {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         Ok(self
             .web
             .send_command(
@@ -578,7 +578,7 @@ impl SetPowerLimit for BraiinsV2507 {
 
 #[async_trait]
 impl Restart for BraiinsV2507 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self
             .web
             .send_command("actions/reboot", true, None, Method::PUT)
@@ -590,7 +590,7 @@ impl Restart for BraiinsV2507 {
 #[async_trait]
 impl Pause for BraiinsV2507 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
             .web
             .send_command("actions/pause", true, None, Method::PUT)
@@ -602,7 +602,7 @@ impl Pause for BraiinsV2507 {
 #[async_trait]
 impl Resume for BraiinsV2507 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
             .web
             .send_command("actions/resume", true, None, Method::PUT)
