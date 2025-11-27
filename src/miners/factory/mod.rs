@@ -161,6 +161,7 @@ fn parse_type_from_web(
     }
 }
 
+#[tracing::instrument(level = "debug")]
 fn select_backend(
     ip: IpAddr,
     model: MinerModel,
@@ -185,7 +186,10 @@ fn select_backend(
         (_, Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model, version)),
         (_, Some(MinerFirmware::LuxOS)) => Some(LuxMiner::new(ip, model, version)),
         (_, Some(MinerFirmware::BraiinsOS)) => Some(Braiins::new(ip, model, version)),
-        _ => None,
+        _ => {
+            tracing::debug!("no valid backend found");
+            None
+        }
     }
 }
 
@@ -208,6 +212,7 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         // Quick port check first to avoid wasting time on dead IPs
         if (1..self.connectivity_retries).next().is_some() {
@@ -231,9 +236,11 @@ impl MinerFactory {
                 return self.get_miner(ip).await;
             }
         }
+        tracing::trace!("no response from any miner-specific ports");
         Ok(None)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
@@ -320,7 +327,10 @@ impl MinerFactory {
 
                 Ok(select_backend(ip, model, firmware, version))
             }
-            _ => Ok(None),
+            _ => {
+                tracing::debug!("failed to identify miner");
+                Ok(None)
+            }
         }
     }
 
