@@ -328,7 +328,7 @@ impl MinerFactory {
                 Ok(select_backend(ip, model, firmware, version))
             }
             _ => {
-                tracing::debug!("failed to identify miner");
+                tracing::debug!("failed to identify {ip}");
                 Ok(None)
             }
         }
