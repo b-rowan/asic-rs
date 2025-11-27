@@ -12,7 +12,7 @@ pub(crate) async fn send_rpc_command(
 ) -> Option<serde_json::Value> {
     let stream = tokio::net::TcpStream::connect(format!("{ip}:4028")).await;
     if stream.is_err() {
-        tracing::debug!("failed to connect to miner");
+        tracing::debug!("failed to connect to {ip} rpc");
         return None;
     }
     let mut stream = stream.unwrap();
@@ -48,7 +48,7 @@ pub(crate) async fn send_web_command(
             client
                 .get(format!("http://{ip}{command}"))
                 .build()
-                .expect("Failed to construct request."),
+                .expect("Failed to construct request"),
         )
         .await;
     match resp {
@@ -69,7 +69,7 @@ pub(crate) async fn send_web_command(
             }
         }
         Err(_) => {
-            tracing::debug!("failed to connect to miner");
+            tracing::debug!("failed to connect to {ip} web");
             None
         }
     }
