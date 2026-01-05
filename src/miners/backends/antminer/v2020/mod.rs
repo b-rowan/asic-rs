@@ -776,11 +776,25 @@ impl Restart for AntMinerV2020 {
 impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-            .await
-            .is_ok())
+        let pre = self.web.get_miner_conf().await?;
+
+        if pre.get("miner-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        if pre.get("bitmain-work-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Sleep.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        Ok(false)
     }
 }
 
@@ -788,11 +802,25 @@ impl Pause for AntMinerV2020 {
 impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-            .await
-            .is_ok())
+        let pre = self.web.get_miner_conf().await?;
+
+        if pre.get("miner-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        if pre.get("bitmain-work-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Normal.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        Ok(false)
     }
 }
 

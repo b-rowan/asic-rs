@@ -279,16 +279,37 @@ impl MinerFactory {
 
         let timeout = tokio::time::sleep(self.identification_timeout).fuse();
         let tasks = tokio::spawn(async move {
+            let mut found: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
+
             loop {
                 if discovery_tasks.is_empty() {
-                    return None;
-                };
+                    return found;
+                }
+
                 match discovery_tasks.join_next().await.unwrap_or(Ok(None)) {
-                    Ok(Some(result)) => {
+                    // Any explicit non-stock firmware wins immediately.
+                    Ok(Some(result @ (_, Some(fw)))) if fw != MinerFirmware::Stock => {
                         return Some(result);
                     }
+
+                    Ok(Some(result)) => {
+                        // Keep the best fallback so far: Stock > make-only > None
+                        let upgrade = match (&found, &result) {
+                            (None, _) => true,
+                            // Upgrade none -> stock
+                            (Some((None, None)), (_, Some(MinerFirmware::Stock))) => true,
+                            // Upgrade make-only -> stock
+                            (Some((Some(_), None)), (_, Some(MinerFirmware::Stock))) => true,
+                            _ => false,
+                        };
+
+                        if upgrade {
+                            found = Some(result);
+                        }
+                    }
+
                     _ => continue,
-                };
+                }
             }
         });
 
