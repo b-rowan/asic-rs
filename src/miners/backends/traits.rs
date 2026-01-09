@@ -154,7 +154,18 @@ impl<
         let device_info = self.get_device_info();
 
         // computed fields
-        let total_chips = hashboards.clone().iter().map(|b| b.working_chips).sum();
+        let total_chips = {
+            let chips = hashboards
+                .iter()
+                .filter_map(|b| b.working_chips)
+                .collect::<Vec<u16>>();
+
+            if !chips.is_empty() {
+                Some(chips.iter().sum())
+            } else {
+                None
+            }
+        };
         let average_temperature = {
             let board_temps = hashboards
                 .iter()
