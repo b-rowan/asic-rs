@@ -1,0 +1,57 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/units.proto";
+
+option go_package = "github.com/braiins/bos-plus-api/braiins/bos/v1;bos_proto_v1";
+
+// Structure which contains HB real hashrate stats.
+message RealHashrate {
+  braiins.bos.v1.GigaHashrate last_5s = 1;
+  braiins.bos.v1.GigaHashrate last_15s = 2;
+  braiins.bos.v1.GigaHashrate last_30s = 3;
+  braiins.bos.v1.GigaHashrate last_1m = 4;
+  braiins.bos.v1.GigaHashrate last_5m = 5;
+  braiins.bos.v1.GigaHashrate last_15m = 6;
+  braiins.bos.v1.GigaHashrate last_30m = 7;
+  braiins.bos.v1.GigaHashrate last_1h = 8;
+  braiins.bos.v1.GigaHashrate last_24h = 9;
+  braiins.bos.v1.GigaHashrate since_restart = 10;
+}
+
+// Structure to handle HB state
+message WorkSolverStats {
+  // Real hashrate
+  RealHashrate real_hashrate = 1;
+  // Nominal hashrate
+  braiins.bos.v1.GigaHashrate nominal_hashrate = 2;
+  // Error hashrate
+  braiins.bos.v1.MegaHashrate error_hashrate = 3;
+  // Found blocks
+  uint32 found_blocks = 4;
+  // Best share
+  uint64 best_share = 5;
+}

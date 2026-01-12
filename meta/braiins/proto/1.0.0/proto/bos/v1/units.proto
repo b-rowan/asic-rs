@@ -1,0 +1,70 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+option go_package = "github.com/braiins/bos-plus-api/braiins/bos/v1;bos_proto_v1";
+
+message MegaHashrate {
+  double megahash_per_second = 1;
+}
+
+message GigaHashrate {
+  double gigahash_per_second = 1;
+}
+
+message TeraHashrate {
+  double terahash_per_second = 1;
+}
+
+message Frequency {
+  double hertz = 1;
+}
+
+message Voltage {
+  double volt = 1;
+}
+
+message Power {
+  uint64 watt = 1;
+}
+
+message PowerEfficiency {
+  double joule_per_terahash = 1;
+}
+
+message Temperature {
+  double degree_c = 1;
+}
+
+// Structure representing Basis Points
+message BasesPoints {
+  // A basis point is one hundredth of 1 percentage point.
+  // For example: 1bps = 0.01%, 250bps = 2.5%
+  uint32 bsp = 1;
+}
+
+message Hours {
+  uint32 hours = 1;
+}

@@ -1,0 +1,117 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+option go_package = "github.com/braiins/bos-plus-api/braiins/bos/v1;bos_proto_v1";
+
+// Request for start bosminer action.
+message StartRequest {}
+
+// Response for start bosminer action.
+message StartResponse {
+  // Flag that bosminer was already running
+  bool already_running = 1;
+}
+
+// Request for restart bosminer action.
+message RestartRequest {}
+
+// Response for restart bosminer action.
+message RestartResponse {
+  // Flag that bosminer was already running
+  bool already_running = 1;
+}
+
+// Request for reboot bosminer action.
+message RebootRequest {}
+
+// Response for reboot bosminer action.
+message RebootResponse {}
+
+// Request for stop bosminer action.
+message StopRequest {}
+
+// Response for stop bosminer action.
+message StopResponse {
+  // Flag that bosminer was already stopped
+  bool already_stopped = 1;
+}
+
+// Request for pause mining action.
+message PauseMiningRequest {}
+
+// Response for pause mining action.
+message PauseMiningResponse {
+  // Flag that miner mining was already paused
+  bool already_paused = 1;
+}
+
+// Response for resume mining action.
+message ResumeMiningRequest {}
+
+// Response for resume mining action.
+message ResumeMiningResponse {
+  // Flag that miner was already mining
+  bool already_mining = 1;
+}
+
+// Request message to enable/disable locate device
+message SetLocateDeviceStatusRequest {
+  bool enable = 1;
+}
+
+// Response with locate device status
+message LocateDeviceStatusResponse {
+  bool enabled = 1;
+}
+
+// Request for locate device status action.
+message GetLocateDeviceStatusRequest {}
+
+service ActionsService {
+  // Method to start bosminer
+  rpc Start(StartRequest) returns (StartResponse);
+
+  // Method to stop bosminer
+  rpc Stop(StopRequest) returns (StopResponse);
+
+  // Method to pause mining
+  rpc PauseMining(PauseMiningRequest) returns (PauseMiningResponse);
+
+  // Method to resume mining
+  rpc ResumeMining(ResumeMiningRequest) returns (ResumeMiningResponse);
+
+  // Method to restart bosminer
+  rpc Restart(RestartRequest) returns (RestartResponse);
+
+  // Method to reboot whole miner
+  rpc Reboot(RebootRequest) returns (RebootResponse);
+
+  // Method to enable/disable locate device mode
+  rpc SetLocateDeviceStatus(SetLocateDeviceStatusRequest) returns (LocateDeviceStatusResponse);
+
+  // Method to retrieve the locate device mode status
+  rpc GetLocateDeviceStatus(GetLocateDeviceStatusRequest) returns (LocateDeviceStatusResponse);
+}

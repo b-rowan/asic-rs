@@ -1,0 +1,77 @@
+// Copyright (C) 2024  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+option go_package = "github.com/braiins/bos-plus-api/braiins/bos/v1;bos_proto_v1";
+
+message GetNetworkConfigurationRequest {}
+
+message GetNetworkConfigurationResponse {
+  NetworkConfiguration network = 1;
+}
+
+message SetNetworkConfigurationRequest {
+  // Network protocol. Existing value will be preserved if this field is not set.
+  oneof protocol {
+    Dhcp dhcp = 1;
+    Static static = 2;
+  }
+  // Hostname. Existing value will be preserved if this field is not set.
+  optional string hostname = 3;
+}
+
+message SetNetworkConfigurationResponse {
+  NetworkConfiguration network = 1;
+}
+
+message NetworkConfiguration {
+  // Network protocol
+  oneof protocol {
+    Dhcp dhcp = 1;
+    Static static = 2;
+  }
+  // Hostname
+  string hostname = 3;
+}
+
+message Dhcp {}
+
+message Static {
+  // IP address
+  string address = 1;
+  // Netmask
+  string netmask = 2;
+  // Gateway
+  string gateway = 3;
+  // DNS servers
+  repeated string dns_servers = 4;
+}
+
+service NetworkService {
+  // Method to get network configuration
+  rpc GetNetworkConfiguration(GetNetworkConfigurationRequest) returns (GetNetworkConfigurationResponse);
+  // Method to set network configuration. You can specify protocol or hostname, or both.
+  rpc SetNetworkConfiguration(SetNetworkConfigurationRequest) returns (SetNetworkConfigurationResponse);
+}

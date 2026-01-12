@@ -1,0 +1,400 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/common.proto";
+import "bos/v1/constraints.proto";
+import "bos/v1/units.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/braiins/bos-plus-api/braiins/bos/v1;bos_proto_v1";
+
+enum TunerMode {
+  TUNER_MODE_UNSPECIFIED = 0;
+  TUNER_MODE_POWER_TARGET = 1;
+  TUNER_MODE_HASHRATE_TARGET = 2;
+}
+
+message TunerConfiguration {
+  // Flag if tuner is enabled
+  optional bool enabled = 1;
+  // Tuner mode
+  optional TunerMode tuner_mode = 2;
+  // Tuner power target
+  braiins.bos.v1.Power power_target = 3;
+  // Tuner hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target = 4;
+}
+
+message TunerConstraints {
+  // Tuner power target mode constraints
+  braiins.bos.v1.PowerConstraints power_target = 1;
+  // Tuner hashrate target mode constraints
+  braiins.bos.v1.HashrateConstraints hashrate_target = 2;
+  // Tuner enabled enabled default value
+  braiins.bos.v1.BooleanConstraint enabled = 3;
+  // Default tuner mode
+  TunerMode default_mode = 4;
+}
+
+message DPSConfiguration {
+  // Flag if Dynamic Performance Scaling is enabled
+  optional bool enabled = 1;
+  // Dynamic Performance Scaling power step
+  braiins.bos.v1.Power power_step = 2;
+  // Dynamic Performance Scaling hashrate step
+  braiins.bos.v1.TeraHashrate hashrate_step = 3;
+  // Dynamic Performance Scaling minimal power target
+  braiins.bos.v1.Power min_power_target = 4;
+  // Dynamic Performance Scaling minimal hashrate target
+  braiins.bos.v1.TeraHashrate min_hashrate_target = 5;
+  // Flag if shutdown for Dynamic Performance Scaling is enabled
+  optional bool shutdown_enabled = 6;
+  // Dynamic Performance Scaling shutdown duration
+  braiins.bos.v1.Hours shutdown_duration = 7;
+}
+
+message HashboardPerformanceConfiguration {
+  // Common frequency for all HB
+  braiins.bos.v1.Frequency global_frequency = 1;
+  // Common voltage for all HB
+  braiins.bos.v1.Voltage global_voltage = 2;
+  // Per hashboard frequency/voltage. It has higher priority than global one
+  repeated HashboardConfig hashboards = 3;
+}
+
+message DPSConstraints {
+  // Dynamic Performance Scaling power step constraints
+  braiins.bos.v1.PowerConstraints power_step = 1;
+  // Dynamic Performance Scaling hashrate step constraints
+  braiins.bos.v1.HashrateConstraints hashrate_step = 2;
+  // Dynamic Performance Scaling minimal power target constraints
+  braiins.bos.v1.PowerConstraints min_power_target = 3;
+  // Dynamic Performance Scaling minimal hashrate target constraints
+  braiins.bos.v1.HashrateConstraints min_hashrate_target = 4;
+  // Dynamic Performance Scaling enabled shutdown default value
+  braiins.bos.v1.BooleanConstraint shutdown_enabled = 5;
+  // Dynamic Performance Scaling shutdown duration constraints
+  braiins.bos.v1.DurationConstraints shutdown_duration = 6;
+  // Dynamic Performance Scaling enabled default value
+  braiins.bos.v1.BooleanConstraint enabled = 7;
+}
+
+message HashboardConstraints {
+  // List of possible HB indices
+  repeated string hashboard_ids = 1;
+  // Default value for flag if hashboards are enabled
+  braiins.bos.v1.BooleanConstraint enabled = 2;
+  // HB frequency constraints
+  braiins.bos.v1.FrequencyConstraints frequency = 3;
+  // HB frequency constraints
+  braiins.bos.v1.VoltageConstraints voltage = 4;
+}
+
+// Structure to handle power target profile
+message PowerTargetProfile {
+  // Creation timestamp
+  google.protobuf.Timestamp created = 1;
+  // Tuned power target
+  braiins.bos.v1.Power target = 2;
+  // Measured hashrate
+  braiins.bos.v1.GigaHashrate measured_hashrate = 3;
+  // Estimated power consumption
+  braiins.bos.v1.Power estimated_power_consumption = 4;
+}
+
+// Structure to handle hashrate target profile
+message HashrateTargetProfile {
+  // Creation timestamp
+  google.protobuf.Timestamp created = 1;
+  // Tuned hashrate target
+  braiins.bos.v1.TeraHashrate target = 2;
+  // Measured hashrate
+  braiins.bos.v1.GigaHashrate measured_hashrate = 3;
+  // Estimated power consumption
+  braiins.bos.v1.Power estimated_power_consumption = 4;
+}
+
+enum TunerState {
+  TUNER_STATE_UNSPECIFIED = 0;
+  TUNER_STATE_DISABLED = 1;
+  TUNER_STATE_STABLE = 2;
+  TUNER_STATE_TUNING = 3;
+  TUNER_STATE_ERROR = 4;
+}
+
+// Request for getting the current performance data
+message GetTunerStateRequest {}
+
+// Response with the current tuner details
+message GetTunerStateResponse {
+  // Tuner state
+  braiins.bos.v1.TunerState overall_tuner_state = 1;
+  oneof mode_state {
+    PowerTargetModeState power_target_mode_state = 2;
+    HashrateTargetModeState hashrate_target_mode_state = 3;
+  }
+}
+
+message PowerTargetModeState {
+  // current power target profile
+  braiins.bos.v1.PowerTargetProfile profile = 1;
+  // Current power target
+  braiins.bos.v1.Power current_target = 2;
+}
+
+message HashrateTargetModeState {
+  // Currently used profile
+  braiins.bos.v1.HashrateTargetProfile profile = 1;
+  // Current hashrate target
+  braiins.bos.v1.TeraHashrate current_target = 2;
+}
+
+message ListTargetProfilesRequest {}
+
+message ListTargetProfilesResponse {
+  // Tuner profiles for power target mode
+  repeated braiins.bos.v1.PowerTargetProfile power_target_profiles = 1;
+  repeated braiins.bos.v1.HashrateTargetProfile hashrate_target_profiles = 2;
+}
+
+// Request for set default power target action.
+message SetDefaultPowerTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+}
+
+// Request for set absolute power target action.
+message SetPowerTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Absolute value of power target
+  braiins.bos.v1.Power power_target = 2;
+}
+
+// Request for increment power target action.
+message IncrementPowerTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Incremental value of power target
+  braiins.bos.v1.Power power_target_increment = 2;
+}
+
+// Request for decrement power target action.
+message DecrementPowerTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Decremental value of power target
+  braiins.bos.v1.Power power_target_decrement = 2;
+}
+
+// Response for set power target action.
+message SetPowerTargetResponse {
+  // New value of power target
+  braiins.bos.v1.Power power_target = 1;
+}
+
+// Request for set default hashrate target action.
+message SetDefaultHashrateTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+}
+
+// Request for set absolute hashrate target action.
+message SetHashrateTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Absolute value of hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target = 2;
+}
+
+// Request for increment hashrate target action.
+message IncrementHashrateTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Incremental value of hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target_increment = 2;
+}
+
+// Request for decrement hashrate target action.
+message DecrementHashrateTargetRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Decremental value of hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target_decrement = 2;
+}
+
+// Response for set hashrate target action.
+message SetHashrateTargetResponse {
+  // New value of hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target = 1;
+}
+
+message DPSPowerTarget {
+  // Dynamic Performance Scaling power step
+  braiins.bos.v1.Power power_step = 1;
+  // Dynamic Performance Scaling minimal power target
+  braiins.bos.v1.Power min_power_target = 2;
+}
+
+message DPSHashrateTarget {
+  // Dynamic Performance Scaling hashrate step
+  braiins.bos.v1.TeraHashrate hashrate_step = 1;
+  // Dynamic Performance Scaling minimal hashrate target
+  braiins.bos.v1.TeraHashrate min_hashrate_target = 2;
+}
+
+message DPSTarget {
+  oneof target {
+    // Power target settings for Dynamic Performance Scaling
+    DPSPowerTarget power_target = 1;
+    // Hashrate target settings for Dynamic Performance Scaling
+    DPSHashrateTarget hashrate_target = 2;
+  }
+}
+
+message SetDPSRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  // Flag if Dynamic Performance Scaling should be enabled
+  optional bool enable = 2;
+  // Flag if shutdown for Dynamic Performance Scaling should be enabled
+  optional bool enable_shutdown = 3;
+  // Dynamic Performance Scaling shutdown duration
+  optional braiins.bos.v1.Hours shutdown_duration = 4;
+  // Dynamic Performance Scaling target
+  DPSTarget target = 5;
+}
+
+message SetDPSResponse {
+  // Flag if Dynamic Performance Scaling is enabled
+  optional bool enabled = 1;
+  // Flag if shutdown for Dynamic Performance Scaling should be enabled
+  optional bool shutdown_enabled = 2;
+  // Dynamic Performance Scaling shutdown duration
+  optional braiins.bos.v1.Hours shutdown_duration = 3;
+  // Dynamic Performance Scaling Power target
+  DPSPowerTarget power_target = 4;
+  // Dynamic Performance Scaling hashrate target
+  DPSHashrateTarget hashrate_target = 5;
+}
+
+message HashboardPerformanceSettings {
+  // Hashboard id
+  string id = 1;
+  // Hashboard frequency
+  braiins.bos.v1.Frequency frequency = 2;
+  // Hashboard voltage
+  braiins.bos.v1.Voltage voltage = 3;
+}
+
+message HashboardConfig {
+  // Hashboard id
+  string id = 1;
+  // Flag if HB si enabled
+  optional bool enabled = 2;
+  // Hashboard frequency
+  braiins.bos.v1.Frequency frequency = 3;
+  // Hashboard voltage
+  braiins.bos.v1.Voltage voltage = 4;
+}
+
+message ManualPerformanceMode {
+  // Global hashboard frequency
+  braiins.bos.v1.Frequency global_frequency = 1;
+  // Global hashboard voltage
+  braiins.bos.v1.Voltage global_voltage = 2;
+  // Per hashboard frequency/voltage. It has higher priority than global one
+  repeated HashboardPerformanceSettings hashboards = 3;
+}
+
+message PowerTargetMode {
+  // Power target
+  braiins.bos.v1.Power power_target = 1;
+}
+
+message HashrateTargetMode {
+  // Hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target = 1;
+}
+
+message TunerPerformanceMode {
+  oneof target {
+    // Tuner power target
+    PowerTargetMode power_target = 1;
+    // Tuner hashrate target
+    HashrateTargetMode hashrate_target = 2;
+  }
+}
+
+message SetPerformanceModeRequest {
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 1;
+  PerformanceMode mode = 2;
+}
+
+message PerformanceMode {
+  oneof mode {
+    ManualPerformanceMode manual_mode = 1;
+    TunerPerformanceMode tuner_mode = 2;
+  }
+}
+
+message GetPerformanceModeRequest {}
+
+message RemoveTunedProfilesRequest {}
+
+message RemoveTunedProfilesResponse {}
+
+service PerformanceService {
+  // Method to get the current tuner details
+  rpc GetTunerState(GetTunerStateRequest) returns (GetTunerStateResponse);
+  // Method to get the current tuner details
+  rpc ListTargetProfiles(ListTargetProfilesRequest) returns (ListTargetProfilesResponse);
+  // Method to set default power target for tuner
+  rpc SetDefaultPowerTarget(SetDefaultPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to set absolute power target for tuner
+  rpc SetPowerTarget(SetPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to increment power target for tuner
+  rpc IncrementPowerTarget(IncrementPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to decrement power target for tuner
+  rpc DecrementPowerTarget(DecrementPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to set default hashrate target for tuner
+  rpc SetDefaultHashrateTarget(SetDefaultHashrateTargetRequest) returns (SetHashrateTargetResponse);
+  // Method to set absolute hashrate target for tuner
+  rpc SetHashrateTarget(SetHashrateTargetRequest) returns (SetHashrateTargetResponse);
+  // Method to increment hashrate target for tuner
+  rpc IncrementHashrateTarget(IncrementHashrateTargetRequest) returns (SetHashrateTargetResponse);
+  // Method to decrement hashrate target for tuner
+  rpc DecrementHashrateTarget(DecrementHashrateTargetRequest) returns (SetHashrateTargetResponse);
+  // Method to set Dynamic Performance Scaling
+  rpc SetDPS(SetDPSRequest) returns (SetDPSResponse);
+  // Method to set performance mode
+  rpc SetPerformanceMode(SetPerformanceModeRequest) returns (PerformanceMode);
+  // Method to read active(runtime) performance mode
+  rpc GetActivePerformanceMode(GetPerformanceModeRequest) returns (PerformanceMode);
+  // Method to remove tuned profiles
+  rpc RemoveTunedProfiles(RemoveTunedProfilesRequest) returns (RemoveTunedProfilesResponse);
+}
