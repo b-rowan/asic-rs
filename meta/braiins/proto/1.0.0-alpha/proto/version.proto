@@ -1,0 +1,47 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos;
+
+// Value of LATEST_API_VERSION constant in comment below
+// is parsed in grpc server (from protoc FileDescriptorSet)
+// and used as response for ApiVersionService.GetApiVersion().
+// This is a workaround because grpc generator does not support
+// proto3 extensions and proto3 does not allow specifying custom
+// default values. Value follows semver format.
+
+// LATEST_API_VERSION=1.0.0-alpha
+message ApiVersion {
+  uint64 major = 1;
+  uint64 minor = 2;
+  uint64 patch = 3;
+  string pre = 4;
+  string build = 5;
+}
+
+message ApiVersionRequest {}
+
+service ApiVersionService {
+  rpc GetApiVersion(ApiVersionRequest) returns (ApiVersion);
+}

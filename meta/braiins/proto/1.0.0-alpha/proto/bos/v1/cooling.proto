@@ -1,0 +1,144 @@
+
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/common.proto";
+import "bos/v1/constraints.proto";
+import "bos/v1/units.proto";
+
+// The temperature control modes.
+// Miner software tries to regulate the fan speed so that miner temperature is approximately at the target temperature.
+// The allowed temperature range is 0-200 degree Celsius.
+message CoolingAutoMode {
+  // Temperature that the miner will try to maintain
+  braiins.bos.v1.Temperature target_temperature = 1;
+  // Temperature threshold at which the fans start to run at 100%.
+  braiins.bos.v1.Temperature hot_temperature = 2;
+  // Temperature threshold at which BOSMiner shuts down in order to prevent overheating and damaging the miner.
+  braiins.bos.v1.Temperature dangerous_temperature = 3;
+}
+
+// Fans are kept at a fixed, user-defined speed, no matter the temperature.
+message CoolingManualMode {
+  // User defined fan speed expressed as a ratio between 0.0 and 1.0
+  // where 0.0 means completely turned off and
+  // 1.0 means running at full speed possible
+  optional double fan_speed_ratio = 1;
+  // Temperature threshold at which the fans start to run at 100%.
+  braiins.bos.v1.Temperature hot_temperature = 2;
+  // Temperature threshold at which BOSMiner shuts down in order to prevent overheating and damaging the miner.
+  braiins.bos.v1.Temperature dangerous_temperature = 3;
+}
+
+// Disable temperature control. May be dangerous.
+message CoolingDisabledMode {
+  // User defined fan speed expressed as a ratio between 0.0 and 1.0
+  // where 0.0 means completely turned off and
+  // 1.0 means running at full speed possible
+  optional double fan_speed_ratio = 1;
+}
+
+message CoolingConfiguration {
+  optional uint32 minimum_required_fans = 1;
+  oneof mode {
+    CoolingAutoMode auto = 2;
+    CoolingManualMode manual = 3;
+    CoolingDisabledMode disabled = 4;
+  }
+}
+
+enum CoolingMode {
+  COOLING_MODE_UNSPECIFIED = 0;
+  COOLING_MODE_AUTO = 1;
+  COOLING_MODE_MANUAL = 2;
+  COOLING_MODE_DISABLED = 3;
+}
+
+message CoolingConstraints {
+  CoolingMode default_cooling_mode = 1;
+  braiins.bos.v1.TemperatureConstraints target_temperature = 2;
+  braiins.bos.v1.TemperatureConstraints hot_temperature = 3;
+  braiins.bos.v1.TemperatureConstraints dangerous_temperature = 4;
+  braiins.bos.v1.DoubleConstraints fan_speed_ratio = 5;
+  braiins.bos.v1.UInt32Constraints minimum_required_fans = 6;
+}
+
+// Structure which contain info about one specific miner fan.
+message FanState {
+  // Fan positions/ID
+  optional uint32 position = 1;
+  // Actual fan RPM (Revolutions/Rotation Per Minute)
+  uint32 rpm = 2;
+  // Actual fan speed ratio(PWM) in range 0.0 - 1.0
+  optional double target_speed_ratio = 3;
+}
+
+enum SensorLocation {
+  SENSOR_LOCATION_UNSPECIFIED = 0;
+  SENSOR_LOCATION_CHIP = 1;
+  SENSOR_LOCATION_PCB = 2;
+}
+
+message TemperatureSensor {
+  // Sensor id
+  optional uint32 id = 1;
+  // Sensor location
+  SensorLocation location = 2;
+  // Temperature
+  braiins.bos.v1.Temperature temperature = 3;
+}
+
+// Request to get current temperature and fans measurements
+message GetCoolingStateRequest {}
+
+// Response to get current fan states and
+// temperature measurements
+message GetCoolingStateResponse {
+  // All Fans state
+  repeated braiins.bos.v1.FanState fans = 1;
+  // Sensor with current highest temperature
+  braiins.bos.v1.TemperatureSensor highest_temperature = 2;
+}
+
+// Request to set immersion mode
+message SetImmersionModeRequest {
+  // Flag to enable or disable immersion mode
+  bool enable_immersion_mode = 1;
+  braiins.bos.v1.SaveAction save_action = 2;
+}
+
+// Response for set immersion mode action.
+message SetImmersionModeResponse {
+  // The resulting immersion mode
+  bool immersion_mode = 1;
+}
+
+service CoolingService {
+  // Method to get current temperature measurements and fans states
+  rpc GetCoolingState(GetCoolingStateRequest) returns (GetCoolingStateResponse);
+  // Method to set/toggle immersion mode
+  rpc SetImmersionMode(SetImmersionModeRequest) returns (SetImmersionModeResponse);
+}

@@ -1,0 +1,55 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/cooling.proto";
+import "bos/v1/pool.proto";
+import "bos/v1/tuner.proto";
+
+message GetMinerConfigurationRequest {}
+
+// Structure to return miner configuration
+message GetMinerConfigurationResponse {
+  // Pool groups configuration
+  repeated braiins.bos.v1.PoolGroupConfiguration pool_groups = 1;
+  // Cooling configuration
+  braiins.bos.v1.CoolingConfiguration temperature = 2;
+  // Performance configuration
+  braiins.bos.v1.TunerConfiguration tuner = 3;
+}
+
+message GetConstraintsRequest {}
+
+message GetConstraintsResponse {
+  braiins.bos.v1.TunerConstraints tuner_constraints = 1;
+  braiins.bos.v1.CoolingConstraints cooling_constraints = 2;
+}
+
+service ConfigurationService {
+  // Method to get current miner configuration
+  rpc GetMinerConfiguration(GetMinerConfigurationRequest) returns (GetMinerConfigurationResponse);
+  // Method to get current configuration constraints(min, max, default)
+  rpc GetConstraints(GetConstraintsRequest) returns (GetConstraintsResponse);
+}

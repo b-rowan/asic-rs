@@ -1,0 +1,148 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/common.proto";
+import "bos/v1/constraints.proto";
+import "bos/v1/units.proto";
+import "google/protobuf/timestamp.proto";
+
+enum TunerMode {
+  TUNER_MODE_UNSPECIFIED = 0;
+  TUNER_MODE_POWER_TARGET = 1;
+  TUNER_MODE_HASHRATE_TARGET = 2;
+}
+
+message PowerTarget {}
+
+message HashrateTarget {}
+
+message TunerConfiguration {
+  // Flag if tuner is enabled
+  optional bool enabled = 1;
+  // Tuner mode
+  optional TunerMode tuner_mode = 2;
+  // Tuner power target
+  braiins.bos.v1.Power power_target = 3;
+  // Tuner hashrate target
+  braiins.bos.v1.TeraHashrate hashrate_target = 4;
+}
+
+message TunerConstraints {
+  braiins.bos.v1.PowerConstraints power_target = 1;
+}
+
+// Structure to handle power target profile
+message PowerTargetProfile {
+  // Creation timestamp
+  google.protobuf.Timestamp created = 1;
+  // Tuned power target
+  braiins.bos.v1.Power target = 2;
+  // Measured hashrate
+  braiins.bos.v1.GigaHashrate measured_hashrate = 3;
+  // Estimated power consumption
+  braiins.bos.v1.Power estimated_power_consumption = 4;
+}
+
+// Structure to handle hashrate target profile
+message HashrateTargetProfile {
+  // Creation timestamp
+  google.protobuf.Timestamp created = 1;
+  // Tuned hashrate target
+  braiins.bos.v1.TeraHashrate target = 2;
+  // Measured hashrate
+  braiins.bos.v1.GigaHashrate measured_hashrate = 3;
+  // Estimated power consumption
+  braiins.bos.v1.Power estimated_power_consumption = 4;
+}
+
+enum TunerState {
+  TUNER_STATE_UNSPECIFIED = 0;
+  TUNER_STATE_DISABLED = 1;
+  TUNER_STATE_STABLE = 2;
+  TUNER_STATE_TUNING = 3;
+  TUNER_STATE_ERROR = 4;
+}
+
+// Request for getting the current performance data
+message GetTunerStateRequest {}
+
+// Response with the current tuner details
+message GetTunerStateResponse {
+  // Tuner state
+  braiins.bos.v1.TunerState overall_tuner_state = 1;
+  // Tuner profiles for power target mode
+  repeated braiins.bos.v1.PowerTargetProfile power_target_profiles = 2;
+  // Tuner profiles for hashrate target mode
+  repeated braiins.bos.v1.HashrateTargetProfile hashrate_target_profiles = 3;
+}
+
+// Request for set default power target action.
+message SetDefaultPowerTargetRequest {
+  braiins.bos.v1.SaveAction save_action = 1;
+}
+
+// Request for set absolute power target action.
+message SetAbsolutePowerTargetRequest {
+  // Absolute value of power target
+  braiins.bos.v1.Power power_target = 1;
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 2;
+}
+
+// Request for increment power target action.
+message IncrementPowerTargetRequest {
+  // Incremental value of power target
+  braiins.bos.v1.Power power_target_increment = 1;
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 2;
+}
+
+// Request for decrement power target action.
+message DecrementPowerTargetRequest {
+  // Decremental value of power target
+  braiins.bos.v1.Power power_target_decrement = 1;
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 2;
+}
+
+// Response for set power target action.
+message SetPowerTargetResponse {
+  // New value of power target
+  braiins.bos.v1.Power power_target = 1;
+}
+
+service TunerService {
+  // Method to get the current tuner details
+  rpc GetTunerState(GetTunerStateRequest) returns (GetTunerStateResponse);
+  // Method to set default power target for tuner
+  rpc SetDefaultPowerTarget(SetDefaultPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to set absolute power target for tuner
+  rpc SetAbsolutePowerTarget(SetAbsolutePowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to increment power target for tuner
+  rpc IncrementPowerTarget(IncrementPowerTargetRequest) returns (SetPowerTargetResponse);
+  // Method to decrement power target for tuner
+  rpc DecrementPowerTarget(DecrementPowerTargetRequest) returns (SetPowerTargetResponse);
+}

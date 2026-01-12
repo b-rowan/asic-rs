@@ -1,0 +1,144 @@
+// Copyright (C) 2023  Braiins Systems s.r.o.
+//
+// This file is part of Braiins Open-Source Initiative (BOSI).
+//
+// BOSI is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Please, keep in mind that we may also license BOSI or any part thereof
+// under a proprietary license. For more information on the terms and conditions
+// of such proprietary license or if you have any other questions, please
+// contact us at opensource@braiins.com.
+
+syntax = "proto3";
+
+package braiins.bos.v1;
+
+import "bos/v1/common.proto";
+
+// Structure for quota load balance strategy
+message Quota {
+  uint32 value = 1;
+}
+
+// Structure for fixed share ratio load balance strategy
+// Fixed share ratio is value between 0.0 to 1.0 where 1.0 represents that all work is
+// generated from the group
+message FixedShareRatio {
+  double value = 1;
+}
+
+// Structure handle configured mining group
+message PoolGroupConfiguration {
+  // Group id
+  string uid = 1;
+  // Group name
+  string name = 2;
+  // Group load balance strategy
+  oneof load_balance_strategy {
+    Quota quota = 3;
+    FixedShareRatio fixed_share_ratio = 4;
+  }
+  // Group pools
+  repeated PoolConfiguration pools = 5;
+}
+
+// Structure handle information about configured pool
+message PoolConfiguration {
+  // Pool connection id
+  string uid = 1;
+  // Pool connection URL
+  string url = 2;
+  // Pool connection user
+  string user = 3;
+  // Pool connection password if set
+  optional string password = 4;
+  // Flag if pool connection is enabled
+  optional bool enabled = 5;
+}
+
+// Structure handle all pool group details
+message PoolGroup {
+  // Group name
+  string name = 1;
+  // Load balancing strategy
+  oneof strategy {
+    Quota quota = 2;
+    FixedShareRatio fixed_share_ratio = 3;
+  }
+  // Group pools
+  repeated Pool pools = 4;
+}
+
+// Structure handle information about configured pool
+message Pool {
+  // Pool connection id
+  string uid = 1;
+  // Pool connection URL
+  string url = 2;
+  // Pool connection user
+  string user = 3;
+  // Flag if pool connection is enabled
+  bool enabled = 4;
+  // Flag if pool is alive
+  bool alive = 5;
+  // Flag if pool is active (running)
+  bool active = 6;
+  // Pool stats
+  PoolStats stats = 7;
+}
+
+// Structure handle pool statistics
+message PoolStats {
+  // Accepted shares
+  uint64 accepted_shares = 1;
+  // Rejected shares
+  uint64 rejected_shares = 2;
+  // Stale shares
+  uint64 stale_shares = 3;
+  // Last difficulty
+  uint64 last_difficulty = 4;
+  // Best share
+  uint64 best_share = 5;
+  // Generated work
+  uint64 generated_work = 6;
+}
+
+// Request to get pool groups data
+message GetPoolGroupsRequest {}
+
+// Response on getting pool group data
+message GetPoolGroupsResponse {
+  // All pool groups details
+  repeated braiins.bos.v1.PoolGroup pool_groups = 1;
+}
+
+// Request for pool group update action
+// group.uid must be specified and represents unique id of group which will be updated
+// group.pools[].uid must not be specified
+message UpdatePoolGroupRequest {
+  // New group settings
+  PoolGroupConfiguration group = 1;
+  // Save action
+  braiins.bos.v1.SaveAction save_action = 2;
+}
+
+// Response for pool group update action
+message UpdatePoolGroupResponse {}
+
+service PoolService {
+  // Read method to get current pool groups' data
+  rpc GetPoolGroups(GetPoolGroupsRequest) returns (GetPoolGroupsResponse);
+  // Method update pool group
+  rpc UpdatePoolGroup(UpdatePoolGroupRequest) returns (UpdatePoolGroupResponse);
+}
