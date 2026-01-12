@@ -32,6 +32,7 @@ hex = "0.4.3"
 ecb = "0.1.2"
 md5crypt = "1.0.0"
 tracing = { version = "0.1.41", features = ["log"] }
+tonic = "0.14.2"
 
 pyo3 = { version = "0.27.1", features = [
     "extension-module",
@@ -58,3 +59,7 @@ strip = true
 [lib]
 name = "asic_rs"
 crate-type = ["cdylib", "lib"]
+
+[build-dependencies]
+tonic-build = "0.11.0"
+walkdir = "2.5.0"
