@@ -8,7 +8,9 @@ pub enum MinerCommand {
         parameters: Option<Value>,
     },
     GRPC {
+        service: &'static str,
         command: &'static str,
+        request: Option<Value>,
     },
     WebAPI {
         command: &'static str,

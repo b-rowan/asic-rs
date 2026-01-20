@@ -65,8 +65,11 @@ impl AntMinerWebAPI {
 
         let status = response.status();
         if status.is_success() {
-            let json_data = response.json().await.map_err(|e| anyhow!(e.to_string()))?;
-            Ok(json_data)
+            let json_data = response.json().await;
+            match json_data {
+                Ok(json_data) => Ok(json_data),
+                Err(e) => Err(anyhow!("Failed to parse JSON: {}", e)),
+            }
         } else {
             bail!("HTTP request failed with status code {}", status);
         }

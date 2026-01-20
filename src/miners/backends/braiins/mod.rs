@@ -1,3 +1,4 @@
+pub mod v23_03;
 pub mod v25_07;
 
 use crate::data::device::MinerModel;

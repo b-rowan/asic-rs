@@ -259,6 +259,17 @@ pub trait RPCAPIClient: APIClient {
     ) -> anyhow::Result<Value>;
 }
 
+#[async_trait]
+pub trait GRPCAPIClient: APIClient {
+    async fn send_command(
+        &self,
+        service: &str,
+        command: &str,
+        _privileged: bool,
+        parameters: Option<Value>,
+    ) -> anyhow::Result<Value>;
+}
+
 // Data traits
 pub trait GetIP: Send + Sync {
     /// Returns the IP address of the miner.

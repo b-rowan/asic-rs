@@ -10,6 +10,9 @@ fn compile_version(tag: &str) -> Result<(), Box<dyn std::error::Error>> {
         .join(tag)
         .join("proto");
 
+    let out_dir = PathBuf::from(env::var("OUT_DIR")?).join(tag);
+    std::fs::create_dir_all(&out_dir)?;
+
     let protos: Vec<PathBuf> = WalkDir::new(&proto_root)
         .into_iter()
         .filter_map(Result::ok)
@@ -18,7 +21,10 @@ fn compile_version(tag: &str) -> Result<(), Box<dyn std::error::Error>> {
         .map(|e| e.path().to_owned())
         .collect();
 
-    tonic_build::configure().compile(&protos, &[proto_root])?;
+    tonic_prost_build::configure()
+        .out_dir(&out_dir)
+        .file_descriptor_set_path(out_dir.join("descriptor.bin"))
+        .compile_protos(&protos, &[proto_root])?;
 
     Ok(())
 }
