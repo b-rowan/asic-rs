@@ -15,8 +15,8 @@ fi
 
 BRANCH="release-v${VERSION}"
 
-# Update Cargo.toml (only the [package] section)
-sed -i '/^\[package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
+# Update Cargo.toml (only the [workspace.package] section)
+sed -i '/^\[workspace\.package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
 
 # Update pyproject.toml (only the [project] section)
 sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
