@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -113,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-antminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -132,7 +132,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-avalonminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-bitaxe"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-braiins"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-epic"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-luxminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-marathon"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-nerdaxe"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-vnish"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-whatsminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-antminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-avalon"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -318,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-bitaxe"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-braiins"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -340,7 +340,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-epic"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-marathon"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-nerdaxe"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -372,7 +372,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-whatsminer"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -1461,9 +1461,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.21.3"
+version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openssl-probe"
