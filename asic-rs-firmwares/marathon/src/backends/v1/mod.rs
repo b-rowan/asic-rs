@@ -838,8 +838,8 @@ impl SetPowerLimit for MaraV1 {
 }
 
 #[async_trait]
-impl SetPools for MaraV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for MaraV1 {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }

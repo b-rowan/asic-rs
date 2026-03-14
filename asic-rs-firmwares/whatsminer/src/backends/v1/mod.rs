@@ -530,8 +530,8 @@ impl SetPowerLimit for WhatsMinerV1 {
 }
 
 #[async_trait]
-impl SetPools for WhatsMinerV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for WhatsMinerV1 {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }

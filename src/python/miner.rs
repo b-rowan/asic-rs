@@ -1,7 +1,7 @@
 use std::{net::IpAddr, sync::Arc, time::Duration};
 
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::device::{HashAlgorithm, MinerHardware},
     traits::miner::Miner as MinerTrait,
 };
@@ -102,8 +102,8 @@ impl Miner {
         self.inner.supports_resume()
     }
     #[getter]
-    fn supports_set_pools(&self) -> bool {
-        self.inner.supports_set_pools()
+    fn supports_pools_config(&self) -> bool {
+        self.inner.supports_pools_config()
     }
 
     // Data functions
@@ -251,6 +251,14 @@ impl Miner {
         })
     }
 
+    pub fn get_pools_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let data = inner.get_pools_config().await;
+            Ok(data.ok())
+        })
+    }
+
     // Control functions
     pub fn set_fault_light<'a>(&self, py: Python<'a>, fault: bool) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
@@ -288,14 +296,14 @@ impl Miner {
             Ok(data.ok())
         })
     }
-    pub fn set_pools<'a>(
+    pub fn set_pools_config<'a>(
         &self,
         py: Python<'a>,
-        groups: Vec<PoolGroup>,
+        groups: Vec<PoolGroupConfig>,
     ) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.set_pools(groups).await;
+            let data = inner.set_pools_config(groups).await;
             Ok(data.ok())
         })
     }

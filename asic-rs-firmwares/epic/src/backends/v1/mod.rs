@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -45,15 +45,15 @@ impl PowerPlayV1 {
         }
     }
 
-    fn to_stratum_configs(group: &PoolGroup) -> Vec<Value> {
+    fn to_stratum_configs(group: &PoolGroupConfig) -> Vec<Value> {
         group
             .pools
             .iter()
             .map(|pool| {
                 json!({
                     "pool": pool.url.to_string(),
-                    "login": pool.username,
-                    "password": pool.password,
+                    "login": pool.username.as_str(),
+                    "password": pool.password.as_str(),
                 })
             })
             .collect()
@@ -856,11 +856,11 @@ impl SetPowerLimit for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SetPools for PowerPlayV1 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for PowerPlayV1 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let response_ok = |v: &Value| v.get("result").and_then(Value::as_bool).unwrap_or(false);
 
-        let groups: Vec<PoolGroup> = config
+        let groups: Vec<PoolGroupConfig> = config
             .into_iter()
             .filter(|group| !group.pools.is_empty())
             .collect();
@@ -962,7 +962,7 @@ impl SetPools for PowerPlayV1 {
         }
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
@@ -1100,6 +1100,11 @@ mod tests {
             hashboard.chips.clear();
         }
         println!("{}", serde_json::to_string_pretty(&miner_data_print)?);
+
+        println!(
+            "pools {}",
+            serde_json::to_string_pretty(&miner.get_pools_config().await?)?
+        );
 
         assert_eq!(miner_data.ip, ip);
         assert!(miner_data.timestamp > 0);

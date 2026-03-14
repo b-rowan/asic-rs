@@ -932,8 +932,8 @@ impl SetPowerLimit for LuxMinerV1 {
 }
 
 #[async_trait]
-impl SetPools for LuxMinerV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for LuxMinerV1 {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }

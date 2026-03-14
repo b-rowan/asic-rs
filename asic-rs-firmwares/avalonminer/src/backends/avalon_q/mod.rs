@@ -197,8 +197,8 @@ impl SetPowerLimit for AvalonQMiner {
 }
 
 #[async_trait]
-impl SetPools for AvalonQMiner {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AvalonQMiner {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }

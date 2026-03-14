@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -589,8 +589,8 @@ impl SetPowerLimit for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SetPools for BraiinsV2507 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for BraiinsV2507 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let groups: Vec<Value> = config
             .iter()
             .map(|group| {
@@ -600,8 +600,8 @@ impl SetPools for BraiinsV2507 {
                     .map(|pool| {
                         json!({
                             "url": pool.url.to_string(),
-                            "user": pool.username,
-                            "password": pool.password,
+                            "user": pool.username.as_str(),
+                            "password": pool.password.as_str(),
                         })
                     })
                     .collect();
@@ -622,7 +622,7 @@ impl SetPools for BraiinsV2507 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
