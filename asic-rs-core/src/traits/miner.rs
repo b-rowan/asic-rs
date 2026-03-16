@@ -14,7 +14,7 @@ use serde_json::Value;
 use tracing;
 
 use crate::{
-    config::pools::PoolGroupConfig,
+    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},
@@ -34,13 +34,17 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl + SupportsPoolsConfig {}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs {}
 
-impl<T: GetMinerData + HasMinerControl + SupportsPoolsConfig> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsConfigs> Miner for T {}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
+
+pub trait SupportsConfigs: SupportsPoolsConfig + SupportsScalingConfig {}
+
+impl<T: SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -673,4 +677,16 @@ pub trait SupportsPoolsConfig: GetPools {
             .collect())
     }
     fn supports_pools_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsScalingConfig {
+    #[allow(unused_variables)]
+    async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting scaling config is not supported on this platform");
+    }
+    async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
+        anyhow::bail!("Getting scaling config is not supported on this platform");
+    }
+    fn supports_scaling_config(&self) -> bool;
 }

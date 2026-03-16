@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -983,6 +983,40 @@ impl SupportsPoolsConfig for PowerPlayV1 {
 }
 
 #[async_trait]
+impl SupportsScalingConfig for PowerPlayV1 {
+    async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
+        let summary = self
+            .web
+            .send_command("summary", false, None, Method::GET)
+            .await?;
+
+        summary
+            .pointer("/PerpetualTune/Algorithm")
+            .and_then(Value::as_object)
+            .and_then(|algorithms| {
+                algorithms.values().find_map(|stats| {
+                    let minimum = stats
+                        .get("Min Throttle Target")
+                        .or_else(|| stats.get("min"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+                    let step = stats
+                        .get("Throttle Step")
+                        .or_else(|| stats.get("step"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+
+                    Some(ScalingConfig::new(step, minimum))
+                })
+            })
+            .ok_or_else(|| {
+                anyhow::anyhow!("Failed to parse scaling config from summary perpetual tune data")
+            })
+    }
+    fn supports_scaling_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
@@ -1099,6 +1133,34 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn parse_scaling_config_test() -> anyhow::Result<()> {
+        let summary = Value::from_str(SUMMARY)?;
+        let config = summary
+            .pointer("/PerpetualTune/Algorithm")
+            .and_then(Value::as_object)
+            .and_then(|algorithms| {
+                algorithms.values().find_map(|stats| {
+                    let minimum = stats
+                        .get("Min Throttle Target")
+                        .or_else(|| stats.get("min"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+                    let step = stats
+                        .get("Throttle Step")
+                        .or_else(|| stats.get("step"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+
+                    Some(ScalingConfig::new(step, minimum))
+                })
+            })
+            .context("failed to parse scaling config")?;
+
+        assert_eq!(config.minimum, 50);
+        assert_eq!(config.step, 5);
+
+        Ok(())
+    }
+
     #[tokio::test]
     #[ignore = "requires live miner; set MINER_IP"]
     async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
@@ -1119,6 +1181,11 @@ mod tests {
         println!(
             "pools {}",
             serde_json::to_string_pretty(&miner.get_pools_config().await?)?
+        );
+
+        println!(
+            "scalingconfig {}",
+            serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
         );
 
         assert_eq!(miner_data.ip, ip);
