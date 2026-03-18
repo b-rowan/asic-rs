@@ -2,7 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -48,6 +51,19 @@ impl WhatsMinerV2 {
                 HashAlgorithm::SHA256,
             ),
         }
+    }
+}
+
+impl GetConfigsLocations for WhatsMinerV2 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for WhatsMinerV2 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -147,7 +163,7 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -441,7 +457,7 @@ impl GetWattage for WhatsMinerV2 {
 }
 impl GetTuningTarget for WhatsMinerV2 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -582,8 +598,17 @@ impl SetPowerLimit for WhatsMinerV2 {
 }
 
 #[async_trait]
-impl SetPools for WhatsMinerV2 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for WhatsMinerV2 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let group = config
             .into_iter()
             .next()
@@ -613,7 +638,7 @@ impl SetPools for WhatsMinerV2 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
@@ -653,5 +678,19 @@ impl Resume for WhatsMinerV2 {
     }
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for WhatsMinerV2 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV2 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }

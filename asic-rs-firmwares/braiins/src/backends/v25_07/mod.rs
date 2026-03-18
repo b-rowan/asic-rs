@@ -2,7 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -56,6 +59,19 @@ impl APIClient for BraiinsV2507 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
         }
+    }
+}
+
+impl GetConfigsLocations for BraiinsV2507 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for BraiinsV2507 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -215,7 +231,7 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 WEB_PERFORMANCE_TUNER_STATE,
                 DataExtractor {
                     func: get_by_pointer,
@@ -517,7 +533,7 @@ impl GetWattage for BraiinsV2507 {
 
 impl GetTuningTarget for BraiinsV2507 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
+        data.extract_map::<i64, _>(DataField::TuningTarget, |w| Power::from_watts(w as f64))
             .map(TuningTarget::Power)
     }
 }
@@ -589,8 +605,17 @@ impl SetPowerLimit for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SetPools for BraiinsV2507 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for BraiinsV2507 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let groups: Vec<Value> = config
             .iter()
             .map(|group| {
@@ -600,8 +625,8 @@ impl SetPools for BraiinsV2507 {
                     .map(|pool| {
                         json!({
                             "url": pool.url.to_string(),
-                            "user": pool.username,
-                            "password": pool.password,
+                            "user": pool.username.as_str(),
+                            "password": pool.password.as_str(),
                         })
                     })
                     .collect();
@@ -622,7 +647,7 @@ impl SetPools for BraiinsV2507 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
@@ -668,5 +693,19 @@ impl Resume for BraiinsV2507 {
     }
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for BraiinsV2507 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for BraiinsV2507 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }

@@ -2,7 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -51,6 +54,19 @@ impl APIClient for VnishV120 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Vnish API")),
         }
+    }
+}
+
+impl GetConfigsLocations for VnishV120 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for VnishV120 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -691,8 +707,17 @@ impl SetPowerLimit for VnishV120 {
 }
 
 #[async_trait]
-impl SetPools for VnishV120 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for VnishV120 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let pools: Vec<Value> = config
             .iter()
             .flat_map(|group| group.pools.iter())
@@ -700,8 +725,8 @@ impl SetPools for VnishV120 {
             .map(|(idx, pool)| {
                 json!({
                     "url": format!("{}:{}", pool.url.host, pool.url.port),
-                    "user": pool.username,
-                    "pass": pool.password,
+                    "user": pool.username.as_str(),
+                    "pass": pool.password.as_str(),
                     "order": idx,
                     "id": idx,
                 })
@@ -715,7 +740,7 @@ impl SetPools for VnishV120 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
@@ -752,5 +777,19 @@ impl Resume for VnishV120 {
 
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for VnishV120 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for VnishV120 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }

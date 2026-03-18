@@ -7,6 +7,10 @@ use std::{
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData},
         collector::{
@@ -197,8 +201,17 @@ impl SetPowerLimit for AvalonQMiner {
 }
 
 #[async_trait]
-impl SetPools for AvalonQMiner {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AvalonQMiner {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
@@ -207,6 +220,19 @@ impl SetPools for AvalonQMiner {
 impl Restart for AvalonQMiner {
     fn supports_restart(&self) -> bool {
         false
+    }
+}
+
+impl GetConfigsLocations for AvalonQMiner {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for AvalonQMiner {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -286,7 +312,7 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -533,7 +559,7 @@ impl GetWattage for AvalonQMiner {
 
 impl GetTuningTarget for AvalonQMiner {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -586,6 +612,20 @@ impl GetPools for AvalonQMiner {
             quota: 1,
             pools,
         }]
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for AvalonQMiner {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AvalonQMiner {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }
 

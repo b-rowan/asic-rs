@@ -2,6 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -66,6 +70,19 @@ impl APIClient for LuxMinerV1 {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
         }
+    }
+}
+
+impl GetConfigsLocations for LuxMinerV1 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for LuxMinerV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -313,7 +330,7 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![
+            DataField::TuningTarget => vec![
                 (
                     RPC_CONFIG,
                     DataExtractor {
@@ -868,7 +885,7 @@ impl GetWattage for LuxMinerV1 {
 
 impl GetTuningTarget for LuxMinerV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        let wattage_limit_data = data.get(&DataField::WattageLimit)?;
+        let wattage_limit_data = data.get(&DataField::TuningTarget)?;
         let profile_name = wattage_limit_data.get("Profile")?.as_str()?;
         let profiles = wattage_limit_data.get("Profiles")?.as_array()?;
 
@@ -932,8 +949,17 @@ impl SetPowerLimit for LuxMinerV1 {
 }
 
 #[async_trait]
-impl SetPools for LuxMinerV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for LuxMinerV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
@@ -967,6 +993,20 @@ impl Resume for LuxMinerV1 {
     }
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for LuxMinerV1 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for LuxMinerV1 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }
 

@@ -2,7 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -59,6 +62,19 @@ impl APIClient for WhatsMinerV3 {
                 "Unsupported command type for WhatsMiner API"
             )),
         }
+    }
+}
+
+impl GetConfigsLocations for WhatsMinerV3 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for WhatsMinerV3 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -138,7 +154,7 @@ impl GetDataLocations for WhatsMinerV3 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 rpc_get_miner_status_summary,
                 DataExtractor {
                     func: get_by_pointer,
@@ -418,7 +434,7 @@ impl GetWattage for WhatsMinerV3 {
 }
 impl GetTuningTarget for WhatsMinerV3 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -519,10 +535,18 @@ impl SetPowerLimit for WhatsMinerV3 {
         true
     }
 }
-
 #[async_trait]
-impl SetPools for WhatsMinerV3 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for WhatsMinerV3 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let group = config
             .into_iter()
             .next()
@@ -534,8 +558,8 @@ impl SetPools for WhatsMinerV3 {
             .map(|pool| {
                 json!({
                     "pool": pool.url.to_string(),
-                    "worker": pool.username,
-                    "passwd": pool.password,
+                    "worker": pool.username.as_str(),
+                    "passwd": pool.password.as_str(),
                 })
             })
             .collect();
@@ -547,7 +571,7 @@ impl SetPools for WhatsMinerV3 {
         Ok(res.is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
@@ -593,5 +617,19 @@ impl Resume for WhatsMinerV3 {
     }
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for WhatsMinerV3 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV3 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }

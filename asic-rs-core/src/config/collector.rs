@@ -3,64 +3,18 @@ use std::collections::{HashMap, HashSet};
 use serde_json::{Value, json};
 use strum::{EnumIter, IntoEnumIterator};
 
+pub use crate::data::collector::{get_by_key, get_by_pointer};
 use crate::{
     data::command::MinerCommand,
-    traits::miner::{APIClient, MinerInterface},
+    traits::miner::{APIClient, GetConfigsLocations},
 };
 
-/// Represents the individual pieces of data that can be queried from a miner device.
+/// Represents the individual configs that can be queried from a miner device.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]
-pub enum DataField {
-    /// Schema version of the miner data.
-    SchemaVersion,
-    /// Timestamp of when the data was collected.
-    Timestamp,
-    /// IP address of the miner.
-    Ip,
-    /// MAC address of the miner.
-    Mac,
-    /// Information about the miner's device.
-    DeviceInfo,
-    /// Serial number of the miner.
-    SerialNumber,
-    /// Hostname assigned to the miner.
-    Hostname,
-    /// Version of the miner's API.
-    ApiVersion,
-    /// Firmware version of the miner.
-    FirmwareVersion,
-    /// Control board version of the miner.
-    ControlBoardVersion,
-    /// Details about the hashboards (e.g., temperatures, chips, etc.).
-    Hashboards,
-    /// Current hashrate reported by the miner.
-    Hashrate,
-    /// Expected hashrate for the miner.
-    ExpectedHashrate,
-    /// Fan speed or fan configuration.
-    Fans,
-    /// PSU fan speed or configuration.
-    PsuFans,
-    /// Average temperature reported by the miner.
-    AverageTemperature,
-    /// Fluid temperature reported by the miner.
-    FluidTemperature,
-    /// Current power consumption in watts.
-    Wattage,
-    /// Configured tuning target (power or hashrate).
-    TuningTarget,
-    /// Efficiency of the miner (e.g., J/TH).
-    Efficiency,
-    /// Whether the fault or alert light is flashing.
-    LightFlashing,
-    /// Messages reported by the miner (e.g., errors or warnings).
-    Messages,
-    /// Uptime in seconds.
-    Uptime,
-    /// Whether the miner is currently hashing.
-    IsMining,
-    /// Pool configuration (addresses, statuses, etc.).
+pub enum ConfigField {
     Pools,
+    Scaling,
+    Tuning,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,
@@ -71,7 +25,7 @@ type ExtractorFn = for<'a> fn(&'a Value, Option<&'static str>) -> Option<&'a Val
 ///
 /// Created by a backend and used to locate a field within a JSON structure.
 #[derive(Clone, Copy)]
-pub struct DataExtractor {
+pub struct ConfigExtractor {
     /// Function used to extract data from a JSON response.
     pub func: ExtractorFn,
     /// Optional key or pointer within the response to extract.
@@ -81,21 +35,7 @@ pub struct DataExtractor {
 }
 
 /// Alias for a tuple describing the API command and the extractor used to parse its result.
-pub type DataLocation = (MinerCommand, DataExtractor);
-
-/// Extracts a value from a JSON object using a key (flat lookup).
-///
-/// Returns `None` if the key is `None` or not found in the object.
-pub fn get_by_key<'a>(data: &'a Value, key: Option<&str>) -> Option<&'a Value> {
-    data.get(key?.to_string())
-}
-
-/// Extracts a value from a JSON object using a JSON pointer path.
-///
-/// Returns `None` if the pointer is `None` or the path doesn't exist.
-pub fn get_by_pointer<'a>(data: &'a Value, pointer: Option<&str>) -> Option<&'a Value> {
-    data.pointer(pointer?)
-}
+pub type ConfigLocation = (MinerCommand, ConfigExtractor);
 
 /// A trait for types that can be extracted from a JSON Value.
 pub trait FromValue: Sized {
@@ -103,71 +43,33 @@ pub trait FromValue: Sized {
     fn from_value(value: &Value) -> Option<Self>;
 }
 
-// Implement FromValue for common types
-impl FromValue for String {
-    fn from_value(value: &Value) -> Option<Self> {
-        value.as_str().map(String::from)
-    }
-}
+/// Extension trait for HashMap<ConfigField, Value> to provide cleaner value extraction.
+pub trait ConfigExtensions {
+    /// Extract a value of type T from the config map for the given field.
+    fn extract<T: FromValue>(&self, field: ConfigField) -> Option<T>;
 
-impl FromValue for f64 {
-    fn from_value(value: &Value) -> Option<Self> {
-        value.as_f64()
-    }
-}
+    /// Extract a value of type T from the config map for the given field, with a default value.
+    fn extract_or<T: FromValue>(&self, field: ConfigField, default: T) -> T;
 
-impl FromValue for u64 {
-    fn from_value(value: &Value) -> Option<Self> {
-        value.as_u64()
-    }
-}
+    /// Extract a nested value of type T from the config map for the given field and nested key.
+    fn extract_nested<T: FromValue>(&self, field: ConfigField, nested_key: &str) -> Option<T>;
 
-impl FromValue for i64 {
-    fn from_value(value: &Value) -> Option<Self> {
-        value.as_i64()
-    }
-}
-
-impl FromValue for bool {
-    fn from_value(value: &Value) -> Option<Self> {
-        // Try to get as bool first
-        value.as_bool().or_else(|| {
-            // If not a bool, try to interpret as a number (0 = false, non-zero = true)
-            value
-                .as_u64()
-                .map(|n| n != 0)
-                .or_else(|| value.as_i64().map(|n| n != 0))
-        })
-    }
-}
-
-impl<T: FromValue> FromValue for Vec<T> {
-    fn from_value(value: &Value) -> Option<Self> {
-        value.as_array()?.iter().map(|v| T::from_value(v)).collect()
-    }
-}
-
-/// Extension trait for HashMap<DataField, &Value> to provide cleaner value extraction.
-pub trait DataExtensions {
-    /// Extract a value of type T from the data map for the given field.
-    fn extract<T: FromValue>(&self, field: DataField) -> Option<T>;
-
-    /// Extract a value of type T from the data map for the given field, with a default value.
-    fn extract_or<T: FromValue>(&self, field: DataField, default: T) -> T;
-
-    /// Extract a nested value of type T from the data map for the given field and nested key.
-    fn extract_nested<T: FromValue>(&self, field: DataField, nested_key: &str) -> Option<T>;
-
-    /// Extract a nested value of type T from the data map for the given field and nested key, with a default value.
-    fn extract_nested_or<T: FromValue>(&self, field: DataField, nested_key: &str, default: T) -> T;
+    /// Extract a nested value of type T from the config map for the given field and nested key, with a default value.
+    fn extract_nested_or<T: FromValue>(
+        &self,
+        field: ConfigField,
+        nested_key: &str,
+        default: T,
+    ) -> T;
 
     /// Extract a value and map it to another type using the provided function.
-    fn extract_map<T: FromValue, U>(&self, field: DataField, f: impl FnOnce(T) -> U) -> Option<U>;
+    fn extract_map<T: FromValue, U>(&self, field: ConfigField, f: impl FnOnce(T) -> U)
+    -> Option<U>;
 
     /// Extract a value, map it to another type, or use a default value.
     fn extract_map_or<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         default: U,
         f: impl FnOnce(T) -> U,
     ) -> U;
@@ -175,7 +77,7 @@ pub trait DataExtensions {
     /// Extract a nested value and map it to another type using the provided function.
     fn extract_nested_map<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         nested_key: &str,
         f: impl FnOnce(T) -> U,
     ) -> Option<U>;
@@ -183,39 +85,48 @@ pub trait DataExtensions {
     /// Extract a nested value, map it to another type, or use a default value.
     fn extract_nested_map_or<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         nested_key: &str,
         default: U,
         f: impl FnOnce(T) -> U,
     ) -> U;
 }
 
-impl DataExtensions for HashMap<DataField, Value> {
-    fn extract<T: FromValue>(&self, field: DataField) -> Option<T> {
+impl ConfigExtensions for HashMap<ConfigField, Value> {
+    fn extract<T: FromValue>(&self, field: ConfigField) -> Option<T> {
         self.get(&field).and_then(|v| T::from_value(v))
     }
 
-    fn extract_or<T: FromValue>(&self, field: DataField, default: T) -> T {
+    fn extract_or<T: FromValue>(&self, field: ConfigField, default: T) -> T {
         self.extract(field).unwrap_or(default)
     }
 
-    fn extract_nested<T: FromValue>(&self, field: DataField, nested_key: &str) -> Option<T> {
+    fn extract_nested<T: FromValue>(&self, field: ConfigField, nested_key: &str) -> Option<T> {
         self.get(&field)
             .and_then(|v| v.get(nested_key))
             .and_then(|v| T::from_value(v))
     }
 
-    fn extract_nested_or<T: FromValue>(&self, field: DataField, nested_key: &str, default: T) -> T {
+    fn extract_nested_or<T: FromValue>(
+        &self,
+        field: ConfigField,
+        nested_key: &str,
+        default: T,
+    ) -> T {
         self.extract_nested(field, nested_key).unwrap_or(default)
     }
 
-    fn extract_map<T: FromValue, U>(&self, field: DataField, f: impl FnOnce(T) -> U) -> Option<U> {
+    fn extract_map<T: FromValue, U>(
+        &self,
+        field: ConfigField,
+        f: impl FnOnce(T) -> U,
+    ) -> Option<U> {
         self.extract(field).map(f)
     }
 
     fn extract_map_or<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         default: U,
         f: impl FnOnce(T) -> U,
     ) -> U {
@@ -224,7 +135,7 @@ impl DataExtensions for HashMap<DataField, Value> {
 
     fn extract_nested_map<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         nested_key: &str,
         f: impl FnOnce(T) -> U,
     ) -> Option<U> {
@@ -233,7 +144,7 @@ impl DataExtensions for HashMap<DataField, Value> {
 
     fn extract_nested_map_or<T: FromValue, U>(
         &self,
-        field: DataField,
+        field: ConfigField,
         nested_key: &str,
         default: U,
         f: impl FnOnce(T) -> U,
@@ -244,18 +155,18 @@ impl DataExtensions for HashMap<DataField, Value> {
     }
 }
 
-/// A utility for collecting structured miner data from an API backend.
-pub struct DataCollector<'a> {
-    /// Backend-specific data mapping logic.
-    miner: &'a dyn MinerInterface,
+/// A utility for collecting structured miner config data from an API backend.
+pub struct ConfigCollector<'a> {
+    /// Backend-specific config mapping logic.
+    miner: &'a dyn GetConfigsLocations,
     client: &'a dyn APIClient,
     /// Cache of command responses keyed by command string.
     cache: HashMap<MinerCommand, Value>,
 }
 
-impl<'a> DataCollector<'a> {
-    /// Constructs a new `DataCollector` with the given backend and API client.
-    pub fn new(miner: &'a dyn MinerInterface) -> Self {
+impl<'a> ConfigCollector<'a> {
+    /// Constructs a new `ConfigCollector` with the given backend and API client.
+    pub fn new(miner: &'a dyn GetConfigsLocations) -> Self {
         Self {
             miner,
             client: miner,
@@ -264,7 +175,7 @@ impl<'a> DataCollector<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn new_with_client(miner: &'a dyn MinerInterface, client: &'a dyn APIClient) -> Self {
+    pub fn new_with_client(miner: &'a dyn GetConfigsLocations, client: &'a dyn APIClient) -> Self {
         Self {
             miner,
             client,
@@ -273,15 +184,15 @@ impl<'a> DataCollector<'a> {
     }
 
     /// Collects **all** available fields from the miner and returns a map of results.
-    pub async fn collect_all(&mut self) -> HashMap<DataField, Value> {
-        self.collect(DataField::iter().collect::<Vec<_>>().as_slice())
+    pub async fn collect_all(&mut self) -> HashMap<ConfigField, Value> {
+        self.collect(ConfigField::iter().collect::<Vec<_>>().as_slice())
             .await
     }
 
     /// Collects only the specified fields from the miner and returns a map of results.
     ///
     /// This method sends only the minimum required set of API commands.
-    pub async fn collect(&mut self, fields: &[DataField]) -> HashMap<DataField, Value> {
+    pub async fn collect(&mut self, fields: &[ConfigField]) -> HashMap<ConfigField, Value> {
         let mut results = HashMap::new();
         let required_commands: Vec<MinerCommand> =
             self.get_required_commands(fields).into_iter().collect();
@@ -335,10 +246,10 @@ impl<'a> DataCollector<'a> {
     /// Determines the unique set of API commands needed for the requested fields.
     ///
     /// Uses the backend's location mappings to identify required commands.
-    fn get_required_commands(&self, fields: &[DataField]) -> HashSet<MinerCommand> {
+    fn get_required_commands(&self, fields: &[ConfigField]) -> HashSet<MinerCommand> {
         fields
             .iter()
-            .flat_map(|&field| self.miner.get_locations(field))
+            .flat_map(|&field| self.miner.get_configs_locations(field))
             .map(|(cmd, _)| cmd.clone())
             .collect()
     }
@@ -346,16 +257,16 @@ impl<'a> DataCollector<'a> {
     /// Attempts to extract the value for a specific field from the cached command responses.
     ///
     /// Uses the extractor function and key associated with the field for parsing.
-    fn extract_field(&self, field: DataField) -> Option<Value> {
+    fn extract_field(&self, field: ConfigField) -> Option<Value> {
         let mut success: Vec<Value> = Vec::new();
-        for (command, extractor) in self.miner.get_locations(field) {
+        for (command, extractor) in self.miner.get_configs_locations(field) {
             if let Some(response_data) = self.cache.get(&command)
                 && let Some(value) = (extractor.func)(response_data, extractor.key)
             {
                 match extractor.tag {
                     Some(tag) => {
                         let tag = tag.to_string();
-                        success.push(json!({ tag: value.clone() }).clone());
+                        success.push(json!({ tag: value.clone() }));
                     }
                     None => {
                         success.push(value.clone());

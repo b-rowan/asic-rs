@@ -2,6 +2,10 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -58,6 +62,19 @@ impl APIClient for WhatsMinerV1 {
                 "Unsupported command type for WhatsMiner API"
             )),
         }
+    }
+}
+
+impl GetConfigsLocations for WhatsMinerV1 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for WhatsMinerV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -121,7 +138,7 @@ impl GetDataLocations for WhatsMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -415,7 +432,7 @@ impl GetWattage for WhatsMinerV1 {
 }
 impl GetTuningTarget for WhatsMinerV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -530,8 +547,17 @@ impl SetPowerLimit for WhatsMinerV1 {
 }
 
 #[async_trait]
-impl SetPools for WhatsMinerV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for WhatsMinerV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
@@ -553,6 +579,20 @@ impl Pause for WhatsMinerV1 {
 #[async_trait]
 impl Resume for WhatsMinerV1 {
     fn supports_resume(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for WhatsMinerV1 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

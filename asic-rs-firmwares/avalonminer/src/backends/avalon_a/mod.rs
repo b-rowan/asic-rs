@@ -7,6 +7,10 @@ use std::{
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -202,9 +206,31 @@ impl SetPowerLimit for AvalonAMiner {
 }
 
 #[async_trait]
-impl SetPools for AvalonAMiner {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AvalonAMiner {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
+    }
+}
+
+impl GetConfigsLocations for AvalonAMiner {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for AvalonAMiner {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -292,7 +318,7 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -565,7 +591,7 @@ impl GetWattage for AvalonAMiner {
 impl GetTuningTarget for AvalonAMiner {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         let limit = data
-            .get(&DataField::WattageLimit)
+            .get(&DataField::TuningTarget)
             .and_then(|v| v.as_array())?;
         let limit = limit.get(6).and_then(|watts: &Value| watts.as_f64())?;
         Some(TuningTarget::Power(Power::from_watts(limit)))
@@ -620,6 +646,20 @@ impl GetPools for AvalonAMiner {
             quota: 1,
             pools,
         }]
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for AvalonAMiner {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AvalonAMiner {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }
 

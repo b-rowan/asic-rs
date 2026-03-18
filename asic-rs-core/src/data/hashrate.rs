@@ -1,6 +1,7 @@
 use std::{
     fmt::{Display, Formatter},
     ops::Div,
+    str::FromStr,
 };
 
 use measurements::Power;
@@ -23,6 +24,19 @@ pub enum HashRateUnit {
     YottaHash,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HashRateUnitParseError {
+    input: String,
+}
+
+impl Display for HashRateUnitParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown hash rate unit: {}", self.input)
+    }
+}
+
+impl std::error::Error for HashRateUnitParseError {}
+
 impl HashRateUnit {
     fn to_multiplier(&self) -> f64 {
         match self {
@@ -35,6 +49,29 @@ impl HashRateUnit {
             HashRateUnit::ExaHash => 1e18,
             HashRateUnit::ZettaHash => 1e21,
             HashRateUnit::YottaHash => 1e24,
+        }
+    }
+}
+
+impl FromStr for HashRateUnit {
+    type Err = HashRateUnitParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let normalized = s.trim().to_ascii_uppercase().replace([' ', '_'], "");
+
+        match normalized.as_str() {
+            "HASH" | "H" | "HS" | "H/S" => Ok(HashRateUnit::Hash),
+            "KILOHASH" | "KH" | "KHS" | "KH/S" => Ok(HashRateUnit::KiloHash),
+            "MEGAHASH" | "MH" | "MHS" | "MH/S" => Ok(HashRateUnit::MegaHash),
+            "GIGAHASH" | "GH" | "GHS" | "GH/S" => Ok(HashRateUnit::GigaHash),
+            "TERAHASH" | "TH" | "THS" | "TH/S" => Ok(HashRateUnit::TeraHash),
+            "PETAHASH" | "PH" | "PHS" | "PH/S" => Ok(HashRateUnit::PetaHash),
+            "EXAHASH" | "EH" | "EHS" | "EH/S" => Ok(HashRateUnit::ExaHash),
+            "ZETTAHASH" | "ZH" | "ZHS" | "ZH/S" => Ok(HashRateUnit::ZettaHash),
+            "YOTTAHASH" | "YH" | "YHS" | "YH/S" => Ok(HashRateUnit::YottaHash),
+            _ => Err(HashRateUnitParseError {
+                input: s.to_string(),
+            }),
         }
     }
 }

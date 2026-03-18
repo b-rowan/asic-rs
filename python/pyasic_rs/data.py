@@ -2,6 +2,7 @@ from datetime import timedelta
 from enum import IntEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
+
 from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
 
 from pydantic import (

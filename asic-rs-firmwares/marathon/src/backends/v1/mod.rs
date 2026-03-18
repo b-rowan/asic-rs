@@ -2,6 +2,10 @@ use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::D
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -215,6 +219,19 @@ impl APIClient for MaraV1 {
     }
 }
 
+impl GetConfigsLocations for MaraV1 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for MaraV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
+    }
+}
+
 impl GetDataLocations for MaraV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_BRIEF: MinerCommand = MinerCommand::WebAPI {
@@ -333,7 +350,7 @@ impl GetDataLocations for MaraV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 WEB_MINER_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
@@ -689,7 +706,7 @@ impl GetWattage for MaraV1 {
 
 impl GetTuningTarget for MaraV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract::<f64>(DataField::WattageLimit)
+        data.extract::<f64>(DataField::TuningTarget)
             .map(Power::from_watts)
             .map(TuningTarget::Power)
     }
@@ -838,8 +855,17 @@ impl SetPowerLimit for MaraV1 {
 }
 
 #[async_trait]
-impl SetPools for MaraV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for MaraV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
@@ -883,5 +909,19 @@ impl Resume for MaraV1 {
     }
     fn supports_resume(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for MaraV1 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for MaraV1 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }

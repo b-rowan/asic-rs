@@ -14,7 +14,12 @@ use serde_json::Value;
 use tracing;
 
 use crate::{
-    config::pools::PoolGroup,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},
@@ -34,16 +39,39 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl {}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs {}
 
-impl<T: GetMinerData + HasMinerControl> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsConfigs> Miner for T {}
 
-pub trait HasMinerControl:
-    SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause
+pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
+
+impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
+
+pub trait SupportsConfigs:
+    CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig
 {
 }
 
-impl<T: SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause> HasMinerControl for T {}
+impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig>
+    SupportsConfigs for T
+{
+}
+
+pub trait CollectConfigs: GetConfigsLocations {
+    /// Returns a `ConfigCollector` that can be used to collect configs from the miner.
+    ///
+    /// This method is responsible for creating and returning a `ConfigCollector`
+    /// instance that can be used to collect configs from the miner.
+    fn get_config_collector(&self) -> ConfigCollector<'_>;
+}
+pub trait GetConfigsLocations: MinerInterface + Send + Sync + Debug {
+    /// Returns the locations of the specified config field on the miner.
+    ///
+    /// This associates API commands (routes) with `ConfigLocation` values
+    /// (and their associated config extractors), describing how to extract
+    /// the config for a given `ConfigField`.
+    fn get_configs_locations(&self, config_field: ConfigField) -> Vec<ConfigLocation>;
+}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -531,7 +559,7 @@ pub trait GetTuningTarget: CollectData {
     #[tracing::instrument(level = "debug")]
     async fn get_tuning_target(&self) -> Option<TuningTarget> {
         let mut collector = self.get_collector();
-        let data = collector.collect(&[DataField::WattageLimit]).await;
+        let data = collector.collect(&[DataField::TuningTarget]).await;
         self.parse_tuning_target(&data)
     }
     #[allow(unused_variables)]
@@ -635,15 +663,6 @@ pub trait SetPowerLimit {
 }
 
 #[async_trait]
-pub trait SetPools {
-    #[allow(unused_variables)]
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
-        anyhow::bail!("Setting pools is not supported on this platform");
-    }
-    fn supports_set_pools(&self) -> bool;
-}
-
-#[async_trait]
 pub trait Restart {
     async fn restart(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Restarting is not supported on this platform");
@@ -667,4 +686,76 @@ pub trait Resume {
         anyhow::bail!("Resuming mining is not supported on this platform");
     }
     fn supports_resume(&self) -> bool;
+}
+
+// Config traits
+#[async_trait]
+pub trait SupportsPoolsConfig: GetPools + CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting pools is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Pools]).await;
+        self.parse_pools_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        anyhow::bail!("Getting pools config is not supported on this platform");
+    }
+
+    fn supports_pools_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsScalingConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting scaling config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Scaling]).await;
+        self.parse_scaling_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_scaling_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ScalingConfig> {
+        anyhow::bail!("Getting scaling config is not supported on this platform");
+    }
+
+    fn supports_scaling_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsTuningConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting tuning config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_tuning_config(&self) -> anyhow::Result<TuningConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Tuning]).await;
+        self.parse_tuning_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        anyhow::bail!("Getting tuning config is not supported on this platform");
+    }
+
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
 }

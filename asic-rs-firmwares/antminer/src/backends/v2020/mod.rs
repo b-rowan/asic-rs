@@ -2,6 +2,10 @@ use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::D
 
 use anyhow;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -167,6 +171,19 @@ impl APIClient for AntMinerV2020 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Antminer API")),
         }
+    }
+}
+
+impl GetConfigsLocations for AntMinerV2020 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for AntMinerV2020 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -758,8 +775,17 @@ impl SetPowerLimit for AntMinerV2020 {
 }
 
 #[async_trait]
-impl SetPools for AntMinerV2020 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AntMinerV2020 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
@@ -829,6 +855,20 @@ impl Resume for AntMinerV2020 {
         }
 
         Ok(false)
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for AntMinerV2020 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AntMinerV2020 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }
 
