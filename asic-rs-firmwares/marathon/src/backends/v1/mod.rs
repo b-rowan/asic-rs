@@ -920,6 +920,13 @@ impl SupportsScalingConfig for MaraV1 {
 }
 
 #[async_trait]
+impl UpgradeFirmware for MaraV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl SupportsTuningConfig for MaraV1 {
     fn supports_tuning_config(&self) -> bool {
         false

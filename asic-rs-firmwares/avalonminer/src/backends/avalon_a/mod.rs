@@ -657,6 +657,13 @@ impl SupportsScalingConfig for AvalonAMiner {
 }
 
 #[async_trait]
+impl UpgradeFirmware for AvalonAMiner {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl SupportsTuningConfig for AvalonAMiner {
     fn supports_tuning_config(&self) -> bool {
         false

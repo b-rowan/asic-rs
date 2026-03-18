@@ -14,6 +14,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
+        firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolURL},
@@ -28,8 +29,10 @@ use rpc::AntMinerRPCAPI;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
+use self::firmware::AntMinerFirmwareImageExt;
 use crate::firmware::AntMinerStockFirmware;
 
+mod firmware;
 mod rpc;
 mod web;
 
@@ -862,6 +865,20 @@ impl Resume for AntMinerV2020 {
 impl SupportsScalingConfig for AntMinerV2020 {
     fn supports_scaling_config(&self) -> bool {
         false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for AntMinerV2020 {
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        let miner = self.get_miner_type_info().await?;
+        let image = image.resolve_for_miner(&miner)?;
+        self.web.upgrade_firmware(image).await?;
+        Ok(true)
+    }
+
+    fn supports_upgrade_firmware(&self) -> bool {
+        true
     }
 }
 

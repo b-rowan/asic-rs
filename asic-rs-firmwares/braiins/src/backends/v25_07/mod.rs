@@ -704,6 +704,13 @@ impl SupportsScalingConfig for BraiinsV2507 {
 }
 
 #[async_trait]
+impl UpgradeFirmware for BraiinsV2507 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl SupportsTuningConfig for BraiinsV2507 {
     fn supports_tuning_config(&self) -> bool {
         false
