@@ -222,7 +222,7 @@ impl GetDataLocations for WhatsMinerV1 {
                 RPC_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/SUMMARY/0/btmineroff"),
+                    key: Some("/Msg/btmineroff"),
                     tag: None,
                 },
             )],
@@ -473,7 +473,8 @@ impl GetUptime for WhatsMinerV1 {
 }
 impl GetIsMining for WhatsMinerV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract_map::<String, _>(DataField::IsMining, |l| l != "false")
+        // btmineroff: "true" means mining is OFF
+        data.extract_map::<String, _>(DataField::IsMining, |l| l != "true")
             .unwrap_or(true)
     }
 }
@@ -606,6 +607,27 @@ impl SupportsTuningConfig for WhatsMinerV1 {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_is_mining_when_miner_off() {
+        // Arrange - btmineroff="true" means the miner is off
+        let miner = WhatsMinerV1::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M20SV10);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("true".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(!is_mining);
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
@@ -694,6 +716,7 @@ mod tests {
             Some(TuningTarget::Power(Power::from_watts(3500f64)))
         );
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(10154)));
+        assert!(miner_data.is_mining);
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);
 
