@@ -18,7 +18,7 @@ use asic_rs_core::{
 use asic_rs_makes_nerdaxe::make::NerdAxeMake;
 use async_trait::async_trait;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct NerdAxeFirmware {}
 
 impl Display for NerdAxeFirmware {
