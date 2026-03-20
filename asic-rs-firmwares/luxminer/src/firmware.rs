@@ -18,7 +18,7 @@ use asic_rs_core::{
 use asic_rs_makes_antminer::make::AntMinerMake;
 use async_trait::async_trait;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LuxMinerFirmware {}
 
 impl Display for LuxMinerFirmware {

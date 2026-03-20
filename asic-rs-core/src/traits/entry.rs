@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::net::IpAddr;
 
 use async_trait::async_trait;
@@ -12,6 +13,6 @@ use crate::{
 /// Provides identification logic, discovery commands, and the ability to
 /// construct a fully-typed miner instance after identification succeeds.
 #[async_trait]
-pub trait FirmwareEntry: FirmwareIdentification + DiscoveryCommands + Send + Sync {
+pub trait FirmwareEntry: FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug {
     async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError>;
 }

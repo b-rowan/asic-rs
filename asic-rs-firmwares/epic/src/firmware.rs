@@ -60,7 +60,7 @@ impl MinerModel for EPicCompatibleModel {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct EPicFirmware {}
 
 impl Display for EPicFirmware {

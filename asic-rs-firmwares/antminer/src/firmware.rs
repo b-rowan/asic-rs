@@ -1,5 +1,7 @@
-use std::{fmt::Display, net::IpAddr};
+use std::{fmt, fmt::Display, net::IpAddr};
 
+use asic_rs_core::data::device::MinerHardware;
+use asic_rs_core::traits::model::UnknownMinerModel;
 use asic_rs_core::{
     data::command::MinerCommand,
     discovery::{HTTP_WEB_ROOT, RPC_VERSION},
@@ -15,17 +17,51 @@ use asic_rs_core::{
     },
 };
 use asic_rs_makes_antminer::make::AntMinerMake;
+use asic_rs_makes_antminer::models::AntMinerModel;
 use async_trait::async_trait;
 use chrono::{Datelike, NaiveDateTime};
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Response};
 use serde_json::Value;
 
-#[derive(Default)]
+#[derive(Clone)]
+pub enum AntMinerCompatibleModel {
+    AntMiner(AntMinerModel),
+    Unknown(UnknownMinerModel),
+}
+
+impl Display for AntMinerCompatibleModel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AntMiner(m) => m.fmt(f),
+            Self::Unknown(m) => m.fmt(f),
+        }
+    }
+}
+
+impl From<AntMinerCompatibleModel> for MinerHardware {
+    fn from(model: AntMinerCompatibleModel) -> Self {
+        match model {
+            AntMinerCompatibleModel::AntMiner(m) => m.into(),
+            AntMinerCompatibleModel::Unknown(m) => m.into(),
+        }
+    }
+}
+
+impl MinerModel for AntMinerCompatibleModel {
+    fn make_name(&self) -> String {
+        match self {
+            Self::AntMiner(m) => m.make_name(),
+            Self::Unknown(m) => m.make_name(),
+        }
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct AntMinerStockFirmware {}
 
 impl Display for AntMinerStockFirmware {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "AntMiner Stock")
     }
 }
@@ -57,7 +93,13 @@ impl MinerFirmware for AntMinerStockFirmware {
                     .unwrap_or("")
                     .to_uppercase();
 
-                AntMinerMake::parse_model(model)
+                if model == "ANTMINER BHB42XXX" {
+                    Ok(AntMinerCompatibleModel::Unknown(UnknownMinerModel {
+                        name: model,
+                    }))
+                } else {
+                    AntMinerMake::parse_model(model).map(AntMinerCompatibleModel::AntMiner)
+                }
             }
             None => Err(ModelSelectionError::NoModelResponse),
         }

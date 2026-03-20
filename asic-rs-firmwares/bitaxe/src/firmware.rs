@@ -18,7 +18,7 @@ use asic_rs_core::{
 use asic_rs_makes_bitaxe::make::BitaxeMake;
 use async_trait::async_trait;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BitaxeFirmware {}
 
 impl Display for BitaxeFirmware {

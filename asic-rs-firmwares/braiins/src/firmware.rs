@@ -52,7 +52,7 @@ impl MinerModel for BraiinsCompatibleModel {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BraiinsFirmware {}
 
 impl Display for BraiinsFirmware {

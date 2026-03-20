@@ -21,7 +21,7 @@ use serde_json::json;
 
 use crate::backends::v3;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct WhatsMinerFirmware {}
 
 impl Display for WhatsMinerFirmware {
