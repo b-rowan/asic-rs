@@ -4,6 +4,7 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanConfig,
         pools::{PoolConfig, PoolGroupConfig},
         scaling::ScalingConfig,
         tuning::TuningConfig,
@@ -122,6 +123,14 @@ impl GetConfigsLocations for PowerPlayV1 {
             parameters: None,
         };
         match data_field {
+            ConfigField::Fan => vec![(
+                WEB_SUMMARY,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Fans/Fan Mode"),
+                    tag: None,
+                },
+            )],
             ConfigField::Pools => vec![
                 (
                     WEB_SUMMARY,
@@ -1263,6 +1272,63 @@ impl SupportsTuningConfig for PowerPlayV1 {
 }
 
 #[async_trait]
+impl SupportsFanConfig for PowerPlayV1 {
+    fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
+        let fan_mode = data
+            .get(&ConfigField::Fan)
+            .ok_or_else(|| anyhow::anyhow!("No fan mode data in summary response"))?;
+
+        if let Some(auto) = fan_mode.get("Auto") {
+            let Some(target_temp) = auto.get("Target Temperature").and_then(Value::as_f64) else {
+                anyhow::bail!("Missing Auto/Target Temperature in fan mode data");
+            };
+            let idle_speed = auto.get("Idle Speed").and_then(Value::as_u64);
+
+            Ok(FanConfig::auto(target_temp, idle_speed))
+        } else if let Some(manual_speed) = fan_mode.get("Manual").and_then(Value::as_u64) {
+            Ok(FanConfig::manual(manual_speed))
+        } else {
+            anyhow::bail!("Failed to parse fan mode as Auto or Manual")
+        }
+    }
+
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        let payload = match config {
+            FanConfig::Auto {
+                target_temp,
+                idle_speed,
+            } => {
+                let idle_speed = idle_speed.unwrap_or(20);
+                let target_temp = target_temp.round().max(0.0) as u64;
+
+                json!({
+                    "param": {
+                        "Auto": {
+                            "Target Temperature": target_temp,
+                            "Idle Speed": idle_speed,
+                        }
+                    }
+                })
+            }
+            FanConfig::Manual { fan_speed } => json!({
+                "param": {
+                    "Manual": fan_speed,
+                }
+            }),
+        };
+
+        self.web
+            .send_command("fanspeed", false, Some(payload), Method::POST)
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+
+    fn supports_fan_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
@@ -1404,6 +1470,26 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn parse_fan_config_test() -> anyhow::Result<()> {
+        let summary = Value::from_str(SUMMARY)?;
+        let fan_mode = summary
+            .pointer("/Fans/Fan Mode")
+            .cloned()
+            .context("missing /Fans/Fan Mode")?;
+
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Fan, fan_mode)]);
+        let config = miner.parse_fan_config(&data)?;
+
+        assert_eq!(config.mode(), asic_rs_core::config::fan::FanMode::Auto);
+        assert_eq!(config.target_temp(), Some(60.0));
+        assert_eq!(config.idle_speed(), Some(20));
+        assert_eq!(config.fan_speed(), None);
+
+        Ok(())
+    }
+
     #[tokio::test]
     #[ignore = "requires live miner; set MINER_IP"]
     async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
@@ -1434,6 +1520,11 @@ mod tests {
         println!(
             "tuningconfig {}",
             serde_json::to_string_pretty(&miner.get_tuning_config().await?)?
+        );
+
+        println!(
+            "fanconfig {}",
+            serde_json::to_string_pretty(&miner.get_fan_config().await?)?
         );
 
         assert_eq!(miner_data.ip, ip);
