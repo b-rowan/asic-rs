@@ -4,7 +4,7 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
-        pools::PoolGroupConfig,
+        pools::{PoolConfig, PoolGroupConfig},
         scaling::ScalingConfig,
         tuning::TuningConfig,
     },
@@ -51,6 +51,39 @@ impl PowerPlayV1 {
         }
     }
 
+    // this gets used twice
+    fn parse_stratum_configs(configs: &Value) -> Vec<PoolConfig> {
+        let mut pools: Vec<PoolConfig> = configs
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|pool| {
+                let url = pool.get("pool").and_then(Value::as_str)?;
+                if url.is_empty() {
+                    return None;
+                }
+
+                Some(PoolConfig {
+                    url: PoolURL::from(url.to_string()),
+                    username: pool
+                        .get("login")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                        .unwrap_or_default(),
+                    password: pool
+                        .get("password")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                        .unwrap_or_default(),
+                })
+            })
+            .collect();
+
+        pools.truncate(3);
+
+        pools
+    }
+
     fn to_stratum_configs(group: &PoolGroupConfig) -> Vec<Value> {
         group
             .pools
@@ -84,7 +117,29 @@ impl GetConfigsLocations for PowerPlayV1 {
             command: "summary",
             parameters: None,
         };
+        const WEB_HASHRATESPLIT_CONFIG: MinerCommand = MinerCommand::WebAPI {
+            command: "hashratesplit/config",
+            parameters: None,
+        };
         match data_field {
+            ConfigField::Pools => vec![
+                (
+                    WEB_SUMMARY,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/StratumConfigs"),
+                        tag: Some("summary"),
+                    },
+                ),
+                (
+                    WEB_HASHRATESPLIT_CONFIG,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("hashratesplit"),
+                    },
+                ),
+            ],
             ConfigField::Scaling => vec![(
                 WEB_SUMMARY,
                 ConfigExtractor {
@@ -101,7 +156,6 @@ impl GetConfigsLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            _ => vec![],
         }
     }
 }
@@ -982,13 +1036,67 @@ impl SetPowerLimit for PowerPlayV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for PowerPlayV1 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        Ok(self
-            .get_pools()
-            .await
-            .iter()
-            .map(|g| g.clone().into())
-            .collect())
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        if pools_data.is_array() {
+            return Ok(vec![]);
+        }
+
+        let Some(pools_object) = pools_data.as_object() else {
+            return Ok(vec![]);
+        };
+
+        let split_enabled = pools_object
+            .get("hashratesplit")
+            .and_then(|v| v.get("enabled"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
+        if split_enabled {
+            let mut groups: Vec<PoolGroupConfig> = Vec::new();
+
+            if let Some(splits) = pools_object
+                .get("hashratesplit")
+                .and_then(|v| v.get("hashrate_splits"))
+                .and_then(Value::as_array)
+            {
+                for (idx, split) in splits.iter().enumerate() {
+                    let name = format!("group{}", idx + 1);
+                    let quota = split
+                        .get("ratio")
+                        .and_then(Value::as_u64)
+                        .and_then(|ratio| u32::try_from(ratio).ok())
+                        .unwrap_or(1);
+                    let pools = split
+                        .get("stratum_configs")
+                        .map(Self::parse_stratum_configs)
+                        .unwrap_or_default();
+
+                    groups.push(PoolGroupConfig { name, quota, pools });
+                }
+            }
+
+            groups.truncate(3);
+
+            Ok(groups)
+        } else {
+            let groups = vec![PoolGroupConfig {
+                name: String::new(),
+                quota: 1,
+                pools: pools_object
+                    .get("summary")
+                    .map(Self::parse_stratum_configs)
+                    .unwrap_or_default(),
+            }];
+
+            Ok(groups)
+        }
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
