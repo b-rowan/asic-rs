@@ -967,7 +967,10 @@ impl SupportsPoolsConfig for LuxMinerV1 {
 #[async_trait]
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        Ok(self.rpc.reboot_device().await.is_ok())
+        // Miners often reboot before responding — any error (timeout,
+        // connection reset, broken pipe) likely means the miner is rebooting.
+        let _ = self.rpc.reboot_device().await;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true

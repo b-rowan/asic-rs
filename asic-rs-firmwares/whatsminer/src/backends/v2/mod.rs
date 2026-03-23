@@ -21,6 +21,7 @@ use asic_rs_core::{
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::is_expected_write_error,
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
@@ -683,8 +684,10 @@ impl SupportsPoolsConfig for WhatsMinerV2 {
 #[async_trait]
 impl Restart for WhatsMinerV2 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        let data = self.rpc.send_command("reboot", true, None).await;
-        Ok(data.is_ok())
+        // Miners often reboot before responding — any error (timeout,
+        // connection reset, broken pipe) likely means the miner is rebooting.
+        let _ = self.rpc.send_command("reboot", true, None).await;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true
@@ -695,11 +698,12 @@ impl Restart for WhatsMinerV2 {
 impl Pause for WhatsMinerV2 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        let data = self
+        // Fire-and-forget: miner may power off before responding.
+        let _ = self
             .rpc
             .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
             .await;
-        Ok(data.is_ok())
+        Ok(true)
     }
     fn supports_pause(&self) -> bool {
         true
@@ -757,11 +761,20 @@ fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, 
 impl SupportsTuningConfig for WhatsMinerV2 {
     async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
         let is_power_target = matches!(&config.target, TuningTarget::Power(_));
+        let is_mining_mode = matches!(&config.target, TuningTarget::MiningMode(_));
         let (command, param) = tuning_config_to_rpc(&config)?;
-        let data = self.rpc.send_command(command, true, param).await;
-        if let Err(e) = data {
-            tracing::warn!("set_tuning_config RPC failed: {e}");
-            return Err(e);
+
+        // Mining mode commands (set_low/normal/high_power) are fire-and-forget:
+        // the miner applies the change but doesn't respond, causing a timeout.
+        // Power limit commands need confirmation — some miners don't support them.
+        match self.rpc.send_command(command, true, param).await {
+            Ok(_) => {}
+            Err(e) if is_mining_mode && is_expected_write_error(&e) => {
+                tracing::debug!(
+                    "set_tuning_config: mining mode didn't respond ({e}), assuming applied"
+                );
+            }
+            Err(e) => return Err(e),
         }
 
         // Reset mode to Normal after setting a power limit so that

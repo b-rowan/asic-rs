@@ -1,8 +1,21 @@
-use std::{net::IpAddr, sync::LazyLock};
+use std::{net::IpAddr, sync::LazyLock, time::Duration};
 
 use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+
+use crate::errors::RPCError;
+
+/// Default read timeout for RPC stream responses.
+pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Returns true if the error is an expected transient failure from a
+/// privileged write — timeout or connection drop. These indicate the miner
+/// received and applied the command but didn't respond in time.
+pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<RPCError>()
+        .is_some_and(|e| e.is_transient())
+}
 
 /// Shared HTTP client for discovery and utility requests.
 /// Reused across all calls to avoid per-request client construction overhead.
@@ -15,6 +28,53 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .build()
         .expect("Failed to initialize shared HTTP client")
 });
+
+/// Read a complete RPC response from a stream.
+///
+/// Miners typically terminate responses with `\0` or `\n` but keep the TCP
+/// connection open, so `read_to_end` would block forever. This reads in
+/// chunks and stops when a terminator is found, the stream closes, or the
+/// timeout expires (e.g. when a miner reboots mid-response).
+pub async fn read_stream_response(
+    stream: &mut (impl AsyncRead + Unpin),
+    timeout: Duration,
+) -> anyhow::Result<String> {
+    tokio::time::timeout(timeout, async {
+        let mut response = String::new();
+        let mut buffer = [0u8; 8192];
+
+        loop {
+            let bytes_read = stream.read(&mut buffer).await.map_err(RPCError::from)?;
+            if bytes_read == 0 {
+                break;
+            }
+
+            let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+            response.push_str(&chunk);
+
+            if response.contains('\0') || response.ends_with('\n') {
+                break;
+            }
+        }
+
+        Ok(response.trim_end_matches(['\0', '\n']).to_owned())
+    })
+    .await
+    .map_err(|_| RPCError::ReadTimeout)?
+}
+
+/// Read exactly `buf.len()` bytes from a stream with a timeout.
+pub async fn read_exact_with_timeout(
+    stream: &mut (impl AsyncRead + Unpin),
+    buf: &mut [u8],
+    timeout: Duration,
+) -> anyhow::Result<()> {
+    tokio::time::timeout(timeout, stream.read_exact(buf))
+        .await
+        .map_err(|_| RPCError::ReadTimeout)?
+        .map_err(RPCError::from)?;
+    Ok(())
+}
 
 #[tracing::instrument(level = "debug")]
 pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serde_json::Value> {
@@ -29,15 +89,15 @@ pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serd
         return None;
     }
 
-    let mut buffer = Vec::new();
-    if let Err(err) = stream.read_to_end(&mut buffer).await {
-        tracing::debug!("failed to read response from {ip}: {err:?}");
-        return None;
-    }
-
-    let response = String::from_utf8_lossy(&buffer)
-        .into_owned()
-        .replace('\0', "");
+    let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+    let _ = stream.shutdown().await;
+    let response = match response {
+        Ok(r) => r,
+        Err(err) => {
+            tracing::debug!("failed to read response from {ip}: {err:?}");
+            return None;
+        }
+    };
     tracing::trace!("got response from miner: {response}");
 
     parse_rpc_result(&response)
@@ -115,5 +175,112 @@ fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
             tracing::debug!("failed to parse response");
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::errors::RPCError;
+    use tokio::io::AsyncWriteExt;
+
+    #[tokio::test]
+    async fn null_terminated_response() {
+        // Arrange
+        let (mut writer, mut reader) = tokio::io::duplex(8192);
+        tokio::spawn(async move {
+            writer.write_all(b"{\"STATUS\":\"S\"}\0").await.unwrap();
+        });
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(result, "{\"STATUS\":\"S\"}");
+    }
+
+    #[tokio::test]
+    async fn newline_terminated_response() {
+        // Arrange
+        let (mut writer, mut reader) = tokio::io::duplex(8192);
+        tokio::spawn(async move {
+            writer.write_all(b"{\"STATUS\":\"S\"}\n").await.unwrap();
+        });
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(result, "{\"STATUS\":\"S\"}");
+    }
+
+    #[tokio::test]
+    async fn multi_chunk_response() {
+        // Arrange
+        let (mut writer, mut reader) = tokio::io::duplex(64);
+        tokio::spawn(async move {
+            writer.write_all(b"{\"STATUS\":").await.unwrap();
+            writer.write_all(b"\"S\"}\0").await.unwrap();
+        });
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(result, "{\"STATUS\":\"S\"}");
+    }
+
+    #[tokio::test]
+    async fn empty_response_on_stream_close() {
+        // Arrange
+        let (writer, mut reader) = tokio::io::duplex(8192);
+        drop(writer);
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(result, "");
+    }
+
+    #[tokio::test]
+    async fn both_terminators_trimmed() {
+        // Arrange
+        let (mut writer, mut reader) = tokio::io::duplex(8192);
+        tokio::spawn(async move {
+            writer.write_all(b"{\"STATUS\":\"S\"}\0\n").await.unwrap();
+        });
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(result, "{\"STATUS\":\"S\"}");
+    }
+
+    #[tokio::test]
+    async fn read_timeout_fires() {
+        // Arrange — duplex with no data written, simulating a miner that rebooted
+        let (_writer, mut reader) = tokio::io::duplex(8192);
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_millis(100)).await;
+
+        // Assert
+        let err = result.unwrap_err();
+        assert!(
+            err.downcast_ref::<RPCError>()
+                .is_some_and(|e| matches!(e, RPCError::ReadTimeout))
+        );
     }
 }

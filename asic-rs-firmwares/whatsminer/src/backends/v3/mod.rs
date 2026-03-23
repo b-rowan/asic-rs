@@ -21,6 +21,7 @@ use asic_rs_core::{
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::is_expected_write_error,
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
@@ -662,9 +663,10 @@ impl SupportsPoolsConfig for WhatsMinerV3 {
 #[async_trait]
 impl Restart for WhatsMinerV3 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        let data = self.rpc.send_command("set.system.reboot", true, None).await;
-
-        Ok(data.is_ok())
+        // Miners often reboot before responding — any error (timeout,
+        // connection reset, broken pipe) likely means the miner is rebooting.
+        let _ = self.rpc.send_command("set.system.reboot", true, None).await;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true
@@ -770,6 +772,8 @@ impl SupportsTuningConfig for WhatsMinerV3 {
 
         // Fall back to V2 for MiningMode on any V3 error — set.miner.mode is
         // not universally supported and may return an error or timeout.
+        // Mining mode commands are fire-and-forget: the miner applies the
+        // change but never responds, causing a read timeout.
         if let TuningTarget::MiningMode(mode) = &config.target {
             let v2_cmd = MinerCommand::RPC {
                 command: match mode {
@@ -779,9 +783,14 @@ impl SupportsTuningConfig for WhatsMinerV3 {
                 },
                 parameters: None,
             };
-            let v2_result = self.get_api_result(&v2_cmd).await;
-            match v2_result {
+            match self.get_api_result(&v2_cmd).await {
                 Ok(_) => return Ok(true),
+                Err(e) if is_expected_write_error(&e) => {
+                    tracing::debug!(
+                        "set_tuning_config: V2 mining mode fallback didn't respond ({e}), assuming applied"
+                    );
+                    return Ok(true);
+                }
                 Err(e) => {
                     tracing::warn!("set_tuning_config V2 fallback RPC failed: {e}");
                     return Err(e);

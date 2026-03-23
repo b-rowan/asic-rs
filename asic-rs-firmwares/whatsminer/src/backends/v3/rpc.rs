@@ -9,6 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
+    util::{DEFAULT_RPC_TIMEOUT, read_exact_with_timeout},
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -16,7 +17,7 @@ use chrono::Utc;
 use ecb::cipher::block_padding::ZeroPadding;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
 
@@ -125,15 +126,18 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(json_bytes).await?;
+        stream
+            .write_all(&length.to_le_bytes())
+            .await
+            .map_err(RPCError::from)?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let mut len_buf = [0u8; 4];
-        stream.read_exact(&mut len_buf).await?;
+        read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        stream.read_exact(&mut resp_buf).await?;
+        read_exact_with_timeout(&mut stream, &mut resp_buf, DEFAULT_RPC_TIMEOUT).await?;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 
@@ -218,15 +222,18 @@ impl WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(json_bytes).await?;
+        stream
+            .write_all(&length.to_le_bytes())
+            .await
+            .map_err(RPCError::from)?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let mut len_buf = [0u8; 4];
-        stream.read_exact(&mut len_buf).await?;
+        read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        stream.read_exact(&mut resp_buf).await?;
+        read_exact_with_timeout(&mut stream, &mut resp_buf, DEFAULT_RPC_TIMEOUT).await?;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 

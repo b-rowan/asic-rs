@@ -9,6 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::{RPCError, RPCError::StatusCheckFailed},
     traits::miner::*,
+    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -148,10 +149,11 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let result = self
             .send_command_once(command, _privileged, parameters.clone())
             .await;
-        let _needs_unlock_result =
-            anyhow::Error::from(StatusCheckFailed("can't access write cmd".to_string()));
-        match result {
-            Err(_needs_unlock_result) => {
+        match &result {
+            Err(e)
+                if e.downcast_ref::<RPCError>()
+                    .is_some_and(|rpc| matches!(rpc, StatusCheckFailed(_))) =>
+            {
                 self.unlock_write_commands().await?;
                 self.send_command_once(command, _privileged, parameters)
                     .await
@@ -194,14 +196,11 @@ impl WhatsMinerRPCAPI {
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
-
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "");
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+        let _ = stream.shutdown().await;
+        let response = response?;
 
         self.parse_rpc_result(&response)
     }
@@ -216,10 +215,16 @@ impl WhatsMinerRPCAPI {
             "client": UNLOCK_CLIENT,
             "enable": true,
         });
-        stream.write_all(open_cmd.to_string().as_bytes()).await?;
+        stream
+            .write_all(open_cmd.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
 
         let mut buf = vec![0u8; 4096];
-        let n = stream.read(&mut buf).await?;
+        let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
+            .await
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
         let response: Value = serde_json::from_str(String::from_utf8_lossy(&buf[..n]).trim())?;
 
         let msg = response
@@ -246,11 +251,18 @@ impl WhatsMinerRPCAPI {
         let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
 
         let token_json = json!({ "token": token_md5 });
-        stream.write_all(token_json.to_string().as_bytes()).await?;
+        stream
+            .write_all(token_json.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
 
         let mut final_buf = vec![0u8; 4096];
-        let _ = stream.read(&mut final_buf).await?;
+        let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
+            .await
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
 
+        let _ = stream.shutdown().await;
         Ok(())
     }
 
@@ -348,14 +360,11 @@ impl WhatsMinerRPCAPI {
         let json_str = command.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
-
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "");
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+        let _ = stream.shutdown().await;
+        let response = response?;
 
         self.parse_privileged_rpc_result(&token_data.host_password_md5, &response)
     }
