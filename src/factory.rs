@@ -379,7 +379,20 @@ impl MinerFactory {
 
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
-        Ok(network.hosts().collect())
+        let hosts = match network {
+            IpNet::V4(network_v4) => {
+                let start = u32::from(network_v4.network());
+                let end = u32::from(network_v4.broadcast());
+
+                (start..=end)
+                    .map(Ipv4Addr::from)
+                    .map(IpAddr::V4)
+                    .collect::<Vec<IpAddr>>()
+            }
+            IpNet::V6(network_v6) => network_v6.hosts().map(IpAddr::V6).collect(),
+        };
+
+        Ok(hosts)
     }
 
     fn shuffle_ips(&mut self) {
