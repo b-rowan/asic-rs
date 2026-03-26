@@ -3,8 +3,8 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
-        pools::PoolGroupConfig,
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        pools::{PoolConfig, PoolGroupConfig},
     },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -61,6 +61,103 @@ impl LuxMinerV1 {
             None
         }
     }
+
+    fn parse_quota(value: Option<&Value>) -> u32 {
+        value
+            .and_then(Value::as_u64)
+            .and_then(|quota| u32::try_from(quota).ok())
+            .or_else(|| {
+                value.and_then(Value::as_f64).and_then(|quota| {
+                    if quota.is_finite() && quota >= 0.0 {
+                        Some(quota.round() as u32)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .unwrap_or_default()
+    }
+
+    fn parse_pool_config(config: &Value) -> Vec<PoolGroupConfig> {
+        let groups = config
+            .pointer("/groups/0/GROUPS")
+            .or_else(|| config.pointer("/groups"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let pools = config
+            .pointer("/pools/0/POOLS")
+            .or_else(|| config.pointer("/pools"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+
+        let mut ordered_groups: Vec<(u64, PoolGroupConfig)> = groups
+            .iter()
+            .filter_map(|group| {
+                let group_id = group.get("GROUP").and_then(Value::as_u64)?;
+                Some((
+                    group_id,
+                    PoolGroupConfig {
+                        name: group
+                            .get("Name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                        quota: Self::parse_quota(group.get("Quota")),
+                        pools: vec![],
+                    },
+                ))
+            })
+            .collect();
+
+        for pool in pools {
+            let Some(url) = pool.get("URL").and_then(Value::as_str) else {
+                continue;
+            };
+            if url.is_empty() {
+                continue;
+            }
+
+            let group_id = pool
+                .get("GROUP")
+                .and_then(Value::as_u64)
+                .unwrap_or_default();
+            let pool_config = PoolConfig {
+                url: PoolURL::from(url.to_string()),
+                username: pool
+                    .get("User")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                password: pool
+                    .get("Password")
+                    .or_else(|| pool.get("Pass"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            };
+
+            if let Some((_, group)) = ordered_groups
+                .iter_mut()
+                .find(|(existing_id, _)| *existing_id == group_id)
+            {
+                group.pools.push(pool_config);
+            } else {
+                ordered_groups.push((
+                    group_id,
+                    PoolGroupConfig {
+                        name: String::new(),
+                        quota: Self::parse_quota(pool.get("Quota")),
+                        pools: vec![pool_config],
+                    },
+                ));
+            }
+        }
+
+        ordered_groups.sort_by_key(|(group_id, _)| *group_id);
+        ordered_groups.into_iter().map(|(_, group)| group).collect()
+    }
 }
 
 #[async_trait]
@@ -74,9 +171,38 @@ impl APIClient for LuxMinerV1 {
 }
 
 impl GetConfigsLocations for LuxMinerV1 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const RPC_GROUPS: MinerCommand = MinerCommand::RPC {
+            command: "groups",
+            parameters: None,
+        };
+
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
+            command: "pools",
+            parameters: None,
+        };
+
+        match data_field {
+            ConfigField::Pools => vec![
+                (
+                    RPC_GROUPS,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/GROUPS"),
+                        tag: Some("groups"),
+                    },
+                ),
+                (
+                    RPC_POOLS,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: Some("pools"),
+                    },
+                ),
+            ],
+            _ => vec![],
+        }
     }
 }
 
@@ -828,33 +954,47 @@ impl GetIsMining for LuxMinerV1 {
 
 impl GetPools for LuxMinerV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let pools = data
-            .get(&DataField::Pools)
-            .and_then(|v| v.as_array())
-            .into_iter()
-            .flatten()
-            .enumerate()
-            .map(|(idx, pool)| PoolData {
-                position: Some(idx as u16),
-                url: pool
-                    .get("URL")
-                    .and_then(|v| v.as_str())
-                    .map(|s| PoolURL::from(s.to_string())),
-                user: pool.get("User").and_then(|v| v.as_str()).map(String::from),
-                alive: pool
-                    .get("Status")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s == "Alive"),
-                active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
-                accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
-                rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
-            })
-            .collect();
-        vec![PoolGroupData {
-            name: String::new(),
-            quota: 1,
-            pools,
-        }]
+        let mut groups: Vec<(u64, PoolGroupData)> = Vec::new();
+
+        if let Some(pools_data) = data.get(&DataField::Pools).and_then(Value::as_array) {
+            for pool in pools_data {
+                let group_id = pool
+                    .get("GROUP")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default();
+                let pool_data = PoolData {
+                    position: pool.get("POOL").and_then(Value::as_u64).map(|id| id as u16),
+                    url: pool
+                        .get("URL")
+                        .and_then(|v| v.as_str())
+                        .map(|s| PoolURL::from(s.to_string())),
+                    user: pool.get("User").and_then(|v| v.as_str()).map(String::from),
+                    alive: pool
+                        .get("Status")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s == "Alive"),
+                    active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
+                    accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
+                    rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+                };
+
+                if let Some((_, group)) = groups.iter_mut().find(|(id, _)| *id == group_id) {
+                    group.pools.push(pool_data);
+                } else {
+                    groups.push((
+                        group_id,
+                        PoolGroupData {
+                            name: String::new(),
+                            quota: Self::parse_quota(pool.get("Quota")),
+                            pools: vec![pool_data],
+                        },
+                    ));
+                }
+            }
+        }
+
+        groups.sort_by_key(|(group_id, _)| *group_id);
+        groups.into_iter().map(|(_, group)| group).collect()
     }
 }
 
@@ -950,17 +1090,63 @@ impl SetPowerLimit for LuxMinerV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for LuxMinerV1 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        Ok(self
-            .get_pools()
-            .await
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        Ok(Self::parse_pool_config(pools_data))
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        let mut collector = self.get_config_collector();
+        let current_pool_config_data = collector.collect(&[ConfigField::Pools]).await;
+        let current_groups = current_pool_config_data
+            .get(&ConfigField::Pools)
+            .and_then(|config| {
+                config
+                    .pointer("/groups/0/GROUPS")
+                    .or_else(|| config.pointer("/groups"))
+                    .and_then(Value::as_array)
+                    .cloned()
+            })
+            .unwrap_or_default();
+        let mut group_ids: Vec<u32> = current_groups
             .iter()
-            .map(|g| g.clone().into())
-            .collect())
+            .filter_map(|group| group.get("GROUP").and_then(Value::as_u64))
+            .map(|id| id as u32)
+            .collect();
+        group_ids.sort_unstable_by(|a, b| b.cmp(a));
+
+        for group_id in group_ids {
+            self.rpc.removegroup(group_id).await?;
+        }
+
+        for group in &config {
+            self.rpc.addgroup(&group.name, group.quota).await?;
+        }
+
+        for (group_id, group) in config.iter().enumerate() {
+            for pool in &group.pools {
+                self.rpc
+                    .addpool(
+                        &pool.url.to_string(),
+                        &pool.username,
+                        &pool.password,
+                        Some(&group_id.to_string()),
+                    )
+                    .await?;
+            }
+        }
+
+        Ok(true)
     }
 
     fn supports_pools_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -979,8 +1165,7 @@ impl Restart for LuxMinerV1 {
 
 #[async_trait]
 impl Pause for LuxMinerV1 {
-    #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.sleep().await.is_ok())
     }
     fn supports_pause(&self) -> bool {
@@ -990,8 +1175,7 @@ impl Pause for LuxMinerV1 {
 
 #[async_trait]
 impl Resume for LuxMinerV1 {
-    #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.wakeup().await.is_ok())
     }
     fn supports_resume(&self) -> bool {
@@ -1029,6 +1213,14 @@ impl SupportsFanConfig for LuxMinerV1 {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use serde_json::json;
+    use tokio::{
+        io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+        net::TcpListener,
+    };
+
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_antminer::models::AntMinerModel;
 
@@ -1180,7 +1372,168 @@ mod tests {
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 77);
-        assert_eq!(miner_data.pools[0].len(), 4);
+        assert_eq!(miner_data.pools.len(), 2);
+        assert_eq!(miner_data.pools[0].len(), 2);
+        assert_eq!(miner_data.pools[1].len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_lux_pools_config_with_empty_group() {
+        let config = json!({
+            "groups": [
+                { "GROUP": 0, "Name": "default", "Quota": 80.0 },
+                { "GROUP": 1, "Name": "testTWO", "Quota": 1.0 },
+                { "GROUP": 2, "Name": "empty-group", "Quota": 5.0 }
+            ],
+            "pools": [
+                {
+                    "POOL": 0,
+                    "GROUP": 0,
+                    "Quota": 80.0,
+                    "URL": "stratum+tcp://fuzz-7a3.invalid:17000",
+                    "User": "rand-worker-a9"
+                },
+                {
+                    "POOL": 1,
+                    "GROUP": 1,
+                    "Quota": 1.0,
+                    "URL": "stratum+tcp://fuzz-c42.invalid:27001",
+                    "User": "rand-worker-b4"
+                }
+            ]
+        });
+
+        let groups = LuxMinerV1::parse_pool_config(&config);
+
+        assert_eq!(groups.len(), 3);
+        assert_eq!(groups[0].name, "default");
+        assert_eq!(groups[0].quota, 80);
+        assert_eq!(groups[0].pools.len(), 1);
+        assert_eq!(groups[1].name, "testTWO");
+        assert_eq!(groups[1].quota, 1);
+        assert_eq!(groups[1].pools.len(), 1);
+        assert_eq!(groups[2].name, "empty-group");
+        assert_eq!(groups[2].quota, 5);
+        assert!(groups[2].pools.is_empty());
+    }
+
+    #[test]
+    fn test_parse_lux_pools_config_nested_response_with_password() {
+        let config = json!({
+            "groups": [
+                {
+                    "GROUPS": [
+                        { "GROUP": 0, "Name": "default", "Quota": 80.0 },
+                        { "GROUP": 1, "Name": "testTWO", "Quota": 20.0 }
+                    ]
+                }
+            ],
+            "pools": [
+                {
+                    "POOLS": [
+                        {
+                            "POOL": 0,
+                            "GROUP": 0,
+                            "Quota": 80.0,
+                            "URL": "stratum+tcp://mock-alpha.invalid:31000",
+                            "User": "synthetic-user-0",
+                            "Password": "secret0"
+                        },
+                        {
+                            "POOL": 1,
+                            "GROUP": 1,
+                            "Quota": 20.0,
+                            "URL": "stratum+tcp://mock-beta.invalid:31001",
+                            "User": "synthetic-user-1",
+                            "Pass": "secret1"
+                        }
+                    ]
+                }
+            ],
+            "poolopts": []
+        });
+
+        let groups = LuxMinerV1::parse_pool_config(&config);
+
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].pools[0].password, "secret0");
+        assert_eq!(groups[1].pools[0].password, "secret1");
+    }
+
+    #[tokio::test]
+    async fn test_set_lux_pools_config_allows_empty_groups() -> anyhow::Result<()> {
+        let requests = Arc::new(Mutex::new(Vec::<(String, Option<String>)>::new()));
+        let server_requests = Arc::clone(&requests);
+
+        let server = tokio::spawn(async move {
+            let listener = TcpListener::bind("127.0.0.1:4028").await?;
+
+            for _ in 0..4 {
+                let (socket, _) = listener.accept().await?;
+                let (reader, mut writer) = socket.into_split();
+                let mut reader = BufReader::new(reader);
+                let mut line = String::new();
+                reader.read_line(&mut line).await?;
+
+                let request: Value = serde_json::from_str(line.trim_end())?;
+                let command = request
+                    .get("command")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let parameter = request
+                    .get("parameter")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+
+                server_requests
+                    .lock()
+                    .unwrap()
+                    .push((command.clone(), parameter));
+
+                let response = match command.as_str() {
+                    "groups" => json!({
+                        "GROUPS": [
+                            { "GROUP": 0, "Name": "default", "Quota": 1.0 },
+                            { "GROUP": 1, "Name": "backup", "Quota": 1.0 }
+                        ],
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    "pools" => json!({
+                        "POOLS": [],
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    "removegroup" => json!({
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    other => anyhow::bail!("unexpected command: {other}"),
+                };
+
+                writer
+                    .write_all(format!("{}\n", response).as_bytes())
+                    .await?;
+            }
+
+            anyhow::Ok(())
+        });
+
+        let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+        assert!(miner.set_pools_config(vec![]).await?);
+
+        server.await??;
+
+        let requests = requests.lock().unwrap();
+        assert_eq!(
+            *requests,
+            vec![
+                ("groups".to_string(), None),
+                ("pools".to_string(), None),
+                ("removegroup".to_string(), Some("1".to_string())),
+                ("removegroup".to_string(), Some("0".to_string())),
+            ]
+        );
 
         Ok(())
     }

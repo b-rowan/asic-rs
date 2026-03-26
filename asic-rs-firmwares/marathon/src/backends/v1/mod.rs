@@ -3,8 +3,8 @@ use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::D
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
-        pools::PoolGroupConfig,
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        pools::{PoolConfig, PoolGroupConfig},
     },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -27,7 +27,7 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
-use serde_json::Value;
+use serde_json::{Value, json};
 use web::MaraWebAPI;
 
 use crate::firmware::MarathonFirmware;
@@ -85,11 +85,186 @@ impl MaraV1 {
         }
     }
 
-    async fn get_work_mode(&self) -> anyhow::Result<Option<MaraWorkMode>> {
-        let cfg = self
-            .web
+    fn parse_pool_config(config: &Value) -> Vec<PoolGroupConfig> {
+        let groups = config
+            .get("pool-group")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let pools = config
+            .get("pools")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+
+        let mut ordered_groups: Vec<(u64, PoolGroupConfig)> = groups
+            .iter()
+            .filter_map(|group| {
+                let gid = group.get("gid").and_then(Value::as_u64)?;
+                let quota = group
+                    .get("percent")
+                    .and_then(Value::as_u64)
+                    .and_then(|value| u32::try_from(value).ok())
+                    .unwrap_or_default();
+
+                Some((
+                    gid,
+                    PoolGroupConfig {
+                        name: group
+                            .get("alias")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                        quota,
+                        pools: vec![],
+                    },
+                ))
+            })
+            .collect();
+
+        if ordered_groups.is_empty() && !pools.is_empty() {
+            ordered_groups.push((
+                0,
+                PoolGroupConfig {
+                    name: String::new(),
+                    quota: 100,
+                    pools: vec![],
+                },
+            ));
+        }
+
+        for pool in pools {
+            let Some(url) = pool.get("url").and_then(Value::as_str) else {
+                continue;
+            };
+            if url.is_empty() {
+                continue;
+            }
+
+            let gid = pool.get("gid").and_then(Value::as_u64).unwrap_or_default();
+            let pool_config = PoolConfig {
+                url: PoolURL::from(url.to_string()),
+                username: pool
+                    .get("user")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                password: pool
+                    .get("pass")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            };
+
+            if let Some((_, group)) = ordered_groups
+                .iter_mut()
+                .find(|(group_gid, _)| *group_gid == gid)
+            {
+                group.pools.push(pool_config);
+            } else {
+                ordered_groups.push((
+                    gid,
+                    PoolGroupConfig {
+                        name: String::new(),
+                        quota: 0,
+                        pools: vec![pool_config],
+                    },
+                ));
+            }
+        }
+
+        ordered_groups.sort_by_key(|(gid, _)| *gid);
+        ordered_groups.into_iter().map(|(_, group)| group).collect()
+    }
+
+    fn build_pool_config(config: &[PoolGroupConfig]) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
+        let config = &config[..config.len().min(3)];
+        if config.is_empty() {
+            return Ok((vec![], vec![]));
+        }
+        anyhow::ensure!(
+            config.iter().all(|group| group.quota > 0),
+            "Each MaraFW pool group must have a quota greater than 0"
+        );
+
+        let total_quota: u64 = config.iter().map(|group| u64::from(group.quota)).sum();
+        let mut percents: Vec<u32> = config
+            .iter()
+            .map(|group| ((u64::from(group.quota) * 100) / total_quota) as u32)
+            .collect();
+        let mut remainder_slots: Vec<(usize, u64)> = config
+            .iter()
+            .enumerate()
+            .map(|(idx, group)| (idx, (u64::from(group.quota) * 100) % total_quota))
+            .collect();
+
+        let assigned: u32 = percents.iter().sum();
+        let mut remainder = 100u32.saturating_sub(assigned);
+        remainder_slots.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+        for (idx, _) in remainder_slots.into_iter().take(remainder as usize) {
+            percents[idx] += 1;
+            remainder -= 1;
+            if remainder == 0 {
+                break;
+            }
+        }
+
+        let pool_groups = config
+            .iter()
+            .enumerate()
+            .map(|(gid, group)| {
+                json!({
+                    "gid": gid,
+                    "alias": group.name,
+                    "percent": percents[gid],
+                })
+            })
+            .collect();
+
+        let pools = config
+            .iter()
+            .enumerate()
+            .flat_map(|(gid, group)| {
+                group.pools.iter().map(move |pool| {
+                    json!({
+                        "url": pool.url.to_string(),
+                        "user": pool.username,
+                        "pass": pool.password,
+                        "gid": gid,
+                    })
+                })
+            })
+            .collect();
+
+        Ok((pool_groups, pools))
+    }
+
+    async fn get_miner_config(&self) -> anyhow::Result<Value> {
+        self.web
             .send_command("miner_config", true, None, Method::GET)
+            .await
+    }
+
+    async fn set_miner_config(&self, config: Value) -> anyhow::Result<bool> {
+        let resp = self
+            .web
+            .send_command("miner_config", true, Some(config), Method::POST)
             .await?;
+
+        if resp.get("error").and_then(Value::as_bool) == Some(true) {
+            let msg = resp
+                .get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown error");
+            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
+        }
+
+        Ok(true)
+    }
+
+    async fn get_work_mode(&self) -> anyhow::Result<Option<MaraWorkMode>> {
+        let cfg = self.get_miner_config().await?;
 
         let Some(s) = cfg
             .pointer("/mode/work-mode-selector")
@@ -102,34 +277,15 @@ impl MaraV1 {
     }
 
     async fn set_work_mode(&self, mode: MaraWorkMode) -> anyhow::Result<bool> {
-        // 1) GET current full config
-        let mut cfg = self
-            .web
-            .send_command("miner_config", true, None, Method::GET)
-            .await?;
+        let mut cfg = self.get_miner_config().await?;
 
-        // 2) Update only the selector
         if let Some(v) = cfg.pointer_mut("/mode/work-mode-selector") {
             *v = Value::String(mode.to_string());
         } else {
             anyhow::bail!("MaraFW miner_config missing /mode/work-mode-selector");
         }
 
-        // 3) POST full updated config back
-        let resp = self
-            .web
-            .send_command("miner_config", true, Some(cfg), Method::POST)
-            .await?;
-
-        if resp.get("error").and_then(|v| v.as_bool()) == Some(true) {
-            let msg = resp
-                .get("msg")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown error");
-            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
-        }
-
-        Ok(true)
+        self.set_miner_config(cfg).await
     }
 
     async fn last_mode_before_sleep_from_history(&self) -> anyhow::Result<Option<MaraWorkMode>> {
@@ -220,9 +376,23 @@ impl APIClient for MaraV1 {
 }
 
 impl GetConfigsLocations for MaraV1 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_MINER_CONFIG: MinerCommand = MinerCommand::WebAPI {
+            command: "miner_config",
+            parameters: None,
+        };
+
+        match data_field {
+            ConfigField::Pools => vec![(
+                WEB_MINER_CONFIG,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -856,17 +1026,33 @@ impl SetPowerLimit for MaraV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for MaraV1 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        Ok(self
-            .get_pools()
-            .await
-            .iter()
-            .map(|g| g.clone().into())
-            .collect())
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        Ok(Self::parse_pool_config(pools_data))
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        let (pool_groups, pools) = Self::build_pool_config(&config)?;
+        let mut miner_config = self.get_miner_config().await?;
+
+        let Some(config_object) = miner_config.as_object_mut() else {
+            anyhow::bail!("MaraFW miner_config response was not a JSON object");
+        };
+
+        config_object.insert("pool-group".to_string(), Value::Array(pool_groups));
+        config_object.insert("pools".to_string(), Value::Array(pools));
+
+        self.set_miner_config(miner_config).await
     }
 
     fn supports_pools_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -937,5 +1123,100 @@ impl SupportsTuningConfig for MaraV1 {
 impl SupportsFanConfig for MaraV1 {
     fn supports_fan_config(&self) -> bool {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_pool_config_allows_empty_groups() -> anyhow::Result<()> {
+        let (pool_groups, pools) = MaraV1::build_pool_config(&[])?;
+
+        assert!(pool_groups.is_empty());
+        assert!(pools.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_pool_config_allows_empty_pools() -> anyhow::Result<()> {
+        let config = vec![
+            PoolGroupConfig {
+                name: "primary".to_string(),
+                quota: 80,
+                pools: vec![],
+            },
+            PoolGroupConfig {
+                name: "backup".to_string(),
+                quota: 20,
+                pools: vec![],
+            },
+        ];
+
+        let (pool_groups, pools) = MaraV1::build_pool_config(&config)?;
+
+        assert_eq!(pool_groups.len(), 2);
+        assert_eq!(pools.len(), 0);
+        assert_eq!(pool_groups[0]["alias"], "primary");
+        assert_eq!(pool_groups[0]["percent"], 80);
+        assert_eq!(pool_groups[1]["alias"], "backup");
+        assert_eq!(pool_groups[1]["percent"], 20);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_build_pool_config_ignores_groups_past_three() -> anyhow::Result<()> {
+        let config = vec![
+            PoolGroupConfig {
+                name: "primary".to_string(),
+                quota: 40,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool0.invalid:3333".to_string()),
+                    username: "user0".to_string(),
+                    password: "pass0".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "secondary".to_string(),
+                quota: 30,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool1.invalid:3333".to_string()),
+                    username: "user1".to_string(),
+                    password: "pass1".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "tertiary".to_string(),
+                quota: 20,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool2.invalid:3333".to_string()),
+                    username: "user2".to_string(),
+                    password: "pass2".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "ignored".to_string(),
+                quota: 10,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool3.invalid:3333".to_string()),
+                    username: "user3".to_string(),
+                    password: "pass3".to_string(),
+                }],
+            },
+        ];
+
+        let (pool_groups, pools) = MaraV1::build_pool_config(&config)?;
+
+        assert_eq!(pool_groups.len(), 3);
+        assert_eq!(pools.len(), 3);
+        assert_eq!(pool_groups[0]["alias"], "primary");
+        assert_eq!(pool_groups[1]["alias"], "secondary");
+        assert_eq!(pool_groups[2]["alias"], "tertiary");
+        assert!(pools.iter().all(|pool| pool["user"] != "user3"));
+
+        Ok(())
     }
 }
