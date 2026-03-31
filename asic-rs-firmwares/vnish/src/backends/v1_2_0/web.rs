@@ -219,26 +219,13 @@ impl VnishWebAPI {
 
 /// Error types for Vnish WebAPI operations
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum VnishError {
-    /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),
-    /// HTTP error with status code
     HttpError(u16),
-    /// JSON parsing error
     ParseError(String),
-    /// Request building error
     RequestError(String),
-    /// Timeout error
-    Timeout,
-    /// Unsupported HTTP method
     UnsupportedMethod(String),
-    /// Maximum retries exceeded
-    MaxRetriesExceeded,
-    /// Authentication failed
     AuthenticationFailed,
-    /// Unauthorized (401)
-    Unauthorized,
 }
 
 impl std::fmt::Display for VnishError {
@@ -248,11 +235,8 @@ impl std::fmt::Display for VnishError {
             VnishError::HttpError(code) => write!(f, "HTTP error: {code}"),
             VnishError::ParseError(msg) => write!(f, "Parse error: {msg}"),
             VnishError::RequestError(msg) => write!(f, "Request error: {msg}"),
-            VnishError::Timeout => write!(f, "Request timeout"),
             VnishError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
-            VnishError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
             VnishError::AuthenticationFailed => write!(f, "Authentication failed"),
-            VnishError::Unauthorized => write!(f, "Unauthorized access"),
         }
     }
 }

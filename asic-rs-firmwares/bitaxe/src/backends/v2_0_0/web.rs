@@ -21,34 +21,6 @@ pub struct BitaxeWebAPI {
 }
 
 #[async_trait]
-#[allow(dead_code)]
-trait Bitaxe200WebAPI: WebAPIClient {
-    /// Get system information
-    async fn system_info(&self) -> anyhow::Result<Value> {
-        self.send_command("system/info", false, None, Method::GET)
-            .await
-    }
-
-    /// Get swarm information
-    async fn swarm_info(&self) -> anyhow::Result<Value> {
-        self.send_command("swarm/info", false, None, Method::GET)
-            .await
-    }
-
-    /// Restart the system
-    async fn restart(&self) -> anyhow::Result<Value> {
-        self.send_command("system/restart", false, None, Method::POST)
-            .await
-    }
-
-    /// Update system settings
-    async fn update_settings(&self, config: Value) -> anyhow::Result<Value> {
-        self.send_command("system", false, Some(config), Method::PATCH)
-            .await
-    }
-}
-
-#[async_trait]
 impl APIClient for BitaxeWebAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
@@ -107,8 +79,6 @@ impl WebAPIClient for BitaxeWebAPI {
         Err(BitaxeError::MaxRetriesExceeded)?
     }
 }
-
-impl Bitaxe200WebAPI for BitaxeWebAPI {}
 
 impl BitaxeWebAPI {
     /// Create a new Bitaxe WebAPI client
@@ -200,22 +170,3 @@ impl std::fmt::Display for BitaxeError {
 }
 
 impl std::error::Error for BitaxeError {}
-
-// Usage example
-#[cfg(test)]
-mod tests {
-    /*
-    #[tokio::test]
-    async fn test_espminer_api() {
-        let api = EspWebApi::new("192.168.1.100".into(), 80)
-            .with_timeout(Duration::from_secs(5))
-            .with_retries(3);
-
-        // Test system info
-        match api.system_info().await {
-            Ok(info) => println!("System info: {:?}", info),
-            Err(e) => println!("Error getting system info: {}", e),
-        }
-    }
-     */
-}

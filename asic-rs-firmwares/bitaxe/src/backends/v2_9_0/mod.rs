@@ -5,6 +5,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::firmware::BitaxeFirmware;
 use anyhow;
 use asic_rs_core::{
     config::{
@@ -31,11 +32,8 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use web::BitaxeWebAPI;
 
-use crate::firmware::BitaxeFirmware;
-
-mod web;
+use super::v2_0_0::web::BitaxeWebAPI;
 
 #[derive(Debug)]
 pub struct Bitaxe290 {

@@ -56,41 +56,6 @@ impl APIClient for WhatsMinerRPCAPI {
     }
 }
 
-trait StatusFromBTMinerV3 {
-    fn from_btminer_v3(response: &str) -> Result<Self, RPCError>
-    where
-        Self: Sized;
-}
-
-impl StatusFromBTMinerV3 for RPCCommandStatus {
-    fn from_btminer_v3(response: &str) -> anyhow::Result<Self, RPCError> {
-        let value: serde_json::Value = serde_json::from_str(response)?;
-
-        match value["code"].as_i64() {
-            None => {
-                let message = value["msg"].as_str();
-
-                Err(RPCError::StatusCheckFailed(
-                    message
-                        .unwrap_or("Unknown error when looking for status code")
-                        .to_owned(),
-                ))
-            }
-            Some(code) => match code {
-                0 => Ok(Self::Success),
-                _ => {
-                    let message = value["msg"].as_str();
-                    Err(RPCError::StatusCheckFailed(
-                        message
-                            .unwrap_or("Unknown error when parsing status")
-                            .to_owned(),
-                    ))
-                }
-            },
-        }
-    }
-}
-
 #[async_trait]
 impl RPCAPIClient for WhatsMinerRPCAPI {
     async fn send_command(
@@ -245,5 +210,37 @@ impl WhatsMinerRPCAPI {
             .await
             .ok()
             .and_then(|s| s["msg"]["salt"].as_str().map(|s| s.to_string()))
+    }
+}
+
+trait StatusFromBTMinerV3 {
+    fn from_btminer_v3(response: &str) -> Result<Self, RPCError>
+    where
+        Self: Sized;
+}
+
+impl StatusFromBTMinerV3 for RPCCommandStatus {
+    fn from_btminer_v3(response: &str) -> anyhow::Result<Self, RPCError> {
+        let value: serde_json::Value = serde_json::from_str(response)?;
+
+        match value["code"].as_i64() {
+            None => {
+                let message = value["msg"].as_str();
+                Err(RPCError::StatusCheckFailed(
+                    message
+                        .unwrap_or("Unknown error when looking for status code")
+                        .to_owned(),
+                ))
+            }
+            Some(0) => Ok(Self::Success),
+            Some(_) => {
+                let message = value["msg"].as_str();
+                Err(RPCError::StatusCheckFailed(
+                    message
+                        .unwrap_or("Unknown error when parsing status")
+                        .to_owned(),
+                ))
+            }
+        }
     }
 }

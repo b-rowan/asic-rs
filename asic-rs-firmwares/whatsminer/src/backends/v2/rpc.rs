@@ -101,43 +101,6 @@ fn aes_ecb_dec(key: &str, data: &str) -> String {
     String::from_utf8_lossy(dec).into_owned()
 }
 
-trait StatusFromBTMinerV2 {
-    fn from_btminer_v2(response: &str) -> Result<Self, RPCError>
-    where
-        Self: Sized;
-}
-
-impl StatusFromBTMinerV2 for RPCCommandStatus {
-    fn from_btminer_v2(response: &str) -> anyhow::Result<Self, RPCError> {
-        let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
-
-        if let Ok(data) = &parsed {
-            let command_status = data["STATUS"][0]["STATUS"]
-                .as_str()
-                .or(data["STATUS"].as_str());
-            let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
-
-            match command_status {
-                Some(status) => match status {
-                    "S" | "I" => Ok(RPCCommandStatus::Success),
-                    _ => Err(RPCError::StatusCheckFailed(
-                        message
-                            .unwrap_or("Unknown error when looking for status code")
-                            .to_owned(),
-                    )),
-                },
-                None => Err(RPCError::StatusCheckFailed(
-                    message
-                        .unwrap_or("Unknown error when parsing status")
-                        .to_owned(),
-                )),
-            }
-        } else {
-            Err(RPCError::DeserializationFailed(parsed.err().unwrap()))
-        }
-    }
-}
-
 #[async_trait]
 impl RPCAPIClient for WhatsMinerRPCAPI {
     async fn send_command(
@@ -367,5 +330,42 @@ impl WhatsMinerRPCAPI {
         let response = response?;
 
         self.parse_privileged_rpc_result(&token_data.host_password_md5, &response)
+    }
+}
+
+trait StatusFromBTMinerV2 {
+    fn from_btminer_v2(response: &str) -> Result<Self, RPCError>
+    where
+        Self: Sized;
+}
+
+impl StatusFromBTMinerV2 for RPCCommandStatus {
+    fn from_btminer_v2(response: &str) -> anyhow::Result<Self, RPCError> {
+        let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
+
+        if let Ok(data) = &parsed {
+            let command_status = data["STATUS"][0]["STATUS"]
+                .as_str()
+                .or(data["STATUS"].as_str());
+            let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
+
+            match command_status {
+                Some(status) => match status {
+                    "S" | "I" => Ok(RPCCommandStatus::Success),
+                    _ => Err(RPCError::StatusCheckFailed(
+                        message
+                            .unwrap_or("Unknown error when looking for status code")
+                            .to_owned(),
+                    )),
+                },
+                None => Err(RPCError::StatusCheckFailed(
+                    message
+                        .unwrap_or("Unknown error when parsing status")
+                        .to_owned(),
+                )),
+            }
+        } else {
+            Err(RPCError::DeserializationFailed(parsed.err().unwrap()))
+        }
     }
 }

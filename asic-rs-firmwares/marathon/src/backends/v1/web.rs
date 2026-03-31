@@ -34,14 +34,18 @@ impl MaraWebAPI {
             password: "root".to_string(),
         }
     }
+}
 
-    async fn make_request(
+#[async_trait]
+impl WebAPIClient for MaraWebAPI {
+    async fn send_command(
         &self,
-        endpoint: &str,
-        method: Method,
+        command: &str,
+        _privileged: bool,
         parameters: Option<Value>,
+        method: Method,
     ) -> anyhow::Result<Value> {
-        let url = format!("http://{}:{}/kaonsu/v1/{}", self.ip, self.port, endpoint);
+        let url = format!("http://{}:{}/kaonsu/v1/{}", self.ip, self.port, command);
 
         let mut request_builder = match method {
             Method::GET => self.client.get(&url),
@@ -61,30 +65,16 @@ impl MaraWebAPI {
             .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
 
         if response.status().is_success() {
-            let json_response = response
+            response
                 .json::<Value>()
                 .await
-                .map_err(|e| anyhow::anyhow!("Failed to parse JSON: {}", e))?;
-            Ok(json_response)
+                .map_err(|e| anyhow::anyhow!("Failed to parse JSON: {}", e))
         } else {
             Err(anyhow::anyhow!(
                 "HTTP request failed with status: {}",
                 response.status()
             ))
         }
-    }
-}
-
-#[async_trait]
-impl WebAPIClient for MaraWebAPI {
-    async fn send_command(
-        &self,
-        command: &str,
-        _privileged: bool,
-        parameters: Option<Value>,
-        method: Method,
-    ) -> anyhow::Result<Value> {
-        self.make_request(command, method, parameters).await
     }
 }
 
