@@ -14,17 +14,17 @@ from pydantic import (
 )
 
 
-class MinerHardware(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class _Base(BaseModel):
+    model_config = ConfigDict(from_attributes=True, ser_json_inf_nan="null")
 
+
+class MinerHardware(_Base):
     chips: int | None
     fans: int | None
     boards: int | None
 
 
-class DeviceInfo(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class DeviceInfo(_Base):
     make: Annotated[str, BeforeValidator(str)]
     model: Annotated[str, BeforeValidator(str)]
     hardware: MinerHardware
@@ -107,9 +107,7 @@ class HashRateUnit(IntEnum):
         return str(self)
 
 
-class HashRate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class HashRate(_Base):
     value: float
     unit: HashRateUnit
     algo: str
@@ -138,9 +136,7 @@ class HashRate(BaseModel):
         )
 
 
-class ChipData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ChipData(_Base):
     position: int
     hashrate: HashRate | None
     temperature: float | None
@@ -150,9 +146,7 @@ class ChipData(BaseModel):
     working: bool | None
 
 
-class BoardData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class BoardData(_Base):
     position: int
     hashrate: HashRate | None
     expected_hashrate: HashRate | None
@@ -169,16 +163,12 @@ class BoardData(BaseModel):
     active: bool | None
 
 
-class FanData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class FanData(_Base):
     position: int
     rpm: float | None
 
 
-class PoolData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class PoolData(_Base):
     position: int | None
     url: Annotated[str, BeforeValidator(str)] | None
     accepted_shares: int | None
@@ -188,17 +178,13 @@ class PoolData(BaseModel):
     user: str | None
 
 
-class PoolGroupData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class PoolGroupData(_Base):
     name: str
     quota: int
     pools: list[PoolData]
 
 
-class TuningTargetPower(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class TuningTargetPower(_Base):
     watts: float
 
     @model_serializer
@@ -206,9 +192,7 @@ class TuningTargetPower(BaseModel):
         return {"type": "power", "value": self.watts}
 
 
-class TuningTargetHashRate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class TuningTargetHashRate(_Base):
     hashrate: HashRate
 
     @model_serializer
@@ -256,18 +240,14 @@ TuningTarget = Annotated[
 ]
 
 
-class MinerMessage(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class MinerMessage(_Base):
     timestamp: int
     code: int
     message: str
     severity: Annotated[str, BeforeValidator(str)]
 
 
-class MinerControlBoard(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class MinerControlBoard(_Base):
     known: bool
     name: str
 
@@ -281,9 +261,7 @@ class MinerControlBoard(BaseModel):
         return f"Unknown: {self.name}"
 
 
-class MinerData(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class MinerData(_Base):
     schema_version: str
     timestamp: int
     ip: IPv4Address
