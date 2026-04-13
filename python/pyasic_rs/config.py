@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, BeforeValidator, ConfigDict
 from typing_extensions import Annotated
 
-from pyasic_rs.data import HashRate
+from pyasic_rs.asic_rs import HashRate
 
 
 class Pool(BaseModel):
@@ -90,7 +90,7 @@ class TuningConfig:
                 )
             case "hashrate":
                 return TuningConfigHashRate(
-                    target_hashrate=HashRate.model_validate(obj.target_hashrate),
+                    target_hashrate=obj.target_hashrate,
                     algorithm=obj.algorithm,
                 )
             case "mode":

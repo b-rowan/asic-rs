@@ -13,6 +13,7 @@ license = "Apache-2.0"
 [workspace]
 members = [
     "asic-rs-core",
+    "asic-rs-derive",
     "asic-rs-makes/antminer",
     "asic-rs-makes/avalon",
     "asic-rs-makes/bitaxe",
@@ -35,6 +36,7 @@ members = [
 
 [workspace.dependencies]
 asic-rs-core = { path = "asic-rs-core", version = "0.4.2" }
+asic-rs-derive = { path = "asic-rs-derive", version = "0.4.2" }
 
 asic-rs-makes-antminer = { path = "asic-rs-makes/antminer", version = "0.4.2" }
 asic-rs-makes-avalon = { path = "asic-rs-makes/avalon", version = "0.4.2" }

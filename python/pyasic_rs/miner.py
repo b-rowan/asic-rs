@@ -1,8 +1,10 @@
 import os
 from datetime import timedelta
+from ipaddress import IPv4Address, IPv6Address
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
+from pydantic.v1 import IPv6AddressError
 
 from .config import (
     AutoFanConfig,
@@ -15,10 +17,10 @@ from .config import (
     TuningConfigMode,
     TuningConfigPower,
 )
+from pyasic_rs.asic_rs import HashRate
 from .data import (
     MinerData,
     BoardData,
-    HashRate,
     FanData,
     MinerMessage,
     PoolGroupData,
@@ -35,7 +37,7 @@ class Miner:
         return self.__inner.__repr__()
 
     @property
-    def ip(self) -> str:
+    def ip(self) -> IPv4Address | IPv6Address:
         return self.__inner.ip
 
     @property
@@ -93,16 +95,10 @@ class Miner:
         ]
 
     async def get_hashrate(self) -> HashRate | None:
-        inner = await self.__inner.get_hashrate()
-        if inner is not None:
-            return HashRate.model_validate(inner)
-        return None
+        return await self.__inner.get_hashrate()
 
     async def get_expected_hashrate(self) -> HashRate | None:
-        inner = await self.__inner.get_expected_hashrate()
-        if inner is not None:
-            return HashRate.model_validate(inner)
-        return None
+        return await self.__inner.get_expected_hashrate()
 
     async def get_fans(self) -> list[FanData]:
         return [FanData.model_validate(f) for f in await self.__inner.get_fans()]
@@ -168,7 +164,7 @@ class Miner:
         return None
 
     async def get_tuning_config(
-        self,
+            self,
     ) -> TuningConfigPower | TuningConfigHashRate | TuningConfigMode | None:
         inner = await self.__inner.get_tuning_config()
         if inner is not None:
@@ -196,9 +192,9 @@ class Miner:
         return await self.__inner.set_scaling_config(config)
 
     async def set_tuning_config(
-        self,
-        config: TuningConfigPower | TuningConfigHashRate | TuningConfigMode,
-        scaling_config: ScalingConfig | None = None,
+            self,
+            config: TuningConfigPower | TuningConfigHashRate | TuningConfigMode,
+            scaling_config: ScalingConfig | None = None,
     ) -> bool | None:
         return await self.__inner.set_tuning_config(config, scaling_config)
 
@@ -206,8 +202,8 @@ class Miner:
         return await self.__inner.set_fan_config(config)
 
     async def upgrade_firmware(
-        self,
-        path: str | os.PathLike[str],
+            self,
+            path: str | os.PathLike[str],
     ) -> bool:
         return await self.__inner.upgrade_firmware(path)
 

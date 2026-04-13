@@ -1,17 +1,18 @@
 from datetime import timedelta
-from enum import IntEnum, StrEnum
 from ipaddress import IPv4Address
-from typing import Annotated, Self
+from typing import Annotated
 
-from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
 from pydantic import (
     BaseModel,
     ConfigDict,
     BeforeValidator,
+    TypeAdapter,
     field_serializer,
     model_serializer,
-    field_validator,
 )
+from pyasic_rs.asic_rs import HashRate, HashRateUnit  # noqa: F401 — re-exported for callers
+
+_hashrate_adapter: TypeAdapter[HashRate] = TypeAdapter(HashRate)
 
 
 class MinerHardware(BaseModel):
@@ -30,112 +31,6 @@ class DeviceInfo(BaseModel):
     hardware: MinerHardware
     firmware: Annotated[str, BeforeValidator(str)]
     algo: Annotated[str, BeforeValidator(str)]
-
-
-class HashRateUnit(IntEnum):
-    H = 1
-    KH = H * 1000
-    MH = KH * 1000
-    GH = MH * 1000
-    TH = GH * 1000
-    PH = TH * 1000
-    EH = PH * 1000
-    ZH = EH * 1000
-
-    default = TH
-
-    @classmethod
-    def from_asic_rs(cls, val):
-        val = int(val)
-        if val == 0:
-            return cls.H
-        if val == 1:
-            return cls.KH
-        if val == 2:
-            return cls.MH
-        if val == 3:
-            return cls.GH
-        if val == 4:
-            return cls.TH
-        if val == 5:
-            return cls.PH
-        if val == 6:
-            return cls.EH
-        if val == 7:
-            return cls.ZH
-        return cls.default
-
-    def __str__(self):
-        if self.value == self.H:
-            return "H/s"
-        if self.value == self.KH:
-            return "KH/s"
-        if self.value == self.MH:
-            return "MH/s"
-        if self.value == self.GH:
-            return "GH/s"
-        if self.value == self.TH:
-            return "TH/s"
-        if self.value == self.PH:
-            return "PH/s"
-        if self.value == self.EH:
-            return "EH/s"
-        if self.value == self.ZH:
-            return "ZH/s"
-
-    @classmethod
-    def from_str(cls, value: str):
-        if value == "H":
-            return cls.H
-        elif value == "KH":
-            return cls.KH
-        elif value == "MH":
-            return cls.MH
-        elif value == "GH":
-            return cls.GH
-        elif value == "TH":
-            return cls.TH
-        elif value == "PH":
-            return cls.PH
-        elif value == "EH":
-            return cls.EH
-        elif value == "ZH":
-            return cls.ZH
-        return cls.default
-
-    def __repr__(self):
-        return str(self)
-
-
-class HashRate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    value: float
-    unit: HashRateUnit
-    algo: str
-
-    def __float__(self):
-        return self.value
-
-    def __format__(self, format_spec: str):
-        formatted_value = format(self.value, format_spec)
-        return f"{formatted_value} {self.unit}"
-
-    @model_serializer
-    def serialize_hashrate(self):
-        return self.into_unit(unit=HashRateUnit.default).value
-
-    @field_validator("unit", mode="before")
-    @classmethod
-    def parse_unit(cls, value: _rs_HashRateUnit) -> HashRateUnit:
-        if isinstance(value, HashRateUnit):
-            return value
-        return HashRateUnit.from_asic_rs(value)
-
-    def into_unit(self, unit: HashRateUnit) -> Self:
-        return HashRate(
-            value=(self.value * int(self.unit)) / int(unit), unit=unit, algo=self.algo
-        )
 
 
 class ChipData(BaseModel):
@@ -213,20 +108,16 @@ class TuningTargetHashRate(BaseModel):
 
     @model_serializer
     def serialize_tuning_target(self):
-        # Serialize the full HashRate structure as plain data so it can be validated back
-        return {"type": "hashrate", "value": self.hashrate.model_dump(mode="json")}
-
-
-class MiningMode(StrEnum):
-    Low = "Low"
-    Normal = "Normal"
-    High = "High"
+        return {
+            "type": "hashrate",
+            "value": _hashrate_adapter.dump_python(self.hashrate, mode="json"),
+        }
 
 
 class TuningTargetMiningMode(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    mode: MiningMode
+    mode: Annotated[str, BeforeValidator(str)]
 
     @model_serializer
     def serialize_tuning_target(self):
@@ -234,41 +125,35 @@ class TuningTargetMiningMode(BaseModel):
 
 
 def _parse_tuning_target(v):
-    # Handle already-correct model instances
     if isinstance(v, (TuningTargetPower, TuningTargetHashRate, TuningTargetMiningMode)):
         return v
 
-    # Handle dictionary inputs (e.g. serializer output or plain dicts)
     if isinstance(v, dict):
-        # If the dict already matches the model field names, validate directly
         if "watts" in v:
             return TuningTargetPower.model_validate(v)
         if "hashrate" in v:
             return TuningTargetHashRate.model_validate(v)
         if "mode" in v:
-            return TuningTargetMiningMode(mode=MiningMode(v["mode"]))
+            return TuningTargetMiningMode.model_validate(v)
 
-        # Handle serializer-shaped dicts: {"type": ..., "value": ...}
         target_type = v.get("type")
         value = v.get("value")
         if target_type == "power" and value is not None:
             return TuningTargetPower(watts=float(value))
         if target_type == "hashrate" and value is not None:
-            return TuningTargetHashRate(hashrate=HashRate.model_validate(value))
+            return TuningTargetHashRate(hashrate=_hashrate_adapter.validate_python(value))
         if target_type == "mode" and value is not None:
-            return TuningTargetMiningMode(mode=MiningMode(str(value)))
+            return TuningTargetMiningMode(mode=str(value))
 
-        # Fallback: return dict unchanged
         return v
 
-    # Handle Rust-style enum variants coming from bindings
     variant = type(v).__name__
     if variant == "Power" and hasattr(v, "_0"):
         return TuningTargetPower(watts=float(v._0))
     if variant == "HashRate" and hasattr(v, "_0"):
-        return TuningTargetHashRate(hashrate=HashRate.model_validate(v._0))
+        return TuningTargetHashRate(hashrate=v._0)
     if variant == "MiningMode" and hasattr(v, "_0"):
-        return TuningTargetMiningMode(mode=MiningMode(str(v._0)))
+        return TuningTargetMiningMode(mode=str(v._0))
     return v
 
 

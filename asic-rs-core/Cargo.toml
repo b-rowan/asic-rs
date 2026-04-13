@@ -9,6 +9,7 @@ description = "Core library for asic-rs, asic-rs-firmware, and asic-rs-makes."
 workspace = true
 
 [dependencies]
+asic-rs-derive.workspace = true
 measurements.workspace = true
 macaddr.workspace = true
 serde.workspace = true

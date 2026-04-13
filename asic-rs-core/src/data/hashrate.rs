@@ -4,12 +4,18 @@ use std::{
     str::FromStr,
 };
 
+use asic_rs_derive::PydanticCompat;
 use measurements::Power;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(PydanticCompat))]
+#[cfg_attr(
+    feature = "python",
+    pydantic(validate = "from_str", serialize = "to_string")
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HashRateUnit {
     Hash,
@@ -92,6 +98,15 @@ impl Display for HashRateUnit {
     }
 }
 
+#[cfg(feature = "python")]
+#[pymethods]
+impl HashRateUnit {
+    fn __repr__(&self) -> String {
+        self.to_string()
+    }
+}
+
+#[cfg_attr(feature = "python", derive(PydanticCompat))]
 #[cfg_attr(
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
@@ -100,7 +115,12 @@ impl Display for HashRateUnit {
 pub struct HashRate {
     /// The current amount of hashes being computed
     pub value: f64,
-    /// The unit of the hashes in value
+    /// The unit of the hashes in value — accepts string or `HashRateUnit` when
+    /// validating; serialises to the display string (e.g. `"TH/s"`).
+    #[cfg_attr(
+        feature = "python",
+        pydantic(validate_with = "from_str", serialize_with = "to_string")
+    )]
     pub unit: HashRateUnit,
     /// The algorithm of the computed hashes
     pub algo: String,
@@ -108,7 +128,7 @@ pub struct HashRate {
 
 impl HashRate {
     pub fn as_unit(self, unit: HashRateUnit) -> Self {
-        let base = self.value * self.unit.to_multiplier(); // Convert to base unit (e.g., bytes)
+        let base = self.value * self.unit.to_multiplier();
 
         Self {
             value: base / unit.clone().to_multiplier(),
@@ -123,12 +143,8 @@ impl Display for HashRate {
         let precision = f.precision();
 
         match precision {
-            Some(precision) => {
-                write!(f, "{:.*} {}", precision, self.value, self.unit)
-            }
-            None => {
-                write!(f, "{} {}", self.value, self.unit)
-            }
+            Some(precision) => write!(f, "{:.*} {}", precision, self.value, self.unit),
+            None => write!(f, "{} {}", self.value, self.unit),
         }
     }
 }
@@ -146,5 +162,30 @@ impl Div<HashRate> for Power {
 
     fn div(self, hash_rate: HashRate) -> Self::Output {
         self.as_watts() / hash_rate.value
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl HashRate {
+    fn __repr__(&self) -> String {
+        self.to_string()
+    }
+
+    fn __float__(&self) -> f64 {
+        self.value
+    }
+
+    fn __format__<'py>(&self, py: Python<'py>, format_spec: &str) -> PyResult<String> {
+        let py_value = self.value.into_pyobject(py)?;
+        let formatted: String = py_value
+            .call_method1("__format__", (format_spec,))?
+            .extract()?;
+        Ok(format!("{} {}", formatted, self.unit))
+    }
+
+    /// Convert this `HashRate` to the given unit, returning a new instance.
+    fn into_unit(&self, unit: HashRateUnit) -> HashRate {
+        self.clone().as_unit(unit)
     }
 }

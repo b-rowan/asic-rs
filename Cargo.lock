@@ -98,6 +98,7 @@ name = "asic-rs-core"
 version = "0.4.2"
 dependencies = [
  "anyhow",
+ "asic-rs-derive",
  "async-trait",
  "futures",
  "macaddr",
@@ -112,6 +113,15 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "asic-rs-derive"
+version = "0.4.2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
