@@ -67,7 +67,7 @@ impl TuningConfig {
 #[pymethods]
 impl TuningConfig {
     #[new]
-    #[pyo3(signature = (target, algorithm = None))]
+    #[pyo3(signature = (target: "TuningTargetPower | TuningTargetHashRate | TuningTargetMode", algorithm: "HashAlgorithm | str | None" = None))]
     fn py_new(target: &Bound<'_, PyAny>, algorithm: Option<&Bound<'_, PyAny>>) -> PyResult<Self> {
         let mut config =
             Self::new(<TuningTarget as asic_rs_pydantic::PyPydanticType>::from_pydantic(target)?);
@@ -78,7 +78,7 @@ impl TuningConfig {
     }
 
     #[classmethod]
-    #[pyo3(signature = (watts, algorithm = None))]
+    #[pyo3(signature = (watts, algorithm: "HashAlgorithm | str | None" = None))]
     fn power(
         _cls: &Bound<'_, pyo3::types::PyType>,
         watts: f64,
@@ -92,7 +92,7 @@ impl TuningConfig {
     }
 
     #[classmethod]
-    #[pyo3(signature = (hashrate, algorithm = None))]
+    #[pyo3(signature = (hashrate, algorithm: "HashAlgorithm | str | None" = None))]
     fn hashrate(
         _cls: &Bound<'_, pyo3::types::PyType>,
         hashrate: crate::data::hashrate::HashRate,
@@ -114,6 +114,12 @@ impl TuningConfig {
     #[pyo3(name = "variant")]
     fn py_variant(&self) -> &'static str {
         self.variant()
+    }
+
+    #[getter]
+    #[pyo3(name = "target")]
+    fn py_target(&self) -> TuningTarget {
+        self.target.clone()
     }
 
     /// Target power in watts, or `None` if targeting hashrate or mining mode.
@@ -147,68 +153,25 @@ impl TuningConfig {
 #[cfg(feature = "python")]
 mod python_impls {
     use asic_rs_pydantic::{PyPydanticType, get_optional_field, get_required_field};
-    use measurements::Power;
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::TuningConfig;
-    use crate::data::{
-        hashrate::HashRate,
-        miner::{MiningMode, TuningTarget},
-    };
+    use crate::data::miner::TuningTarget;
 
     impl FromPyObject<'_, '_> for TuningConfig {
         type Error = PyErr;
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            if let Some(target) = get_optional_field(&obj, "target")? {
-                return Ok(TuningConfig {
-                    target: TuningTarget::from_pydantic(&target)?,
-                    algorithm: get_optional_field(&obj, "algorithm")?
-                        .map(|value| value.extract())
-                        .transpose()?
-                        .flatten(),
-                });
-            }
-
-            let variant: String = get_required_field(&obj, "variant")?.extract()?;
+            let target = get_required_field(&obj, "target")?;
             let algorithm: Option<String> = get_optional_field(&obj, "algorithm")?
                 .map(|value| value.extract())
                 .transpose()?
                 .flatten();
 
-            let target = match variant.as_str() {
-                "power" => {
-                    let watts: f64 = get_required_field(&obj, "target_watts")?.extract()?;
-                    TuningTarget::Power(Power::from_watts(watts))
-                }
-                "hashrate" => {
-                    let hr: HashRate = get_required_field(&obj, "target_hashrate")?.extract()?;
-                    TuningTarget::HashRate(hr)
-                }
-                "mode" => {
-                    let mode_val = get_required_field(&obj, "target_mode")?;
-                    let mode = mode_val.extract::<MiningMode>().or_else(|_| {
-                        mode_val
-                            .extract::<String>()
-                            .and_then(|s| match s.to_lowercase().as_str() {
-                                "low" => Ok(MiningMode::Low),
-                                "normal" => Ok(MiningMode::Normal),
-                                "high" => Ok(MiningMode::High),
-                                _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                                    "Unknown mining mode '{s}', expected 'Low', 'Normal', or 'High'"
-                                ))),
-                            })
-                    })?;
-                    TuningTarget::MiningMode(mode)
-                }
-                _ => {
-                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                        "Unknown TuningConfig variant '{variant}', expected 'power', 'hashrate', or 'mode'",
-                    )));
-                }
-            };
-
-            Ok(TuningConfig { target, algorithm })
+            Ok(TuningConfig {
+                target: TuningTarget::from_pydantic(&target)?,
+                algorithm,
+            })
         }
     }
 }

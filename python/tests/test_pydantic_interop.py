@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import inspect
+from ipaddress import IPv4Address, IPv6Address
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -210,6 +212,59 @@ def test_miner_control_board_rejects_string_compat_shape() -> None:
         MinerControlBoardModel.model_validate({"control_board": "CV1835"})
 
 
+def test_runtime_model_properties_use_explicit_python_types() -> None:
+    chip = ChipData.model_validate(
+        {
+            "position": 1,
+            "hashrate": {"value": 12.5, "unit": "TH/s", "algo": "SHA256"},
+            "temperature": 71.25,
+            "voltage": 12.1,
+            "frequency": 425.0,
+            "tuned": True,
+            "working": True,
+        }
+    )
+    miner = MinerData.model_validate(
+        minimal_miner_data(
+            hashboards=[
+                {
+                    "position": 0,
+                    "hashrate": {"value": 100.0, "unit": "TH/s", "algo": "SHA256"},
+                    "expected_hashrate": {"value": 110.0, "unit": "TH/s", "algo": "SHA256"},
+                    "board_temperature": 60.0,
+                    "intake_temperature": 30.0,
+                    "outlet_temperature": 40.0,
+                    "expected_chips": 120,
+                    "working_chips": 118,
+                    "serial_number": "board-0",
+                    "chips": [chip.model_dump()],
+                    "voltage": 13.2,
+                    "frequency": 500.0,
+                    "tuned": True,
+                    "active": True,
+                }
+            ],
+            fans=[{"position": 0, "rpm": 6200}],
+            psu_fans=[{"position": 1, "rpm": 4800}],
+            average_temperature=55.5,
+            fluid_temperature=24.0,
+            wattage=3250.0,
+            hashrate={"value": 300.0, "unit": "TH/s", "algo": "SHA256"},
+            expected_hashrate={"value": 320.0, "unit": "TH/s", "algo": "SHA256"},
+            uptime=3600,
+        )
+    )
+
+    assert isinstance(chip.position, int)
+    assert isinstance(chip.temperature, float)
+    assert isinstance(chip.hashrate, HashRate)
+    assert isinstance(miner.ip, (IPv4Address, IPv6Address))
+    assert miner.ip.compressed == "192.0.2.10"
+    assert isinstance(miner.hashboards[0].chips[0], ChipData)
+    assert isinstance(miner.fans[0].rpm, float)
+    assert isinstance(miner.uptime.total_seconds(), float)
+
+
 @pytest.mark.parametrize(
     "hashrate",
     [
@@ -409,6 +464,18 @@ def test_tuning_config_validates_canonical_target_shape() -> None:
     }
 
 
+def test_tuning_config_rejects_legacy_variant_shape() -> None:
+    with pytest.raises(ValidationError):
+        TuningConfigModel.model_validate(
+            {
+                "tuning": {
+                    "variant": "power",
+                    "target_watts": 3250.0,
+                }
+            }
+        )
+
+
 def test_tuning_config_accepts_hash_algorithm_enum() -> None:
     power = TuningConfig.power(3250.0, algorithm=HashAlgorithm.Kadena)
     hashrate = TuningConfig.hashrate(
@@ -442,6 +509,17 @@ def test_tuning_config_mode_accepts_mining_mode_enum() -> None:
     assert model.model_dump() == {
         "tuning": {"target": {"type": "mode", "value": "High"}, "algorithm": None}
     }
+
+
+def test_tuning_config_target_wrapper_round_trips_through_constructor() -> None:
+    original = TuningConfig.power(3250.0, algorithm=HashAlgorithm.SHA256)
+    rebuilt = TuningConfig(original.target, algorithm=original.algorithm)
+
+    assert rebuilt.target.watts == 3250.0
+    assert rebuilt.target_watts == 3250.0
+    assert rebuilt.variant == "power"
+    assert rebuilt.algorithm == "SHA256"
+    assert rebuilt.model_dump() == original.model_dump()
 
 
 def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:

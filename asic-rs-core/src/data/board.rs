@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use measurements::{Frequency, Temperature, Voltage};
 #[cfg(feature = "python")]
-use pyo3::pyclass;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -11,7 +11,7 @@ use super::{
 };
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChipData {
     /// The position of the chip on the board, indexed from 0
@@ -37,7 +37,7 @@ pub struct ChipData {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BoardData {
     /// The board position in the miner, indexed from 0
@@ -106,6 +106,122 @@ impl BoardData {
             active,
             ..Default::default()
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl ChipData {
+    #[getter]
+    fn position(&self) -> u16 {
+        self.position
+    }
+
+    #[getter]
+    fn hashrate(&self) -> Option<HashRate> {
+        self.hashrate.clone()
+    }
+
+    #[getter]
+    fn temperature(&self) -> Option<f64> {
+        self.temperature.map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn voltage(&self) -> Option<f64> {
+        self.voltage.map(|voltage| voltage.as_volts())
+    }
+
+    #[getter]
+    fn frequency(&self) -> Option<f64> {
+        self.frequency.map(|frequency| frequency.as_megahertz())
+    }
+
+    #[getter]
+    fn tuned(&self) -> Option<bool> {
+        self.tuned
+    }
+
+    #[getter]
+    fn working(&self) -> Option<bool> {
+        self.working
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl BoardData {
+    #[getter]
+    fn position(&self) -> u8 {
+        self.position
+    }
+
+    #[getter]
+    fn hashrate(&self) -> Option<HashRate> {
+        self.hashrate.clone()
+    }
+
+    #[getter]
+    fn expected_hashrate(&self) -> Option<HashRate> {
+        self.expected_hashrate.clone()
+    }
+
+    #[getter]
+    fn board_temperature(&self) -> Option<f64> {
+        self.board_temperature
+            .map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn intake_temperature(&self) -> Option<f64> {
+        self.intake_temperature
+            .map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn outlet_temperature(&self) -> Option<f64> {
+        self.outlet_temperature
+            .map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn expected_chips(&self) -> Option<u16> {
+        self.expected_chips
+    }
+
+    #[getter]
+    fn working_chips(&self) -> Option<u16> {
+        self.working_chips
+    }
+
+    #[getter]
+    fn serial_number(&self) -> Option<String> {
+        self.serial_number.clone()
+    }
+
+    #[getter]
+    fn chips(&self) -> Vec<ChipData> {
+        self.chips.clone()
+    }
+
+    #[getter]
+    fn voltage(&self) -> Option<f64> {
+        self.voltage.map(|voltage| voltage.as_volts())
+    }
+
+    #[getter]
+    fn frequency(&self) -> Option<f64> {
+        self.frequency.map(|frequency| frequency.as_megahertz())
+    }
+
+    #[getter]
+    fn tuned(&self) -> Option<bool> {
+        self.tuned
+    }
+
+    #[getter]
+    fn active(&self) -> Option<bool> {
+        self.active
     }
 }
 

@@ -47,7 +47,7 @@ pub enum MiningMode {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
@@ -118,6 +118,157 @@ pub struct MinerData {
 }
 
 #[cfg(feature = "python")]
+#[pymethods]
+impl MinerData {
+    #[getter]
+    fn schema_version(&self) -> String {
+        self.schema_version.clone()
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    #[getter]
+    fn ip(&self) -> IpAddr {
+        self.ip
+    }
+
+    #[getter]
+    fn mac(&self) -> Option<String> {
+        self.mac.map(|mac| mac.to_string())
+    }
+
+    #[getter]
+    fn device_info(&self) -> DeviceInfo {
+        self.device_info.clone()
+    }
+
+    #[getter]
+    fn serial_number(&self) -> Option<String> {
+        self.serial_number.clone()
+    }
+
+    #[getter]
+    fn hostname(&self) -> Option<String> {
+        self.hostname.clone()
+    }
+
+    #[getter]
+    fn api_version(&self) -> Option<String> {
+        self.api_version.clone()
+    }
+
+    #[getter]
+    fn firmware_version(&self) -> Option<String> {
+        self.firmware_version.clone()
+    }
+
+    #[getter]
+    fn control_board_version(&self) -> Option<MinerControlBoard> {
+        self.control_board_version.clone()
+    }
+
+    #[getter]
+    fn expected_hashboards(&self) -> Option<u8> {
+        self.expected_hashboards
+    }
+
+    #[getter]
+    fn hashboards(&self) -> Vec<BoardData> {
+        self.hashboards.clone()
+    }
+
+    #[getter]
+    fn hashrate(&self) -> Option<HashRate> {
+        self.hashrate.clone()
+    }
+
+    #[getter]
+    fn expected_hashrate(&self) -> Option<HashRate> {
+        self.expected_hashrate.clone()
+    }
+
+    #[getter]
+    fn expected_chips(&self) -> Option<u16> {
+        self.expected_chips
+    }
+
+    #[getter]
+    fn total_chips(&self) -> Option<u16> {
+        self.total_chips
+    }
+
+    #[getter]
+    fn expected_fans(&self) -> Option<u8> {
+        self.expected_fans
+    }
+
+    #[getter]
+    fn fans(&self) -> Vec<FanData> {
+        self.fans.clone()
+    }
+
+    #[getter]
+    fn psu_fans(&self) -> Vec<FanData> {
+        self.psu_fans.clone()
+    }
+
+    #[getter]
+    fn average_temperature(&self) -> Option<f64> {
+        self.average_temperature
+            .map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn fluid_temperature(&self) -> Option<f64> {
+        self.fluid_temperature
+            .map(|temperature| temperature.as_celsius())
+    }
+
+    #[getter]
+    fn wattage(&self) -> Option<f64> {
+        self.wattage.map(|power| power.as_watts())
+    }
+
+    #[getter]
+    fn tuning_target(&self) -> Option<TuningTarget> {
+        self.tuning_target.clone()
+    }
+
+    #[getter]
+    fn efficiency(&self) -> Option<f64> {
+        self.efficiency
+    }
+
+    #[getter]
+    fn light_flashing(&self) -> Option<bool> {
+        self.light_flashing
+    }
+
+    #[getter]
+    fn messages(&self) -> Vec<MinerMessage> {
+        self.messages.clone()
+    }
+
+    #[getter]
+    fn uptime(&self) -> Option<Duration> {
+        self.uptime
+    }
+
+    #[getter]
+    fn is_mining(&self) -> bool {
+        self.is_mining
+    }
+
+    #[getter]
+    fn pools(&self) -> Vec<PoolGroupData> {
+        self.pools.clone()
+    }
+}
+
+#[cfg(feature = "python")]
 pub use python_tuning_target::{TuningTargetHashRate, TuningTargetMode, TuningTargetPower};
 
 #[cfg(feature = "python")]
@@ -139,6 +290,11 @@ mod python_tuning_target {
 
     #[pymethods]
     impl TuningTargetPower {
+        #[new]
+        fn new(watts: f64) -> Self {
+            Self { watts }
+        }
+
         #[getter]
         fn watts(&self) -> f64 {
             self.watts
@@ -153,6 +309,11 @@ mod python_tuning_target {
 
     #[pymethods]
     impl TuningTargetHashRate {
+        #[new]
+        fn new(hashrate: HashRate) -> Self {
+            Self { hashrate }
+        }
+
         #[getter]
         fn hashrate(&self) -> HashRate {
             self.hashrate.clone()
@@ -167,6 +328,11 @@ mod python_tuning_target {
 
     #[pymethods]
     impl TuningTargetMode {
+        #[new]
+        fn new(mode: MiningMode) -> Self {
+            Self { mode }
+        }
+
         #[getter]
         fn mode(&self) -> MiningMode {
             self.mode

@@ -7,7 +7,7 @@ use serialize::serialize_angular_velocity;
 use crate::data::serialize;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FanData {
     /// The position or index of the fan as seen by the device
@@ -17,4 +17,18 @@ pub struct FanData {
     #[serde(serialize_with = "serialize_angular_velocity")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rpm: Option<AngularVelocity>,
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl FanData {
+    #[getter]
+    fn position(&self) -> i16 {
+        self.position
+    }
+
+    #[getter]
+    fn rpm(&self) -> Option<f64> {
+        self.rpm.map(|rpm| rpm.as_rpm())
+    }
 }
