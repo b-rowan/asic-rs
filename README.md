@@ -196,7 +196,7 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbt-yd4EPv_RsbFsx9XY0jXrcbiw7rK0V_Zn4b1_Yo0LJC71dhYvRhcoQbFk-KUw-YC1gbkB1MIR9d3owbkrJeZCaURSobkBtgwf0d-EhhZIKDZ2FzaWMtcnNlMC41LjFnYXNpY19yc4JsYXNpY19yc19jb3JlZTAuNS4x
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbFk-KUw-YC1gbkB1MIR9d3owbkrJeZCaURSobkBtgwf0d-EhhZIKDZ2FzaWMtcnNlMC41LjFnYXNpY19yc4JsYXNpY19yc19jb3JlZTAuNS4x
  [__link0]: https://docs.rs/asic-rs/0.5.1/asic_rs/supported_devices/index.html
  [__link1]: https://docs.rs/asic-rs/0.5.1/asic_rs/?search=factory::MinerFactory
  [__link2]: https://docs.rs/asic-rs/0.5.1/asic_rs/?search=factory::MinerFactory
