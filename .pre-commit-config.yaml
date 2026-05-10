@@ -17,19 +17,19 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
       - id: pretty-format-json
-        args: ["--autofix", "--indent=2"]
+        args: [ "--autofix", "--indent=2" ]
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.0.0
     hooks:
       - id: conventional-pre-commit
-        stages: [commit-msg]
+        stages: [ commit-msg ]
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
       - id: fmt
       - id: cargo-check
       - id: clippy
-        args: ["--all-targets", "--all-features", "--workspace", "--fix", "--allow-dirty"]
+        args: [ "--all-targets", "--all-features", "--workspace", "--fix", "--allow-dirty" ]
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.11.6
     hooks:
@@ -43,23 +43,28 @@ repos:
     rev: v1.20.0
     hooks:
       - id: mypy
-        args: ["--config-file=pyproject.toml"]
-        additional_dependencies: [pydantic==2.12.5]
+        args: [ "--config-file=pyproject.toml" ]
+        additional_dependencies: [ pydantic==2.12.5 ]
         pass_filenames: false
   - repo: local
     hooks:
+      - id: supported-devices-docs
+        name: check supported devices docs
+        entry: python scripts/generate_supported_devices.py
+        language: python
+        pass_filenames: false
       - id: cargo-test
         name: cargo test
         entry: cargo test --all --locked --exclude asic-rs-pydantic --exclude asic-rs-pydantic-macros
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-push]
+        stages: [ pre-push ]
       - id: python-test
         name: python tests
         entry: python scripts/run_python_tests.py
         language: python
-        additional_dependencies: [uv]
+        additional_dependencies: [ uv ]
         pass_filenames: false
         always_run: true
-        stages: [pre-push]
+        stages: [ pre-push ]

@@ -2,13 +2,15 @@
 
 asic-rs is a miner management and control library, designed to abstract away the complexity of working with different types of ASIC miners.
 
+See [`supported_devices`][__link0] for the generated support matrix and exact supported model list.
+
 ## Getting Started
 
 The first step to controlling a miner with asic-rs is to get the struct that represents it, with methods used for data gathering and control.
 
 #### Getting a miner
 
-If you know the IP address of your miner, it is fairly easy to discover it.  Use the [`MinerFactory`][__link0] to select the correct type.
+If you know the IP address of your miner, it is fairly easy to discover it.  Use the [`MinerFactory`][__link1] to select the correct type.
 
 ```rust
 use asic_rs::MinerFactory;
@@ -57,7 +59,7 @@ There are other ways to define a discovery range to be scanned, such as:
 ```
 
 These also have corresponding methods for appending to an existing factory, or overwriting existing ranges.
-See [`MinerFactory`][__link1] for more details.
+See [`MinerFactory`][__link2] for more details.
 
 #### Discovery tuning
 
@@ -109,13 +111,13 @@ If you only want specific data, that can be done with individual function calls:
         let mac = miner.get_mac().await;
 ```
 
-Most data points from [`MinerData`][__link2] have a corresponding `get_...` function.
-See the [`GetMinerData`][__link3] trait for more info.
+Most data points from [`MinerData`][__link3] have a corresponding `get_...` function.
+See the [`GetMinerData`][__link4] trait for more info.
 
 #### Miner control
 
 Controlling a miner is very similar to getting data in asic-rs.
-Each miner has some control functions defined by the [`HasMinerControl`][__link4] trait.
+Each miner has some control functions defined by the [`HasMinerControl`][__link5] trait.
 Again extending the “Getting a miner” example:
 
 ```rust
@@ -170,7 +172,7 @@ to both discovery (e.g. AntMiner digest auth) and runtime operations.
 
 ## Contributing
 
-Contributions are welcome! This project uses the [Conventional Commits][__link5] specification for commit messages.
+Contributions are welcome! This project uses the [Conventional Commits][__link6] specification for commit messages.
 Please format your commits accordingly, for example:
 
 * `feat: add new miner support`
@@ -180,7 +182,7 @@ Please format your commits accordingly, for example:
 
 ### Setting up pre-commit hooks
 
-This project uses [pre-commit][__link6] to enforce commit message formatting and code quality.
+This project uses [pre-commit][__link7] to enforce commit message formatting and code quality.
 To set up the hooks:
 
 ```sh
@@ -194,11 +196,12 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbP95UYbyOOXcbymyiOygram8b_FTtvQwrMaQbwag7P0pfc8RhZIODZ2FzaWMtcnNlMC41LjNnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
- [__link0]: https://docs.rs/asic-rs/0.5.3/asic_rs/?search=factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.5.3/asic_rs/?search=factory::MinerFactory
- [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData
- [__link3]: https://docs.rs/miners/latest/miners/?search=backends::traits::GetMinerData
- [__link4]: https://docs.rs/miners/latest/miners/?search=backends::traits::HasMinerControl
- [__link5]: https://www.conventionalcommits.org/
- [__link6]: https://pre-commit.com/
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbt-yd4EPv_RsbFsx9XY0jXrcbiw7rK0V_Zn4b1_Yo0LJC71dhYvRhcoQbFk-KUw-YC1gbkB1MIR9d3owbkrJeZCaURSobkBtgwf0d-EhhZIKDZ2FzaWMtcnNlMC41LjFnYXNpY19yc4JsYXNpY19yc19jb3JlZTAuNS4x
+ [__link0]: https://docs.rs/asic-rs/0.5.1/asic_rs/supported_devices/index.html
+ [__link1]: https://docs.rs/asic-rs/0.5.1/asic_rs/?search=factory::MinerFactory
+ [__link2]: https://docs.rs/asic-rs/0.5.1/asic_rs/?search=factory::MinerFactory
+ [__link3]: https://docs.rs/asic_rs_core/0.5.1/asic_rs_core/?search=data::miner::MinerData
+ [__link4]: https://docs.rs/asic_rs_core/0.5.1/asic_rs_core/?search=traits::miner::GetMinerData
+ [__link5]: https://docs.rs/asic_rs_core/0.5.1/asic_rs_core/?search=traits::miner::HasMinerControl
+ [__link6]: https://www.conventionalcommits.org/
+ [__link7]: https://pre-commit.com/

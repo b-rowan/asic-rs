@@ -1,4 +1,7 @@
 //! asic-rs is a miner management and control library, designed to abstract away the complexity of working with different types of ASIC miners.
+//!
+//! See [`supported_devices`] for the generated support matrix and exact supported model list.
+//!
 //! # Getting Started
 //! The first step to controlling a miner with asic-rs is to get the struct that represents it, with methods used for data gathering and control.
 //!
@@ -127,12 +130,12 @@
 //! # }
 //! ```
 //!
-//! Most data points from [`MinerData`][`data::miner::MinerData`] have a corresponding `get_...` function.
-//! See the [`GetMinerData`][`miners::backends::traits::GetMinerData`] trait for more info.
+//! Most data points from [`MinerData`][`asic_rs_core::data::miner::MinerData`] have a corresponding `get_...` function.
+//! See the [`GetMinerData`][`asic_rs_core::traits::miner::GetMinerData`] trait for more info.
 //!
 //! ### Miner control
 //! Controlling a miner is very similar to getting data in asic-rs.
-//! Each miner has some control functions defined by the [`HasMinerControl`][`miners::backends::traits::HasMinerControl`] trait.
+//! Each miner has some control functions defined by the [`HasMinerControl`][`asic_rs_core::traits::miner::HasMinerControl`] trait.
 //! Again extending the "Getting a miner" example:
 //! ```no_run
 //! use asic_rs::MinerFactory;
@@ -235,5 +238,7 @@ pub use asic_rs_firmwares_whatsminer as whatsminer;
 
 pub mod factory;
 pub mod listener;
+#[doc = include_str!("../docs/supported-devices.md")]
+pub mod supported_devices {}
 #[cfg(feature = "python")]
 mod python;

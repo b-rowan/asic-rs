@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+      - name: Generate supported devices docs
+        run: python3 scripts/generate_supported_devices.py
       - name: Run doc2readme
         uses: docker://codeberg.org/msrd0/cargo-doc2readme
         with:
@@ -23,5 +25,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
+          git add README.md docs/supported-devices.md
           git diff --cached --quiet || git commit -m "docs: update README" && git push
