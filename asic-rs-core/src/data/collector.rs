@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
-
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use serde_json::{Value, json};
-use strum::{EnumIter, IntoEnumIterator};
+use std::collections::{HashMap, HashSet};
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 use crate::{
     data::command::MinerCommand,
@@ -9,57 +10,84 @@ use crate::{
 };
 
 /// Represents the individual pieces of data that can be queried from a miner device.
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter, Display, EnumString)]
 pub enum DataField {
     /// Schema version of the miner data.
+    #[cfg_attr(feature = "python", pydantic(value = "SCHEMA_VERSION"))]
     SchemaVersion,
     /// Timestamp of when the data was collected.
+    #[cfg_attr(feature = "python", pydantic(value = "TIMESTAMP"))]
     Timestamp,
     /// IP address of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "IP"))]
     Ip,
     /// MAC address of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "MAC"))]
     Mac,
     /// Information about the miner's device.
+    #[cfg_attr(feature = "python", pydantic(value = "DEVICE_INFO"))]
     DeviceInfo,
     /// Serial number of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "SERIAL_NUMBER"))]
     SerialNumber,
     /// Hostname assigned to the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "HOSTNAME"))]
     Hostname,
     /// Version of the miner's API.
+    #[cfg_attr(feature = "python", pydantic(value = "API_VERSION"))]
     ApiVersion,
     /// Firmware version of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "FIRMWARE_VERSION"))]
     FirmwareVersion,
     /// Control board version of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "CONTROL_BOARD_VERSION"))]
     ControlBoardVersion,
     /// Details about the hashboards (e.g., temperatures, chips, etc.).
+    #[cfg_attr(feature = "python", pydantic(value = "HASHBOARDS"))]
     Hashboards,
     /// Current hashrate reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "HASHRATE"))]
     Hashrate,
     /// Expected hashrate for the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "EXPECTED_HASHRATE"))]
     ExpectedHashrate,
     /// Fan speed or fan configuration.
+    #[cfg_attr(feature = "python", pydantic(value = "FANS"))]
     Fans,
     /// PSU fan speed or configuration.
+    #[cfg_attr(feature = "python", pydantic(value = "PSU_FANS"))]
     PsuFans,
     /// Average temperature reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "AVERAGE_TEMPERATURE"))]
     AverageTemperature,
     /// Fluid temperature reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "FLUID_TEMPERATURE"))]
     FluidTemperature,
     /// Current power consumption in watts.
+    #[cfg_attr(feature = "python", pydantic(value = "WATTAGE"))]
     Wattage,
     /// Configured tuning target (power or hashrate).
+    #[cfg_attr(feature = "python", pydantic(value = "TUNING_TARGET"))]
     TuningTarget,
     /// Efficiency of the miner (e.g., J/TH).
+    #[cfg_attr(feature = "python", pydantic(value = "EFFICIENCY"))]
     Efficiency,
     /// Whether the fault or alert light is flashing.
+    #[cfg_attr(feature = "python", pydantic(value = "LIGHT_FLASHING"))]
     LightFlashing,
     /// Messages reported by the miner (e.g., errors or warnings).
+    #[cfg_attr(feature = "python", pydantic(value = "MESSAGES"))]
     Messages,
     /// Uptime in seconds.
+    #[cfg_attr(feature = "python", pydantic(value = "UPTIME"))]
     Uptime,
     /// Whether the miner is currently hashing.
+    #[cfg_attr(feature = "python", pydantic(value = "IS_MINING"))]
     IsMining,
     /// Pool configuration (addresses, statuses, etc.).
+    #[cfg_attr(feature = "python", pydantic(value = "POOLS"))]
     Pools,
 }
 
