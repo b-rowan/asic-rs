@@ -1,0 +1,6196 @@
+{
+  "components": {
+    "parameters": {
+      "DurationParam": {
+        "description": "Time duration for historical data retrieval. Defaults to 1h if not specified.",
+        "explode": true,
+        "in": "query",
+        "name": "duration",
+        "required": false,
+        "schema": {
+          "default": "1h",
+          "enum": [
+            "1h",
+            "12h",
+            "24h",
+            "48h",
+            "5d"
+          ],
+          "type": "string"
+        },
+        "style": "form"
+      },
+      "GranularityParam": {
+        "description": "Time interval granularity for data points. Defaults to 1m if not specified.",
+        "explode": true,
+        "in": "query",
+        "name": "granularity",
+        "required": false,
+        "schema": {
+          "default": "1m",
+          "enum": [
+            "1m",
+            "5m",
+            "15m"
+          ],
+          "type": "string"
+        },
+        "style": "form"
+      },
+      "HashboardSerialNumberParam": {
+        "description": "The serial number of the hashboard.",
+        "explode": false,
+        "in": "path",
+        "name": "hb_sn",
+        "required": true,
+        "schema": {
+          "example": "YWWLMMMMRRFSSSSS",
+          "type": "string"
+        },
+        "style": "simple"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "Bad request."
+      },
+      "Forbidden": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "Forbidden. On secure systems, this is also returned for all authenticated endpoints (except password change and pool configuration) when the default password has not been changed."
+      },
+      "InternalServerError": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "Internal server error."
+      },
+      "NoMiningStatistics": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "No mining statistics available."
+      },
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "Unauthorized."
+      },
+      "UnprocessableEntity": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "Unprocessable entity."
+      },
+      "UpdateAlreadyInProgress": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MessageResponse"
+            }
+          }
+        },
+        "description": "The update request was rejected because another update is already in progress."
+      }
+    },
+    "schemas": {
+      "Aggregates": {
+        "description": "Statistical aggregates for time series data",
+        "properties": {
+          "avg": {
+            "description": "Average value in data.",
+            "example": 50.5,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "max": {
+            "description": "Maximum value in data.",
+            "example": 100.5,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "description": "Minimum value in data.",
+            "example": 0.5,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "AsicFieldType": {
+        "description": "Available field types for ASIC-level data",
+        "enum": [
+          "hashrate",
+          "temperature"
+        ],
+        "type": "string"
+      },
+      "AsicStats": {
+        "description": "Statistics and performance data for an individual ASIC chip",
+        "properties": {
+          "column": {
+            "description": "Physical column location of the ASIC on the hashboard.",
+            "example": 10,
+            "type": "integer"
+          },
+          "error_rate": {
+            "description": "The number of times that the ASIC produced an incorrect hash or an error during a specific period of time.  Error Rate (%) = (Number of incorrect hash / Total number of expected Hash) x 100%",
+            "example": 3.3,
+            "type": "number"
+          },
+          "freq_mhz": {
+            "description": "The frequency of the ASIC measured in megahertz.",
+            "example": 650.05,
+            "type": "number"
+          },
+          "hashrate_ghs": {
+            "description": "The current hashrate of the ASIC, measured in GH/s.",
+            "example": 300.05,
+            "type": "number"
+          },
+          "id": {
+            "description": "Human-readable ASIC identifier (e.g. \"A0\", \"B3\").",
+            "example": "A0",
+            "type": "string"
+          },
+          "ideal_hashrate_ghs": {
+            "description": "The expected hashrate determined by the clock frequency of the ASIC, measured in GH/s.",
+            "example": 300.05,
+            "type": "number"
+          },
+          "index": {
+            "description": "Zero-based index of the ASIC on the hashboard (first ASIC is 0).",
+            "example": 0,
+            "type": "integer"
+          },
+          "row": {
+            "description": "Physical row location of the ASIC on the hashboard.",
+            "example": 0,
+            "type": "integer"
+          },
+          "temp_c": {
+            "description": "Current temperature of the ASIC in celsius",
+            "example": 45.5,
+            "type": "number"
+          },
+          "voltage_mv": {
+            "description": "The present voltage being supplied to the ASIC in millivolts.",
+            "example": 308.44,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "AsicStatsResponse": {
+        "description": "Response containing statistics data for a specific ASIC chip",
+        "properties": {
+          "asic-stats": {
+            "$ref": "#/components/schemas/AsicStats"
+          }
+        },
+        "type": "object"
+      },
+      "AsicTelemetry": {
+        "description": "ASIC-level telemetry metrics",
+        "properties": {
+          "hashrate": {
+            "$ref": "#/components/schemas/MetricArray"
+          },
+          "temperature": {
+            "$ref": "#/components/schemas/MetricArray"
+          }
+        },
+        "required": [
+          "hashrate",
+          "temperature"
+        ],
+        "type": "object"
+      },
+      "AuthTokens": {
+        "description": "JWT authentication tokens for access and refresh operations",
+        "properties": {
+          "access_token": {
+            "description": "JWT access token.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            "type": "string"
+          },
+          "refresh_token": {
+            "description": "JWT refresh token.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token",
+          "access_token"
+        ],
+        "type": "object"
+      },
+      "AvailablePsuFirmware": {
+        "description": "Information about an available PSU firmware file",
+        "properties": {
+          "filename": {
+            "description": "Firmware file name",
+            "example": "chicony-s24-1.18.22.bin",
+            "type": "string"
+          },
+          "firmware_version": {
+            "description": "Firmware version string",
+            "example": "1.18.22",
+            "type": "string"
+          },
+          "model": {
+            "description": "Compatible PSU model",
+            "example": "S24",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "SHA-256 hash of the firmware file",
+            "example": "b5f8a2f4e5c19ac7e2e4d0a87f3a1a6b6e0c8b991f2e99a4f5cd5e512a5f4d1e3",
+            "type": "string"
+          },
+          "size_bytes": {
+            "description": "File size in bytes",
+            "example": 1048576,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "firmware_version",
+          "size_bytes",
+          "sha256",
+          "model"
+        ],
+        "type": "object"
+      },
+      "ChangePasswordRequest": {
+        "description": "Request data for changing a user's password with current password verification",
+        "properties": {
+          "current_password": {
+            "description": "The current password for authentication",
+            "example": "current_password123",
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          },
+          "new_password": {
+            "description": "The new password to set",
+            "example": "new_password456",
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "type": "object"
+      },
+      "ControlBoardInfo": {
+        "description": "Complete control board hardware and firmware information",
+        "properties": {
+          "board_id": {
+            "description": "Board ID identifier.",
+            "example": "8",
+            "type": "string"
+          },
+          "firmware": {
+            "$ref": "#/components/schemas/ControlBoardInfoControlboardlinuxasset"
+          },
+          "machine_name": {
+            "description": "Machine name identifier.",
+            "example": "c3-p1",
+            "type": "string"
+          },
+          "mpu": {
+            "$ref": "#/components/schemas/ControlBoardInfoMpuinfo"
+          },
+          "serial_number": {
+            "description": "Control board serial number.",
+            "example": "515CP79107000107",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ControlBoardInfoControlboardlinuxasset": {
+        "description": "Control board Linux firmware information",
+        "properties": {
+          "git_hash": {
+            "description": "Git commit hash.",
+            "example": "c5e0a8aed4ee73fc9e04d918909dac43f3d5502a",
+            "type": "string"
+          },
+          "image_hash": {
+            "description": "Image hash.",
+            "example": "unknown",
+            "type": "string"
+          },
+          "name": {
+            "description": "Firmware name.",
+            "example": "Proto Embedded Linux Distribution",
+            "type": "string"
+          },
+          "variant": {
+            "description": "Firmware variant.",
+            "example": "mfg",
+            "type": "string"
+          },
+          "version": {
+            "description": "Firmware version.",
+            "example": "0.1.49",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ControlBoardInfoMpuinfo": {
+        "description": "CPU and processor information from the control board",
+        "properties": {
+          "cpu_architecture": {
+            "description": "CPU architecture version.",
+            "example": 7,
+            "type": "integer"
+          },
+          "cpu_implementer": {
+            "description": "CPU implementer identifier.",
+            "example": "0x41",
+            "type": "string"
+          },
+          "cpu_part": {
+            "description": "CPU part identifier.",
+            "example": "0xc07",
+            "type": "string"
+          },
+          "cpu_revision": {
+            "description": "CPU revision number.",
+            "example": 5,
+            "type": "integer"
+          },
+          "cpu_variant": {
+            "description": "CPU variant identifier.",
+            "example": "0x0",
+            "type": "string"
+          },
+          "hardware": {
+            "description": "Hardware platform identifier.",
+            "example": "STM32 (Device Tree Support)",
+            "type": "string"
+          },
+          "model_name": {
+            "description": "CPU model name.",
+            "example": "ARMv7 Processor rev 5 (v7l)",
+            "type": "string"
+          },
+          "processor": {
+            "description": "Processor number.",
+            "example": 0,
+            "type": "integer"
+          },
+          "revision": {
+            "description": "Board revision identifier.",
+            "example": "0000",
+            "type": "string"
+          },
+          "serial": {
+            "description": "Board serial number.",
+            "example": "001B00353133510635303638",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CoolingConfig": {
+        "description": "Cooling system configuration for fan control modes",
+        "properties": {
+          "mode": {
+            "description": "Parameter to define the cooling mode.  Modes:\n - Unknown: Cooling mode is not yet determined.\n - Off: Fans will be set to off for immersion cooling.\n - Auto: Fans will be controlled based on miner temperature.\n - Manual: Fans run at a specified percentage of their maximum speed.",
+            "enum": [
+              "Unknown",
+              "Off",
+              "Auto",
+              "Manual"
+            ],
+            "example": "Auto",
+            "type": "string"
+          },
+          "speed_percentage": {
+            "description": "Fan speed as a percentage of maximum RPM (valid range: 0-100). Used only when mode is Manual.",
+            "example": 75,
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target_temperature_c": {
+            "description": "Target temperature in Celsius for automatic fan control. Used only when mode is Auto to override the default temperature target.",
+            "example": 50.0,
+            "format": "float",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CoolingStatus": {
+        "description": "Current cooling system status and fan information",
+        "properties": {
+          "cooling-status": {
+            "$ref": "#/components/schemas/CoolingStatus_coolingstatus"
+          }
+        },
+        "type": "object"
+      },
+      "CoolingStatus_coolingstatus": {
+        "description": "Cooling system status and performance information",
+        "properties": {
+          "fan_mode": {
+            "description": "Current fan control mode.\n - Unknown: Cooling mode is not yet determined.\n - Off: Fans are disabled.\n - Auto: Fans are controlled automatically based on temperature.\n - Manual: Fans are set to a fixed speed percentage.",
+            "enum": [
+              "Unknown",
+              "Off",
+              "Auto",
+              "Manual"
+            ],
+            "example": "Auto",
+            "type": "string"
+          },
+          "fans": {
+            "description": "This will show speed of all fans in the system.",
+            "items": {
+              "$ref": "#/components/schemas/FanStatus"
+            },
+            "type": "array"
+          },
+          "speed_percentage": {
+            "description": "Current effective fan speed percentage (0-100). Relevant when mode is Manual.",
+            "example": 55,
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target_temperature_c": {
+            "description": "Current target temperature in Celsius for automatic fan control. Only present when mode is Auto.",
+            "example": 50.0,
+            "format": "float",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "EfficiencyResponse": {
+        "description": "Response containing historical mining efficiency data over time",
+        "properties": {
+          "efficiency-data": {
+            "$ref": "#/components/schemas/EfficiencyResponse_efficiencydata"
+          }
+        },
+        "type": "object"
+      },
+      "EfficiencyResponse_efficiencydata": {
+        "description": "Efficiency data response with time series information",
+        "properties": {
+          "aggregates": {
+            "$ref": "#/components/schemas/Aggregates"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesData"
+            },
+            "type": "array"
+          },
+          "duration": {
+            "$ref": "#/components/schemas/TimeSeriesDuration"
+          }
+        },
+        "type": "object"
+      },
+      "Error": {
+        "description": "Error information with code and message details",
+        "properties": {
+          "code": {
+            "description": "Error code.",
+            "example": "INCORRECT_ARGS",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message.",
+            "example": "Arguments are incorrect for query.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorListResponse": {
+        "description": "Array of notification errors for system error reporting",
+        "items": {
+          "$ref": "#/components/schemas/NotificationError"
+        },
+        "type": "array"
+      },
+      "ErrorResponse": {
+        "description": "Error response containing error details",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "type": "object"
+      },
+      "FWInfo": {
+        "description": "Firmware version and build information",
+        "properties": {
+          "build": {
+            "enum": [
+              "debug",
+              "release"
+            ],
+            "example": "release",
+            "type": "string"
+          },
+          "git_hash": {
+            "example": "1213423223",
+            "type": "string"
+          },
+          "image_hash": {
+            "example": "1213423223",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FanInfo": {
+        "description": "Individual fan information including status and RPM data",
+        "properties": {
+          "max_rpm": {
+            "description": "The maximum RPM of the cooling device.",
+            "example": 1000,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_rpm": {
+            "description": "The minimum RPM of the cooling device.",
+            "example": 1000,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "The name of the cooling device.",
+            "example": "CPU Cooler",
+            "type": "string"
+          },
+          "slot": {
+            "description": "Each cooling device is assigned a unique identifier starting from 1.",
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "FanStatus": {
+        "description": "Current status and performance metrics for individual cooling fans",
+        "properties": {
+          "percentage": {
+            "description": "The fan's set speed as a percentage from 0 to 100.",
+            "example": 55,
+            "type": "integer"
+          },
+          "rpm": {
+            "description": "The fan's current rotations per minute (RPM).",
+            "example": 1200,
+            "type": "integer"
+          },
+          "slot": {
+            "description": "Each fan is assigned a unique identifier starting from 1.",
+            "example": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "HardwareInfo": {
+        "description": "Complete hardware information including hashboards, PSUs, and cooling components",
+        "properties": {
+          "hardware-info": {
+            "$ref": "#/components/schemas/HardwareInfo_hardwareinfo"
+          }
+        },
+        "type": "object"
+      },
+      "HardwareInfo_hardwareinfo": {
+        "description": "Hardware information and specifications",
+        "properties": {
+          "cb-info": {
+            "$ref": "#/components/schemas/ControlBoardInfo"
+          },
+          "fans-info": {
+            "items": {
+              "$ref": "#/components/schemas/FanInfo"
+            },
+            "type": "array"
+          },
+          "hashboards-info": {
+            "items": {
+              "$ref": "#/components/schemas/HashboardInfo"
+            },
+            "type": "array"
+          },
+          "psus-info": {
+            "items": {
+              "$ref": "#/components/schemas/PsuInfo"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "HashboardFieldType": {
+        "description": "Available field types for hashboard-level data",
+        "enum": [
+          "hashrate",
+          "temperature",
+          "inletTemp",
+          "outletTemp",
+          "power",
+          "efficiency"
+        ],
+        "type": "string"
+      },
+      "HashboardInfo": {
+        "description": "Information about mining hashboards configuration and status",
+        "properties": {
+          "api_version": {
+            "example": "1.0",
+            "type": "string"
+          },
+          "board": {
+            "enum": [
+              "CpuSimulated",
+              "B2",
+              "B3a",
+              "B3b",
+              "B3bSim",
+              "B4",
+              "B4Sim"
+            ],
+            "example": "B3a",
+            "type": "string"
+          },
+          "bootloader": {
+            "$ref": "#/components/schemas/FWInfo"
+          },
+          "chip_id": {
+            "example": "ABC123",
+            "type": "string"
+          },
+          "ec_logs_path": {
+            "description": "The absolute path where EC logs are stored.",
+            "example": "/var/log/ec_logs",
+            "type": "string"
+          },
+          "firmware": {
+            "$ref": "#/components/schemas/FWInfo"
+          },
+          "hb_sn": {
+            "description": "Hashboard serial number.",
+            "example": "YWWLMMMMRRFSSSSS",
+            "type": "string"
+          },
+          "mining_asic": {
+            "enum": [
+              "BZM",
+              "MC1",
+              "MC2",
+              "MC3"
+            ],
+            "example": "BZM",
+            "type": "string"
+          },
+          "mining_asic_count": {
+            "description": "Number of asics on the hashboard.",
+            "example": 100,
+            "type": "integer"
+          },
+          "port": {
+            "description": "The USB port number the hashboard is connected to.",
+            "example": 0,
+            "type": "integer"
+          },
+          "slot": {
+            "description": "The physical slot where the hashboard is inserted in the system.",
+            "example": 1,
+            "type": "integer"
+          },
+          "temp_sensor_count": {
+            "description": "Number of temperature sensors on the hashboard.",
+            "example": 3,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "HashboardStats": {
+        "description": "Statistics and status information for a hashboard",
+        "properties": {
+          "hashboard-stats": {
+            "$ref": "#/components/schemas/HashboardStats_hashboardstats"
+          }
+        },
+        "type": "object"
+      },
+      "HashboardStats_hashboardstats": {
+        "description": "Hashboard performance statistics and metrics",
+        "properties": {
+          "asics": {
+            "items": {
+              "$ref": "#/components/schemas/AsicStats"
+            },
+            "type": "array"
+          },
+          "avg_asic_temp_c": {
+            "description": "Current average temperature of the hashboard in celsius.",
+            "example": 75.05,
+            "type": "number"
+          },
+          "efficiency_jth": {
+            "description": "The efficiency of the hashboard in joules per terahash.",
+            "example": 40.05,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hashrate_ghs": {
+            "description": "The current hashrate of the hashboard, measured in GH/s. It will be sum of all ASIC hashrate_ghs values.",
+            "example": 300.05,
+            "type": "number"
+          },
+          "hb_sn": {
+            "description": "Manufacturing serial number of the hashboard, used for subsequent API calls.",
+            "type": "string"
+          },
+          "ideal_hashrate_ghs": {
+            "description": "The expected hashrate is determined by the clock frequency of the all ASIC on the hashboard, measured in GH/s.",
+            "example": 300.05,
+            "type": "number"
+          },
+          "inlet_temp_c": {
+            "description": "The measured temperature at the air intake side of the hashboard.",
+            "example": 36.19,
+            "type": "number"
+          },
+          "max_asic_temp_c": {
+            "description": "Current maximum temperature of the hashboard in celsius.",
+            "example": 75.05,
+            "type": "number"
+          },
+          "outlet_temp_c": {
+            "description": "The measured temperature at the air exhaust side of the hashboard.",
+            "example": 78.64,
+            "type": "number"
+          },
+          "power_usage_watts": {
+            "description": "The power consumption of the hashboard in watts.",
+            "example": 1000.05,
+            "type": "number"
+          },
+          "slot": {
+            "description": "The physical slot where the Hashboard is inserted in the system.",
+            "example": 3,
+            "type": "integer"
+          },
+          "status": {
+            "description": "The current state or condition of the hashboard.",
+            "enum": [
+              "Running",
+              "Stopped",
+              "Error",
+              "Overheated",
+              "Unknown"
+            ],
+            "example": "Running",
+            "type": "string"
+          },
+          "voltage_mv": {
+            "description": "The present voltage being supplied to the hashboard in millivolts.",
+            "example": 16200.05,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "HashboardTelemetry": {
+        "description": "Individual hashboard telemetry metrics. Contains hashboard-specific measurements. The 'asics' field with ASIC-level detail is only populated when the level parameter is 'asic'",
+        "properties": {
+          "asics": {
+            "$ref": "#/components/schemas/AsicTelemetry"
+          },
+          "current": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "efficiency": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "hashrate": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "index": {
+            "description": "Hashboard index",
+            "type": "integer"
+          },
+          "power": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "serial_number": {
+            "description": "Hashboard serial number",
+            "example": "HB001",
+            "type": "string"
+          },
+          "temperature": {
+            "$ref": "#/components/schemas/HashboardTemperature"
+          },
+          "voltage": {
+            "$ref": "#/components/schemas/MetricValue"
+          }
+        },
+        "required": [
+          "index",
+          "hashrate",
+          "temperature",
+          "power",
+          "efficiency"
+        ],
+        "type": "object"
+      },
+      "HashboardTemperature": {
+        "description": "Hashboard temperature measurements",
+        "properties": {
+          "average": {
+            "description": "Average temperature value of all temperature sensors on hashboard",
+            "type": "number"
+          },
+          "inlet": {
+            "description": "Inlet temperature value",
+            "type": "number"
+          },
+          "outlet": {
+            "description": "Outlet temperature value",
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          }
+        },
+        "required": [
+          "unit",
+          "inlet",
+          "outlet",
+          "average"
+        ],
+        "type": "object"
+      },
+      "HashboardsInfo": {
+        "description": "Information about all hashboards connected to the mining device",
+        "properties": {
+          "hashboards-info": {
+            "items": {
+              "$ref": "#/components/schemas/HashboardInfo"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "HashrateResponse": {
+        "description": "Response containing historical hashrate data over time",
+        "properties": {
+          "hashrate-data": {
+            "$ref": "#/components/schemas/HashrateResponse_hashratedata"
+          }
+        },
+        "type": "object"
+      },
+      "HashrateResponse_hashratedata": {
+        "description": "Hashrate data response with time series information",
+        "properties": {
+          "aggregates": {
+            "$ref": "#/components/schemas/Aggregates"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesData"
+            },
+            "type": "array"
+          },
+          "duration": {
+            "$ref": "#/components/schemas/TimeSeriesDuration"
+          }
+        },
+        "type": "object"
+      },
+      "HashrateWindow": {
+        "description": "Hashrate calculated over a specific time window",
+        "properties": {
+          "duration_minutes": {
+            "description": "Duration of the time window in minutes",
+            "example": 5,
+            "type": "integer"
+          },
+          "hashrate_ths": {
+            "description": "Hashrate in TH/s over the time window",
+            "example": 120.5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "duration_minutes",
+          "hashrate_ths"
+        ],
+        "type": "object"
+      },
+      "LogsResponse": {
+        "description": "System log entries from various sources (OS, miner software, pool software)",
+        "properties": {
+          "logs": {
+            "$ref": "#/components/schemas/LogsResponse_logs"
+          }
+        },
+        "type": "object"
+      },
+      "LogsResponse_logs": {
+        "description": "Log data response containing system and mining logs",
+        "properties": {
+          "content": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "lines": {
+            "description": "Number of lines returned.",
+            "example": 100,
+            "type": "integer"
+          },
+          "source": {
+            "description": "Source of logs.",
+            "example": "miner_sw",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MessageResponse": {
+        "description": "Generic response message",
+        "properties": {
+          "message": {
+            "example": "info",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MetricArray": {
+        "description": "An array of metric values with a shared unit",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          },
+          "values": {
+            "description": "Array of values where index corresponds to ASIC index",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "unit",
+          "values"
+        ],
+        "type": "object"
+      },
+      "MetricUnit": {
+        "description": "Unit of measurement for metrics",
+        "enum": [
+          "TH/s",
+          "\u00b0C",
+          "W",
+          "J/TH",
+          "V",
+          "A"
+        ],
+        "example": "TH/s",
+        "type": "string"
+      },
+      "MetricValue": {
+        "description": "A metric value with its unit",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          },
+          "value": {
+            "description": "The numeric value of the metric",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "unit"
+        ],
+        "type": "object"
+      },
+      "MinerFieldType": {
+        "description": "Available field types for miner-level data",
+        "enum": [
+          "hashrate",
+          "temperature",
+          "power",
+          "efficiency"
+        ],
+        "type": "string"
+      },
+      "MinerTelemetry": {
+        "description": "Miner-level telemetry metrics",
+        "example": {
+          "efficiency": {
+            "unit": "J/TH",
+            "value": 34.03
+          },
+          "hashrate": {
+            "unit": "TH/s",
+            "value": 95.5
+          },
+          "power": {
+            "unit": "W",
+            "value": 3250
+          },
+          "temperature": {
+            "unit": "\u00b0C",
+            "value": 65.5
+          }
+        },
+        "properties": {
+          "efficiency": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "hashrate": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "power": {
+            "$ref": "#/components/schemas/MetricValue"
+          },
+          "temperature": {
+            "$ref": "#/components/schemas/MetricValue"
+          }
+        },
+        "required": [
+          "hashrate",
+          "temperature",
+          "power",
+          "efficiency"
+        ],
+        "type": "object"
+      },
+      "MiningStatus": {
+        "description": "Mining statistics",
+        "properties": {
+          "mining-status": {
+            "$ref": "#/components/schemas/MiningStatus_miningstatus"
+          }
+        },
+        "type": "object"
+      },
+      "MiningStatus_miningstatus": {
+        "description": "Mining operation status and performance data",
+        "properties": {
+          "average_asic_temp_c": {
+            "description": "Average temperature of the ASICs in the mining device.",
+            "example": 60,
+            "type": "number"
+          },
+          "average_hashrate_ghs": {
+            "description": "The average hashrate in giga-hashes per second, since the device started mining. average_hashrate_ghs = Total hash count / (elapsed_time_s * 10^9)",
+            "example": 110000.2,
+            "type": "number"
+          },
+          "average_hb_efficiency_jth": {
+            "description": "The average hashboard efficiency in joules per terahash, since the device started mining.",
+            "type": "number"
+          },
+          "average_hb_temp_c": {
+            "description": "Average temperature of the mining device.",
+            "example": 60,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hashboards_installed": {
+            "description": "The number of hashboards installed (detected) in the miner.",
+            "example": 4,
+            "type": "integer"
+          },
+          "hashboards_mining": {
+            "description": "The number of hashboards currently in the mining state.",
+            "example": 4,
+            "type": "integer"
+          },
+          "hw_errors": {
+            "description": "The number of hardware errors that have occurred during the mining operation.",
+            "example": 100,
+            "type": "integer"
+          },
+          "ideal_hashrate_ghs": {
+            "description": "Expected hashrate determined by the current power level.",
+            "example": 112000,
+            "type": "number"
+          },
+          "mining_uptime_s": {
+            "description": "The amount of time in seconds that has passed since the start of the mining operation.",
+            "example": 521,
+            "type": "integer"
+          },
+          "power_efficiency_jth": {
+            "description": "The power efficiency in joules per terahash, calculated from total PSU input power and current hashrate.",
+            "type": "number"
+          },
+          "power_target_watts": {
+            "description": "Amount of power in watts for the system to target.",
+            "example": 3120,
+            "type": "number"
+          },
+          "power_usage_watts": {
+            "description": "Amount of power being consumed by mining in watts.",
+            "example": 3100,
+            "type": "number"
+          },
+          "reboot_uptime_s": {
+            "description": "The amount of time in seconds that has passed since the last reboot of the system.",
+            "example": 521,
+            "type": "integer"
+          },
+          "status": {
+            "description": "The indication will reveal whether the mining operation is currently active or has ceased",
+            "enum": [
+              "Uninitialized",
+              "PoweringOn",
+              "Mining",
+              "DegradedMining",
+              "PoweringOff",
+              "Stopped",
+              "NoPools",
+              "Error"
+            ],
+            "example": "Mining",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MiningTarget": {
+        "description": "Mining target configuration for power and performance settings",
+        "properties": {
+          "balance_bays": {
+            "description": "If enabled, will keep power evenly distributed across bays to balance power phases.",
+            "example": false,
+            "type": "boolean"
+          },
+          "hash_on_disconnect": {
+            "description": "If true, continue mining even when no valid pools are available. If false, stop mining when no valid pools are available.",
+            "example": false,
+            "type": "boolean"
+          },
+          "performance_mode": {
+            "$ref": "#/components/schemas/PerformanceMode"
+          },
+          "power_target_watts": {
+            "example": 3000,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "MiningTargetResponse": {
+        "description": "Response containing current mining target configuration",
+        "properties": {
+          "balance_bays": {
+            "description": "Phase balancing configuration state.",
+            "example": false,
+            "type": "boolean"
+          },
+          "default_power_target_watts": {
+            "example": 2500,
+            "type": "integer"
+          },
+          "hash_on_disconnect": {
+            "description": "If true, continue mining even when no valid pools are available. If false, stop mining when no valid pools are available.",
+            "example": false,
+            "type": "boolean"
+          },
+          "performance_mode": {
+            "$ref": "#/components/schemas/PerformanceMode"
+          },
+          "power_target_max_watts": {
+            "example": 3000,
+            "type": "integer"
+          },
+          "power_target_min_watts": {
+            "example": 400,
+            "type": "integer"
+          },
+          "power_target_watts": {
+            "example": 3000,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "MiningTuning": {
+        "description": "The hashboard performance tuning algorithm",
+        "enum": [
+          "None",
+          "VoltageImbalanceCompensation",
+          "Fuzzing"
+        ],
+        "example": "None",
+        "type": "string"
+      },
+      "MiningTuningConfig": {
+        "description": "Mining tuning configuration for setting hashboard optimization algorithms",
+        "properties": {
+          "algorithm": {
+            "$ref": "#/components/schemas/MiningTuning"
+          }
+        },
+        "required": [
+          "algorithm"
+        ],
+        "type": "object"
+      },
+      "NetworkConfig": {
+        "description": "Network configuration settings for DHCP or static IP setup",
+        "properties": {
+          "network-config": {
+            "$ref": "#/components/schemas/NetworkConfig_networkconfig"
+          }
+        },
+        "type": "object"
+      },
+      "NetworkConfig_networkconfig": {
+        "description": "Network configuration settings and parameters",
+        "properties": {
+          "dhcp": {
+            "example": true,
+            "type": "boolean"
+          },
+          "gateway": {
+            "example": "172.27.244.177",
+            "type": "string"
+          },
+          "hostname": {
+            "example": "proto-miner-1",
+            "type": "string"
+          },
+          "ip": {
+            "example": "172.27.244.179",
+            "type": "string"
+          },
+          "netmask": {
+            "example": "255.255.255.240",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NetworkInfo": {
+        "description": "Network configuration and status information for the mining device",
+        "properties": {
+          "network-info": {
+            "$ref": "#/components/schemas/NetworkInfo_networkinfo"
+          }
+        },
+        "type": "object"
+      },
+      "NetworkInfo_networkinfo": {
+        "description": "Network configuration and connection information",
+        "properties": {
+          "dhcp": {
+            "example": true,
+            "type": "boolean"
+          },
+          "gateway": {
+            "example": "172.27.244.177",
+            "type": "string"
+          },
+          "hostname": {
+            "example": "proto-miner-1",
+            "type": "string"
+          },
+          "ip": {
+            "example": "172.27.244.179",
+            "type": "string"
+          },
+          "mac": {
+            "example": "82:11:D2:94:0D:6D",
+            "type": "string"
+          },
+          "netmask": {
+            "example": "255.255.255.240",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NotificationError": {
+        "description": "Notification error information with source and details",
+        "properties": {
+          "error_code": {
+            "example": "FanSlow",
+            "type": "string"
+          },
+          "message": {
+            "example": "Fan 3 has stalled. Target RPM: 100, Actual RPM: 0",
+            "type": "string"
+          },
+          "slot": {
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "rig",
+              "fan",
+              "psu",
+              "hashboard"
+            ],
+            "example": "rig",
+            "type": "string"
+          },
+          "timestamp": {
+            "example": 1764160757,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "OSInfo": {
+        "description": "Operating system information and version details",
+        "properties": {
+          "build_datetime_utc": {
+            "example": "20231208T220633Z",
+            "type": "string"
+          },
+          "git_hash": {
+            "example": "1213423223",
+            "type": "string"
+          },
+          "machine": {
+            "example": "c1-p0",
+            "type": "string"
+          },
+          "name": {
+            "example": "BTCM Linux Distribution",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OSStatus"
+          },
+          "variant": {
+            "enum": [
+              "release",
+              "mfg",
+              "dev",
+              "unknown"
+            ],
+            "example": "release",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0.1",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OSStatus": {
+        "description": "Operating system status including memory, CPU, and filesystem usage",
+        "properties": {
+          "cpu_load_percent": {
+            "example": 30.2,
+            "type": "number"
+          },
+          "mem_free_kb": {
+            "example": 192784,
+            "type": "integer"
+          },
+          "mem_total_kb": {
+            "example": 233712,
+            "type": "integer"
+          },
+          "rootfs_free_mb": {
+            "example": 600,
+            "type": "integer"
+          },
+          "rootfs_total_mb": {
+            "example": 1024,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PairingInfoResponse": {
+        "description": "Pairing information response containing MAC address and serial number",
+        "properties": {
+          "cb_sn": {
+            "description": "Control board serial number",
+            "example": "PROTO-B4-001",
+            "type": "string"
+          },
+          "mac": {
+            "description": "MAC address of the device",
+            "example": "00:11:22:33:44:55",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mac",
+          "cb_sn"
+        ],
+        "type": "object"
+      },
+      "PasswordRequest": {
+        "description": "Password data for authentication operations",
+        "properties": {
+          "password": {
+            "description": "The password for the user",
+            "example": "securePassword123",
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
+      "PerformanceMode": {
+        "description": "The performance mode the miner will operate in. Modes:\n - MaximumHashrate: Will run at the power target to maximum hashrate.\n - Efficiency: Will run at or below the power target to optimize J/TH.",
+        "enum": [
+          "MaximumHashrate",
+          "Efficiency"
+        ],
+        "example": "MaximumHashrate",
+        "type": "string"
+      },
+      "Pool": {
+        "description": "Mining pool configuration with connection details and priorities",
+        "properties": {
+          "accepted": {
+            "description": "The number of shares that have been accepted by the mining pool as valid solutions to a mining problem.",
+            "example": 100,
+            "type": "integer"
+          },
+          "best_difficulty_share": {
+            "description": "The difficulty of best share submitted to the pool.",
+            "example": 65355,
+            "type": "integer"
+          },
+          "blocks_seen": {
+            "description": "The number of mined blocks seen during mining (not necessarily found by miner).",
+            "example": 10,
+            "type": "integer"
+          },
+          "current_difficulty": {
+            "description": "The current difficulty from the pool.",
+            "example": 134000,
+            "type": "number"
+          },
+          "current_works": {
+            "description": "The current number of works in use by the miner.",
+            "example": 134000,
+            "type": "number"
+          },
+          "difficulty_accepted_shares": {
+            "description": "The total difficulty of all accepted shares by the pool.",
+            "example": 65355.0,
+            "type": "number"
+          },
+          "difficulty_rejected_shares": {
+            "description": "The total difficulty of all rejected shares by the pool.",
+            "example": 134000.0,
+            "type": "number"
+          },
+          "duplicate": {
+            "description": "The number of duplicate shares that were detected and dropped by the pool interface.",
+            "example": 5,
+            "type": "integer"
+          },
+          "hashrate": {
+            "description": "Hashrate calculated over different time windows. This field provides a flexible array format for future extensions.",
+            "items": {
+              "$ref": "#/components/schemas/HashrateWindow"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "Each pool has a unique ID from 0 to 2, with 0 representing the highest priority and 2 representing the lowest priority.",
+            "example": 0,
+            "type": "integer"
+          },
+          "invalid": {
+            "description": "The number of shares the pool interface rejected due to being too low difficulty (did not forward to the pool).",
+            "example": 10,
+            "type": "integer"
+          },
+          "last_share_difficulty": {
+            "description": "The difficulty of the last share submitted to the pool.",
+            "example": 134000.0,
+            "type": "number"
+          },
+          "last_share_time": {
+            "description": "The time (Unix epoch seconds) of the last share submitted to the pool.",
+            "example": 65355,
+            "type": "integer"
+          },
+          "name": {
+            "description": "User-defined display name for this pool. Empty string if not set.",
+            "example": "Primary Pool",
+            "type": "string"
+          },
+          "notifys_received": {
+            "description": "The number of notify messages (new jobs) received from the pool.",
+            "example": 10,
+            "type": "integer"
+          },
+          "priority": {
+            "description": "Connection priority for this pool. Lower numbers are higher priorities, with 0 being the maximum. Duplicate priorities are not allowed.",
+            "type": "integer"
+          },
+          "protocol": {
+            "description": "The protocol being used for communication with the mining pool.",
+            "enum": [
+              "Unknown",
+              "Stratum V1",
+              "Stratum V2"
+            ],
+            "type": "string"
+          },
+          "rejected": {
+            "description": "The number of shares submitted by the miner to the pool that were not accepted because they did not meet the required difficulty level or other criteria.",
+            "example": 20,
+            "type": "integer"
+          },
+          "status": {
+            "description": "The status field indicates the state of the mining pool. An \"Idle\" status indicates that the pool is available but not currently in use (due to priority). An \"Active\" status means that the pool is currently active. A \"Dead\" status indicates that the mining device is unable to establish a connection with the pool.",
+            "enum": [
+              "Unknown",
+              "Idle",
+              "Active",
+              "Dead"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "$ref": "#/components/schemas/PoolUrl"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PoolUsername"
+          },
+          "works_generated": {
+            "description": "The number of works that were generated from the job notify messages.",
+            "example": 10,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PoolConfig": {
+        "description": "Array of pool configurations for creating or updating pools",
+        "items": {
+          "$ref": "#/components/schemas/PoolConfig_inner"
+        },
+        "type": "array"
+      },
+      "PoolConfig_inner": {
+        "description": "Individual pool configuration with connection details",
+        "properties": {
+          "name": {
+            "description": "User-defined display name for this pool.",
+            "example": "Primary Pool",
+            "type": "string"
+          },
+          "password": {
+            "$ref": "#/components/schemas/PoolPassword"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/PoolPriority"
+          },
+          "url": {
+            "$ref": "#/components/schemas/PoolUrl"
+          },
+          "username": {
+            "$ref": "#/components/schemas/PoolUsername"
+          }
+        },
+        "type": "object"
+      },
+      "PoolPassword": {
+        "description": "A password used for authentication and accessing the mining pool, which is ignored by SV1 pools.",
+        "example": "anything",
+        "type": "string"
+      },
+      "PoolPriority": {
+        "description": "The priority of the pool connection. Lower numbers indicate higher priority, with 0 being the highest priority.",
+        "example": 0,
+        "type": "integer"
+      },
+      "PoolResponse": {
+        "description": "Response containing a single pool configuration",
+        "properties": {
+          "pool": {
+            "$ref": "#/components/schemas/Pool"
+          }
+        },
+        "type": "object"
+      },
+      "PoolUrl": {
+        "description": "The pool URL is used to establish communication with the mining pool and it is essential that it includes the port information.",
+        "example": "stratum+tcp://stratum.braiins.com:3333",
+        "type": "string"
+      },
+      "PoolUsername": {
+        "description": "The user is an account that is used for authentication with the mining pool. In some cases, if the user has multiple mining devices, the pool may assign a worker name as the username for each mining device.",
+        "example": "user1",
+        "type": "string"
+      },
+      "PoolsList": {
+        "description": "List of configured mining pools with their settings",
+        "properties": {
+          "pools": {
+            "items": {
+              "$ref": "#/components/schemas/Pool"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "PowerResponse": {
+        "description": "Response containing historical power consumption data over time",
+        "properties": {
+          "power-data": {
+            "$ref": "#/components/schemas/PowerResponse_powerdata"
+          }
+        },
+        "type": "object"
+      },
+      "PowerResponse_powerdata": {
+        "description": "Power data response with time series information",
+        "properties": {
+          "aggregates": {
+            "$ref": "#/components/schemas/Aggregates"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesData"
+            },
+            "type": "array"
+          },
+          "duration": {
+            "$ref": "#/components/schemas/TimeSeriesDuration"
+          }
+        },
+        "type": "object"
+      },
+      "PowerSuppliesResponse": {
+        "description": "Power supply information including firmware update status",
+        "properties": {
+          "psu_update_status": {
+            "$ref": "#/components/schemas/PsuUpdateStatus"
+          },
+          "psus_info": {
+            "items": {
+              "$ref": "#/components/schemas/PsuInfo"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "PsuFieldType": {
+        "description": "Available field types for PSU-level data",
+        "enum": [
+          "outputVoltage",
+          "outputCurrent",
+          "outputPower",
+          "inputVoltage",
+          "inputCurrent",
+          "inputPower",
+          "hotspotTemp",
+          "ambientTemp",
+          "averageTemp"
+        ],
+        "type": "string"
+      },
+      "PsuFwupProgress": {
+        "description": "Per-PSU firmware update progress",
+        "properties": {
+          "message": {
+            "description": "Optional status message (firmware name on start, error on failure)",
+            "type": "string"
+          },
+          "progress_percent": {
+            "description": "Upload progress percentage (0-100)",
+            "format": "float",
+            "type": "number"
+          },
+          "psu_slot": {
+            "description": "The physical slot where the PSU is inserted in the system. (1-3)",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Current firmware update state",
+            "enum": [
+              "idle",
+              "uploading",
+              "verifying",
+              "complete",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "psu_slot",
+          "state",
+          "progress_percent"
+        ],
+        "type": "object"
+      },
+      "PsuInfo": {
+        "description": "Power supply unit information and status",
+        "properties": {
+          "firmware": {
+            "properties": {
+              "app_version": {
+                "description": "Firmware application version.",
+                "example": "1.0",
+                "type": "string"
+              },
+              "bootloader_version": {
+                "description": "Firmware bootloader version.",
+                "example": "1.0",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "hw_revision": {
+            "description": "Hardware revision.",
+            "example": "v1.0",
+            "type": "string"
+          },
+          "manufacturer": {
+            "description": "PSU manufacturer.",
+            "example": "Chicony",
+            "type": "string"
+          },
+          "model": {
+            "description": "Model name or number.",
+            "example": "",
+            "type": "string"
+          },
+          "power": {
+            "properties": {
+              "input_current_ma": {
+                "description": "Input current in milliamperes.",
+                "example": 20340,
+                "type": "number"
+              },
+              "input_power_mw": {
+                "description": "Input power in milliwatts.",
+                "example": 386800,
+                "type": "number"
+              },
+              "input_voltage_mv": {
+                "description": "Input voltage in millivolts.",
+                "example": 24000,
+                "type": "number"
+              },
+              "output_current_ma": {
+                "description": "Output current in milliamperes.",
+                "example": 25150,
+                "type": "number"
+              },
+              "output_power_mw": {
+                "description": "Output power in milliwatts.",
+                "example": 400000,
+                "type": "number"
+              },
+              "output_voltage_mv": {
+                "description": "Output voltage in millivolts.",
+                "example": 15380,
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "psu_sn": {
+            "description": "Power supply serial number.",
+            "example": "517CP81302000721",
+            "type": "string"
+          },
+          "slot": {
+            "description": "The physical slot where the PSU is inserted in the system. (1-3)",
+            "example": 2,
+            "type": "integer"
+          },
+          "temperatures": {
+            "items": {
+              "$ref": "#/components/schemas/TemperatureMeasurement"
+            },
+            "type": "array"
+          },
+          "vendor": {
+            "description": "Vendor name.",
+            "example": "",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PsuInputOutputMetric": {
+        "description": "PSU metric with input and output values",
+        "properties": {
+          "input": {
+            "description": "Input value",
+            "type": "number"
+          },
+          "output": {
+            "description": "Output value",
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          }
+        },
+        "required": [
+          "unit",
+          "input",
+          "output"
+        ],
+        "type": "object"
+      },
+      "PsuTelemetry": {
+        "description": "Individual PSU telemetry metrics",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/PsuInputOutputMetric"
+          },
+          "index": {
+            "description": "PSU index",
+            "type": "integer"
+          },
+          "power": {
+            "$ref": "#/components/schemas/PsuInputOutputMetric"
+          },
+          "serial_number": {
+            "description": "PSU serial number",
+            "example": "PSU001234",
+            "type": "string"
+          },
+          "temperature": {
+            "$ref": "#/components/schemas/PsuTemperature"
+          },
+          "voltage": {
+            "$ref": "#/components/schemas/PsuInputOutputMetric"
+          }
+        },
+        "required": [
+          "index",
+          "voltage",
+          "current",
+          "power",
+          "temperature"
+        ],
+        "type": "object"
+      },
+      "PsuTemperature": {
+        "description": "PSU temperature measurements",
+        "properties": {
+          "ambient": {
+            "description": "Ambient temperature value",
+            "type": "number"
+          },
+          "average": {
+            "description": "Average temperature value of all temperature sensors on PSU",
+            "type": "number"
+          },
+          "hotspot": {
+            "description": "Hotspot temperature value",
+            "type": "number"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          }
+        },
+        "required": [
+          "unit",
+          "hotspot",
+          "ambient",
+          "average"
+        ],
+        "type": "object"
+      },
+      "PsuUpdateStatus": {
+        "description": "PSU firmware update status information",
+        "example": {
+          "available_firmware": [
+            {
+              "filename": "chicony-s24-1.18.22.bin",
+              "firmware_version": "1.18.22",
+              "model": "S24",
+              "sha256": "b5f8a2f4e5c19ac7e2e4d0a87f3a1a6b6e0c8b991f2e99a4f5cd5e512a5f4d1e3",
+              "size_bytes": 1048576
+            }
+          ],
+          "psu_fw_status": [
+            {
+              "message": "chicony-s24-1.18.22.bin",
+              "progress_percent": 45.2,
+              "psu_slot": 1,
+              "state": "uploading"
+            }
+          ]
+        },
+        "properties": {
+          "available_firmware": {
+            "items": {
+              "$ref": "#/components/schemas/AvailablePsuFirmware"
+            },
+            "type": "array"
+          },
+          "psu_fw_status": {
+            "description": "Per-PSU firmware update progress (only present for PSUs that have received progress messages)",
+            "items": {
+              "$ref": "#/components/schemas/PsuFwupProgress"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "PsusInfo": {
+        "description": "Information about all power supply units in the mining device",
+        "properties": {
+          "psus-info": {
+            "items": {
+              "$ref": "#/components/schemas/PsuInfo"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "RefreshRequest": {
+        "description": "Request data for refreshing JWT access tokens",
+        "properties": {
+          "refresh_token": {
+            "description": "The JWT refresh token to be validated.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "type": "object"
+      },
+      "RefreshResponse": {
+        "description": "Response containing a new JWT access token",
+        "properties": {
+          "access_token": {
+            "description": "A new JWT access token.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token"
+        ],
+        "type": "object"
+      },
+      "SWInfo": {
+        "description": "Software component name and version information",
+        "properties": {
+          "name": {
+            "example": "Cgminer",
+            "type": "string"
+          },
+          "version": {
+            "example": "1.0",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SecureResponse": {
+        "description": "Response indicating whether the system is in a secure state",
+        "properties": {
+          "secure": {
+            "description": "True if the device is locked and the device certificate is valid",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "secure"
+        ],
+        "type": "object"
+      },
+      "SetAuthKeyRequest": {
+        "description": "Request to set the authentication public key",
+        "properties": {
+          "public_key": {
+            "description": "EdDSA public key as base64-encoded DER (SPKI)",
+            "example": "MCowBQYDK2VwAyEAGb1gauf6Rn+VgMwMeMHFBjBLHaiv83R1RV5MhFqxTW0=",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "type": "object"
+      },
+      "SetAuthKeyResponse": {
+        "description": "Response after setting or clearing the auth key",
+        "properties": {
+          "message": {
+            "description": "Status message",
+            "example": "Auth key set successfully",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "SshConfig": {
+        "description": "Configuration for SSH access",
+        "properties": {
+          "ssh-status": {
+            "$ref": "#/components/schemas/SshStatus"
+          }
+        },
+        "type": "object"
+      },
+      "SshResponse": {
+        "description": "Response containing SSH status",
+        "properties": {
+          "ssh-status": {
+            "$ref": "#/components/schemas/SshStatus"
+          }
+        },
+        "type": "object"
+      },
+      "SshStatus": {
+        "description": "SSH service status information",
+        "properties": {
+          "enabled": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SystemInfo": {
+        "description": "Complete system information including hardware, software, and OS details",
+        "properties": {
+          "system-info": {
+            "$ref": "#/components/schemas/SystemInfo_systeminfo"
+          }
+        },
+        "type": "object"
+      },
+      "SystemInfo_systeminfo": {
+        "description": "System information and device details",
+        "properties": {
+          "board": {
+            "enum": [
+              "C1",
+              "C2",
+              "C3",
+              "Unknown"
+            ],
+            "example": "C3",
+            "type": "string"
+          },
+          "cb_sn": {
+            "example": "YWWLMMMMRRFSSSSS",
+            "type": "string"
+          },
+          "hashboard_firmware": {
+            "$ref": "#/components/schemas/SWInfo"
+          },
+          "manufacturer": {
+            "description": "Device manufacturer name.",
+            "example": "Proto",
+            "type": "string"
+          },
+          "mining_driver_sw": {
+            "$ref": "#/components/schemas/SWInfo"
+          },
+          "model": {
+            "description": "Device model identifier (without manufacturer prefix).",
+            "example": "Rig",
+            "type": "string"
+          },
+          "os": {
+            "$ref": "#/components/schemas/OSInfo"
+          },
+          "pool_interface_sw": {
+            "$ref": "#/components/schemas/SWInfo"
+          },
+          "product_name": {
+            "description": "Product name reported by the device.",
+            "example": "Proto Rig",
+            "type": "string"
+          },
+          "soc": {
+            "enum": [
+              "STM32MP157F",
+              "STM32MP157D",
+              "STM32MP151F",
+              "STM32MP131F",
+              "unknown"
+            ],
+            "example": "STM32MP157F",
+            "type": "string"
+          },
+          "sw_update_status": {
+            "$ref": "#/components/schemas/UpdateStatus"
+          },
+          "uptime_seconds": {
+            "example": 300,
+            "format": "int64",
+            "type": "integer"
+          },
+          "web_dashboard": {
+            "$ref": "#/components/schemas/SWInfo"
+          },
+          "web_server": {
+            "$ref": "#/components/schemas/SWInfo"
+          }
+        },
+        "type": "object"
+      },
+      "SystemStatuses": {
+        "description": "System status information including onboarding and password setup",
+        "properties": {
+          "default_password_active": {
+            "description": "True when the miner is in secure mode and the factory default password is still active. Clients should prompt for a password change, and most authenticated endpoints are 403-gated until changed.",
+            "example": false,
+            "type": "boolean"
+          },
+          "onboarded": {
+            "example": true,
+            "type": "boolean"
+          },
+          "password_set": {
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "TelemetryConfig": {
+        "description": "Configuration for telemetry data collection",
+        "properties": {
+          "enabled": {
+            "description": "Enable or disable telemetry",
+            "example": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "TelemetryData": {
+        "description": "Current telemetry data response. Contains 'miner' field with aggregated metrics (included when level=miner or by default if no level specified), 'hashboards' array with per-hashboard data (included when level=hashboard or level=asic), 'psus' array with per-PSU data (included when level=psu). ASIC data is nested within each hashboard when level=asic is specified. All fields except 'timestamp' are optional based on requested levels.",
+        "properties": {
+          "hashboards": {
+            "description": "Array of per-hashboard telemetry data. Included when level=hashboard or level=asic is specified. Each hashboard object contains its metrics, with ASIC-level data nested within when level=asic is specified.",
+            "example": [
+              {
+                "asics": {
+                  "hashrate": {
+                    "unit": "TH/s",
+                    "values": [
+                      0.265,
+                      0.264
+                    ]
+                  },
+                  "temperature": {
+                    "unit": "\u00b0C",
+                    "values": [
+                      72.5,
+                      73.0
+                    ]
+                  }
+                },
+                "current": {
+                  "unit": "A",
+                  "value": 89.3
+                },
+                "efficiency": {
+                  "unit": "J/TH",
+                  "value": 33.96
+                },
+                "hashrate": {
+                  "unit": "TH/s",
+                  "value": 31.8
+                },
+                "index": 0,
+                "power": {
+                  "unit": "W",
+                  "value": 1080
+                },
+                "serial_number": "HB001",
+                "temperature": {
+                  "average": 56.85,
+                  "inlet": 45.2,
+                  "outlet": 68.5,
+                  "unit": "\u00b0C"
+                },
+                "voltage": {
+                  "unit": "V",
+                  "value": 12.1
+                }
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/HashboardTelemetry"
+            },
+            "type": "array"
+          },
+          "miner": {
+            "$ref": "#/components/schemas/MinerTelemetry"
+          },
+          "psus": {
+            "description": "Array of per-PSU telemetry data. Included when level=psu is specified.",
+            "example": [
+              {
+                "current": {
+                  "input": 14.5,
+                  "output": 268.6,
+                  "unit": "A"
+                },
+                "index": 0,
+                "power": {
+                  "input": 3480,
+                  "output": 3250,
+                  "unit": "W"
+                },
+                "serial_number": "PSU001234",
+                "temperature": {
+                  "ambient": 45.2,
+                  "average": 55.4,
+                  "hotspot": 65.5,
+                  "unit": "\u00b0C"
+                },
+                "voltage": {
+                  "input": 240.0,
+                  "output": 12.1,
+                  "unit": "V"
+                }
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PsuTelemetry"
+            },
+            "type": "array"
+          },
+          "timestamp": {
+            "description": "Timestamp when the telemetry data was collected",
+            "example": "2024-01-15T14:30:00Z",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp"
+        ],
+        "type": "object"
+      },
+      "TelemetryResponse": {
+        "description": "Response containing telemetry status information",
+        "properties": {
+          "enabled": {
+            "description": "Whether telemetry is currently enabled",
+            "example": true,
+            "type": "boolean"
+          },
+          "message": {
+            "description": "Status message about telemetry",
+            "example": "Telemetry is enabled",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "message"
+        ],
+        "type": "object"
+      },
+      "TemperatureMeasurement": {
+        "description": "Temperature measurement from a sensor",
+        "properties": {
+          "temperature_c": {
+            "description": "Temperature in Celsius.",
+            "example": 40,
+            "type": "number"
+          },
+          "temperature_type": {
+            "description": "Type of temperature measurement.",
+            "example": "hotspot",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TemperatureResponse": {
+        "description": "Response containing historical temperature data over time",
+        "properties": {
+          "temperature-data": {
+            "$ref": "#/components/schemas/TemperatureResponse_temperaturedata"
+          }
+        },
+        "type": "object"
+      },
+      "TemperatureResponse_temperaturedata": {
+        "description": "Temperature data response with time series information",
+        "properties": {
+          "aggregates": {
+            "$ref": "#/components/schemas/Aggregates"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesData"
+            },
+            "type": "array"
+          },
+          "duration": {
+            "$ref": "#/components/schemas/TimeSeriesDuration"
+          }
+        },
+        "type": "object"
+      },
+      "TestConnection": {
+        "description": "Configuration for testing connection to a mining pool",
+        "properties": {
+          "password": {
+            "$ref": "#/components/schemas/PoolPassword"
+          },
+          "url": {
+            "$ref": "#/components/schemas/PoolUrl"
+          },
+          "username": {
+            "$ref": "#/components/schemas/PoolUsername"
+          }
+        },
+        "type": "object"
+      },
+      "TimeSeriesAggregates": {
+        "description": "Statistical aggregates for the entire time series",
+        "properties": {
+          "avg": {
+            "description": "Average value in the series",
+            "example": 94.75,
+            "type": "number"
+          },
+          "max": {
+            "description": "Maximum value in the series",
+            "example": 95.5,
+            "type": "number"
+          },
+          "min": {
+            "description": "Minimum value in the series",
+            "example": 94.0,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "TimeSeriesData": {
+        "description": "Time series data point with timestamp and value for historical metrics",
+        "properties": {
+          "datetime": {
+            "description": "Unix time epoch.",
+            "example": 1704067200,
+            "type": "integer"
+          },
+          "value": {
+            "description": "Value of data requested at the given datetime.",
+            "example": 95.5,
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "TimeSeriesDuration": {
+        "description": "Duration of time series data returned.",
+        "enum": [
+          "1h",
+          "12h",
+          "24h",
+          "48h",
+          "5d"
+        ],
+        "example": "24h",
+        "type": "string"
+      },
+      "TimeSeriesLevelConfig": {
+        "description": "Configuration for a specific level in time series query",
+        "oneOf": [
+          {
+            "description": "Miner-level configuration",
+            "properties": {
+              "fields": {
+                "description": "List of data types to retrieve for miner level",
+                "example": [
+                  "hashrate",
+                  "temperature",
+                  "power"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/MinerFieldType"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "type": {
+                "description": "Miner level type",
+                "enum": [
+                  "miner"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "Hashboard-level configuration",
+            "properties": {
+              "fields": {
+                "description": "List of data types to retrieve for hashboard level",
+                "example": [
+                  "hashrate",
+                  "inletTemp",
+                  "outletTemp"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/HashboardFieldType"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "indexes": {
+                "description": "Optional array of zero-based indexes to filter data. If omitted, returns all available items",
+                "example": [
+                  0,
+                  2
+                ],
+                "items": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": {
+                "description": "Hashboard level type",
+                "enum": [
+                  "hashboard"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "ASIC-level configuration",
+            "properties": {
+              "fields": {
+                "description": "List of data types to retrieve for ASIC level",
+                "example": [
+                  "hashrate",
+                  "temperature"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/AsicFieldType"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "indexes": {
+                "description": "Optional array of zero-based ASIC indexes to filter data. If omitted, returns all available ASICs",
+                "example": [
+                  0,
+                  2
+                ],
+                "items": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": {
+                "description": "ASIC level type",
+                "enum": [
+                  "asic"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "PSU-level configuration",
+            "properties": {
+              "fields": {
+                "description": "List of data types to retrieve for PSU level",
+                "example": [
+                  "inputVoltage",
+                  "outputPower",
+                  "hotspotTemp"
+                ],
+                "items": {
+                  "$ref": "#/components/schemas/PsuFieldType"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "indexes": {
+                "description": "Optional array of zero-based PSU indexes to filter data. If omitted, returns all available PSUs",
+                "example": [
+                  0,
+                  1
+                ],
+                "items": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "type": {
+                "description": "PSU level type",
+                "enum": [
+                  "psu"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "TimeSeriesMeta": {
+        "description": "Metadata about the time series query and response",
+        "properties": {
+          "aggregation": {
+            "description": "Aggregation method used",
+            "example": "mean",
+            "type": "string"
+          },
+          "end_time": {
+            "description": "Actual end time of the data",
+            "example": "2024-01-15T06:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "interval": {
+            "description": "ISO 8601 duration of the interval used",
+            "example": "PT15M",
+            "type": "string"
+          },
+          "levels": {
+            "description": "Array of level configurations that were requested",
+            "example": [
+              {
+                "fields": [
+                  "hashrate",
+                  "temperature"
+                ],
+                "type": "miner"
+              },
+              {
+                "fields": [
+                  "hashrate",
+                  "temperature"
+                ],
+                "type": "hashboard"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesLevelConfig"
+            },
+            "type": "array"
+          },
+          "start_time": {
+            "description": "Actual start time of the data",
+            "example": "2024-01-15T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TimeSeriesMetricData": {
+        "description": "Data series for a specific metric",
+        "properties": {
+          "aggregates": {
+            "$ref": "#/components/schemas/TimeSeriesAggregates"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit"
+          },
+          "values": {
+            "description": "Array of values at each time interval",
+            "example": [
+              95.0,
+              94.5,
+              94.8
+            ],
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "TimeSeriesRequest": {
+        "description": "Request parameters for time series data query",
+        "properties": {
+          "aggregation": {
+            "default": "mean",
+            "description": "Aggregation method for data within intervals",
+            "enum": [
+              "mean",
+              "avg",
+              "min",
+              "max",
+              "last",
+              "sum",
+              "count"
+            ],
+            "example": "mean",
+            "type": "string"
+          },
+          "duration": {
+            "description": "ISO 8601 duration as an alternative to end_time. Mutually exclusive with end_time.",
+            "example": "PT6H",
+            "pattern": "^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+            "type": "string"
+          },
+          "end_time": {
+            "description": "End of the time range in ISO 8601 format. If not specified, defaults to current time.",
+            "example": "2024-01-15T12:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "interval": {
+            "description": "ISO 8601 duration for the time interval between data points. If not specified, auto-calculated based on time range.",
+            "example": "PT5M",
+            "pattern": "^P(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+            "type": "string"
+          },
+          "levels": {
+            "description": "Array of level configurations. Each object specifies a level type, fields to retrieve, and optional indexes.",
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesLevelConfig"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "start_time": {
+            "description": "Start of the time range in ISO 8601 format",
+            "example": "2024-01-15T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time",
+          "levels"
+        ],
+        "type": "object"
+      },
+      "TimeSeriesResponse": {
+        "description": "Response containing time series data for requested metrics",
+        "properties": {
+          "data": {
+            "description": "Hierarchical data organized by level",
+            "properties": {
+              "asics": {
+                "description": "Array of ASIC-level data with zero-based indexing (present when 'asic' in levels)",
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/TimeSeriesMetricData"
+                  },
+                  "properties": {
+                    "hashboard_index": {
+                      "description": "Zero-based index of the hashboard this ASIC belongs to",
+                      "type": "integer"
+                    },
+                    "index": {
+                      "description": "Zero-based index of the ASIC within its hashboard",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "hashboard_index"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "hashboards": {
+                "description": "Array of hashboard-level data with zero-based indexing (present when 'hashboard' in levels)",
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/TimeSeriesMetricData"
+                  },
+                  "properties": {
+                    "index": {
+                      "description": "Zero-based index of the hashboard",
+                      "type": "integer"
+                    },
+                    "serial_number": {
+                      "description": "Serial number of the hashboard",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "miner": {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/TimeSeriesMetricData"
+                },
+                "description": "Miner-level data (present when 'miner' in levels)",
+                "type": "object"
+              },
+              "psus": {
+                "description": "Array of PSU-level data with zero-based indexing (present when 'psu' in levels)",
+                "items": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/TimeSeriesMetricData"
+                  },
+                  "properties": {
+                    "index": {
+                      "description": "Zero-based index of the PSU",
+                      "type": "integer"
+                    },
+                    "serial_number": {
+                      "description": "Serial number of the PSU",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/TimeSeriesMeta"
+          }
+        },
+        "type": "object"
+      },
+      "UnlockConfig": {
+        "description": "Configuration for device unlock operation",
+        "properties": {
+          "unlock-password": {
+            "example": "unlock123",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UnlockResponse": {
+        "description": "Response containing device lock status",
+        "properties": {
+          "lock-status": {
+            "example": "UNLOCKED",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateStatus": {
+        "description": "Current status and information about system software updates",
+        "properties": {
+          "current_version": {
+            "description": "Current software version",
+            "example": "1.0.0",
+            "type": "string"
+          },
+          "error": {
+            "description": "Error message if status is 'error'",
+            "example": "Download failed",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable message about the update status",
+            "example": "Update available",
+            "type": "string"
+          },
+          "new_version": {
+            "description": "Version of the available update",
+            "example": "1.1.0",
+            "type": "string"
+          },
+          "previous_version": {
+            "description": "Previous software version",
+            "example": "1.0.0",
+            "type": "string"
+          },
+          "progress": {
+            "description": "Progress percentage for downloading or installing (0-100)",
+            "example": 75,
+            "type": "integer"
+          },
+          "release_notes": {
+            "description": "Release notes for the available update",
+            "example": "Bug fixes and performance improvements",
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the software update process",
+            "enum": [
+              "current",
+              "available",
+              "downloading",
+              "downloaded",
+              "installing",
+              "installed",
+              "confirming",
+              "success",
+              "error"
+            ],
+            "example": "available",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "JWT Bearer token authentication",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "mining.support@block.xyz"
+    },
+    "description": "The Mining Development Kit API serves as a means to access information from the mining device and make necessary adjustments to its settings.",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/license/mit"
+    },
+    "title": "Mining Development Kit API",
+    "version": "1.8.0"
+  },
+  "openapi": "3.1.1",
+  "paths": {
+    "/api/v1/auth/change-password": {
+      "put": {
+        "description": "Change the current password to a new password. Requires the current password for verification. The new password cannot be the same as the default password. After a successful password change, all existing JWT tokens are invalidated and clients must re-authenticate.",
+        "operationId": "ChangePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "description": "Current and new password data for changing the device password",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Password successfully changed."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Authenticates a user using a password and returns a JWT access and refresh token pair.",
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          },
+          "description": "Password credentials for user authentication",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokens"
+                }
+              }
+            },
+            "description": "Successful login, returns JWT tokens."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Validates and blacklists JWT tokens, effectively logging out the user.",
+        "operationId": "Logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthTokens"
+              }
+            }
+          },
+          "description": "JWT tokens to be invalidated during logout",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful logout."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "User logout",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "put": {
+        "description": "The password endpoint allows users to set a password during onboarding",
+        "operationId": "SetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          },
+          "description": "Password data for setting the initial device password",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Password successfully set."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "description": "Validates the provided refresh token and returns a new JWT access token.",
+        "operationId": "RefreshToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "description": "Refresh token data for generating a new access token",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            },
+            "description": "Successful refresh, returns a new access token."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "summary": "Refresh JWT access token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/cooling": {
+      "get": {
+        "description": "The cooling endpoint provides information on the cooling status of the device, including mode, current fan RPM, and target temperature.",
+        "operationId": "GetCooling",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoolingStatus"
+                }
+              }
+            },
+            "description": "Cooling status successfully returned."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Cooling"
+        ]
+      },
+      "put": {
+        "description": "The cooling configuration endpoint allows the user to control the fan mode, speed percentage (for Manual mode), and target temperature (for Auto mode).",
+        "operationId": "SetCoolingMode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoolingConfig"
+              }
+            }
+          },
+          "description": "Cooling system configuration settings for fan control",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoolingConfig"
+                }
+              }
+            },
+            "description": "The cooling configuration has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not implemented error - mode specified not supported/implemented."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Cooling"
+        ]
+      }
+    },
+    "/api/v1/efficiency": {
+      "get": {
+        "description": "The efficiency endpoint provides miner-level historical power operation data.",
+        "operationId": "GetMinerEfficiency",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfficiencyResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested miner-level efficiency data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Efficiency"
+        ]
+      }
+    },
+    "/api/v1/efficiency/{hb_sn}": {
+      "get": {
+        "description": "The efficiency endpoint provides hashboard-level historical operation data.",
+        "operationId": "GetHashboardEfficiency",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfficiencyResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested hashboard-level efficiency data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Efficiency"
+        ]
+      }
+    },
+    "/api/v1/errors": {
+      "get": {
+        "description": "The errors endpoint provides alerts to be surfaced on the UI with different severity levels such as errors or warnings. This endpoint should be polled periodically to surface any issues that arise during mining operation.",
+        "operationId": "GetErrors",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorListResponse"
+                }
+              }
+            },
+            "description": "Array of currently active errors."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Errors"
+        ]
+      }
+    },
+    "/api/v1/hardware": {
+      "get": {
+        "description": "The hardware endpoint provides information about the hardware components of the miner. This includes hashboards, power supplies, and fans.",
+        "operationId": "GetHardware",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HardwareInfo"
+                }
+              }
+            },
+            "description": "Successfully returned the requested hardware information."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hardware",
+          "PSUs",
+          "Hashboards",
+          "Fans"
+        ]
+      }
+    },
+    "/api/v1/hardware/psus": {
+      "get": {
+        "description": "The get power supplies endpoint returns the full list of currently configured power supplies.",
+        "operationId": "ListPowerSupplies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PsusInfo"
+                }
+              }
+            },
+            "description": "PSU information retrieved successfully."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "PSUs"
+        ]
+      }
+    },
+    "/api/v1/hashboards": {
+      "get": {
+        "description": "The hashboards endpoint provides information about all of the hashboards connected to the system, including firmware version, MCU, ASIC count, API version, and hardware serial numbers.",
+        "operationId": "GetAllHashboards",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashboardsInfo"
+                }
+              }
+            },
+            "description": "All hashboard information"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashboards"
+        ]
+      }
+    },
+    "/api/v1/hashboards/{hb_sn}": {
+      "get": {
+        "description": "The hashboard status endpoint returns current operating statistics for a single hashboard in the system based on its serial number.",
+        "operationId": "GetHashboardStatus",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashboardStats"
+                }
+              }
+            },
+            "description": "Successfully returned the statistics information for the specified hashboard."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashboards"
+        ]
+      }
+    },
+    "/api/v1/hashboards/{hb_sn}/{asic_id}": {
+      "get": {
+        "description": "The hashboard status endpoint returns current operating statistics for a single ASIC on the specified hashboard in the system based on serial number and ASIC ID.",
+        "operationId": "GetAsicStatus",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "description": "The id of an ASIC to provide statistics for.",
+            "explode": false,
+            "in": "path",
+            "name": "asic_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsicStatsResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the statistics for the specified ASIC on specified hashboard."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashboards"
+        ]
+      }
+    },
+    "/api/v1/hashrate": {
+      "get": {
+        "description": "The hashrate endpoint provides miner-level historical hashrate operation data.",
+        "operationId": "GetMinerHashrate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashrateResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested miner-level hashrate data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashrate"
+        ]
+      }
+    },
+    "/api/v1/hashrate/{hb_sn}": {
+      "get": {
+        "description": "The hashrate endpoint provides hashboard-level historical operation data.",
+        "operationId": "GetHashboardHashrate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashrateResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested hashboard-level hashrate data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashrate"
+        ]
+      }
+    },
+    "/api/v1/hashrate/{hb_sn}/{asic_id}": {
+      "get": {
+        "description": "The hashrate endpoint provides ASIC-level historical hashrate operation data.",
+        "operationId": "GetAsicHashrate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "description": "The ID of the ASIC to provide hashrate information for.",
+            "explode": false,
+            "in": "path",
+            "name": "asic_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          },
+          {
+            "$ref": "#/components/parameters/GranularityParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashrateResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested ASIC-level hashrate data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Hashrate"
+        ]
+      }
+    },
+    "/api/v1/mining": {
+      "get": {
+        "description": "The mining endpoint provides summary information about the mining operations of the device. This includes device level hashrate statistics, overall miner status, and current power usage and target information.",
+        "operationId": "GetMiningStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MiningStatus"
+                }
+              }
+            },
+            "description": "Mining status information has been successfully returned."
+          },
+          "204": {
+            "$ref": "#/components/responses/NoMiningStatistics"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      }
+    },
+    "/api/v1/mining/start": {
+      "post": {
+        "description": "The start mining endpoint can be used to make the device start mining, into account the current power target of the system.",
+        "operationId": "StartMining",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Mining start command has been accepted."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      }
+    },
+    "/api/v1/mining/stop": {
+      "post": {
+        "description": "The stop mining endpoint can be used to stop the device from mining, going into a minimal power mode with only the control board running.",
+        "operationId": "StopMining",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Mining stop command has been accepted."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      }
+    },
+    "/api/v1/mining/target": {
+      "get": {
+        "description": "The mining target endpoint returns the current power target in watts that the miner is controlling for.",
+        "operationId": "GetMiningTarget",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MiningTargetResponse"
+                }
+              }
+            },
+            "description": "The mining target value was successfully returned."
+          },
+          "204": {
+            "$ref": "#/components/responses/NoMiningStatistics"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      },
+      "put": {
+        "description": "The mining target endpoint can be used to set a target power consumption for the miner. Once set, the mining device will operate to consume as close to that amount of power as possible. In the event that the device is unable to maintain its temperature within the allowed range, it may scale down and use less power.",
+        "operationId": "EditMiningTarget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MiningTarget"
+              }
+            }
+          },
+          "description": "Target power consumption configuration for the mining device",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MiningTargetResponse"
+                }
+              }
+            },
+            "description": "The mining target has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      }
+    },
+    "/api/v1/mining/tuning": {
+      "put": {
+        "description": "The mining tuning endpoint can be used to set a hashboard level optimization algorithm",
+        "operationId": "EditMiningTuning",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MiningTuningConfig"
+              }
+            }
+          },
+          "description": "The tuning algorithm to run on the hashboards",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MiningTuningConfig"
+                }
+              }
+            },
+            "description": "The mining tuning algorithm has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Mining"
+        ]
+      }
+    },
+    "/api/v1/network": {
+      "get": {
+        "description": "The network GET endpoint provides information related to the network configuration of the miner including IP address, gateways, and MAC address.",
+        "operationId": "GetNetwork",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkInfo"
+                }
+              }
+            },
+            "description": "The network information."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "No network interface found."
+          }
+        },
+        "tags": [
+          "Network"
+        ]
+      },
+      "put": {
+        "description": "The network PUT endpoint allows the user to change the configuration of the miner between DHCP and a static IP.",
+        "operationId": "SetNetworkConfig",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkConfig"
+              }
+            }
+          },
+          "description": "Network configuration data to update miner networking settings",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkInfo"
+                }
+              }
+            },
+            "description": "The network configuration has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Network"
+        ]
+      }
+    },
+    "/api/v1/pairing/auth-key": {
+      "delete": {
+        "description": "Clear the authentication public key. This endpoint requires authentication.",
+        "operationId": "ClearAuthKey",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Auth key cleared successfully"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pairing"
+        ]
+      },
+      "post": {
+        "description": "Set the authentication public key for pairing. On first pair this endpoint does not require authentication. On key rotation, authentication is required.",
+        "operationId": "SetAuthKey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAuthKeyRequest"
+              }
+            }
+          },
+          "description": "The EdDSA public key to set for device authentication",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetAuthKeyResponse"
+                }
+              }
+            },
+            "description": "Auth key set successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "tags": [
+          "Pairing"
+        ]
+      }
+    },
+    "/api/v1/pairing/info": {
+      "get": {
+        "description": "Get pairing information including MAC address and serial number. This endpoint does not require authentication.",
+        "operationId": "GetPairingInfo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingInfoResponse"
+                }
+              }
+            },
+            "description": "Pairing information retrieved successfully"
+          }
+        },
+        "tags": [
+          "Pairing"
+        ]
+      }
+    },
+    "/api/v1/pools": {
+      "get": {
+        "description": "The get pools endpoint returns the full list of currently configured pools.",
+        "operationId": "ListPools",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolsList"
+                }
+              }
+            },
+            "description": "The list of pools was successfully returned."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      },
+      "post": {
+        "description": "The post pools endpoint allows up to three pools to be configured, replacing the previous pool configuration.",
+        "operationId": "CreatePools",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolConfig"
+              }
+            }
+          },
+          "description": "Pool configuration data for creating or updating pools"
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The pool configuration has been successfully created."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      }
+    },
+    "/api/v1/pools/test-connection": {
+      "post": {
+        "description": "Used to test a pool connection",
+        "operationId": "TestPoolConnection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestConnection"
+              }
+            }
+          },
+          "description": "Pool connection configuration data for testing connectivity",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Connection test passed."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Unable to establish connection."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      }
+    },
+    "/api/v1/pools/{id}": {
+      "delete": {
+        "description": "Delete a specific pool configuration by ID",
+        "operationId": "DeletePool",
+        "parameters": [
+          {
+            "description": "The pool ID to delete",
+            "explode": false,
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The pool configuration has been successfully deleted."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      },
+      "get": {
+        "description": "Get configuration for a specific pool by ID",
+        "operationId": "GetPool",
+        "parameters": [
+          {
+            "description": "The pool ID to retrieve",
+            "explode": false,
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolResponse"
+                }
+              }
+            },
+            "description": "Configuration for a single pool was returned."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      },
+      "put": {
+        "description": "Using this pool configuration endpoint, users can edit the properties of an existing pool.",
+        "operationId": "EditPool",
+        "parameters": [
+          {
+            "description": "The pool ID to update",
+            "explode": false,
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolConfig_inner"
+              }
+            }
+          },
+          "description": "Updated pool configuration data",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The pool configuration has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Pools"
+        ]
+      }
+    },
+    "/api/v1/power": {
+      "get": {
+        "description": "The power endpoint provides miner-level historical power operation data.",
+        "operationId": "GetMinerPower",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PowerResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested miner-level power data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Power"
+        ]
+      }
+    },
+    "/api/v1/power-supplies": {
+      "get": {
+        "description": "Returns information about all PSUs including firmware update status and available firmware updates.",
+        "operationId": "GetPowerSupplies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PowerSuppliesResponse"
+                }
+              }
+            },
+            "description": "Power supply information with firmware update status retrieved successfully."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "PSUs"
+        ]
+      }
+    },
+    "/api/v1/power-supplies/update": {
+      "post": {
+        "description": "Triggers a PSU firmware update. Publishes a firmware update command to each connected PSU via NATS. Use the `force` parameter to allow re-flashing the same firmware version.",
+        "operationId": "PostUpdatePsu",
+        "parameters": [
+          {
+            "description": "Force update and bypass version checks",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The PSU firmware update has been requested."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "PSUs"
+        ]
+      }
+    },
+    "/api/v1/power/{hb_sn}": {
+      "get": {
+        "description": "The power endpoint provides hashboard-level historical operation data.",
+        "operationId": "GetHashboardPower",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PowerResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested hashboard-level power data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Power"
+        ]
+      }
+    },
+    "/api/v1/system": {
+      "get": {
+        "description": "The system endpoint provides information related to the control board including OS, software, and hardware component details.",
+        "operationId": "GetSystemInfo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfo"
+                }
+              }
+            },
+            "description": "The mining device system information."
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/locate": {
+      "post": {
+        "description": "The locate system endpoint can be used to flash the indicator LED on the control board to assist in finding the miner.",
+        "operationId": "LocateSystem",
+        "parameters": [
+          {
+            "description": "The duration in seconds for which to turn on the LED, with a max value of 300 seconds. If not specified, a default value of 30 seconds will be used. Requests made while the LED is on will be ignored.",
+            "explode": true,
+            "in": "query",
+            "name": "led_on_time",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "type": "integer"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The mining device's LED has started flashing for the specified duration"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/logs": {
+      "get": {
+        "description": "The logs endpoint provides the most recent log lines from a given source, either OS, pool software, or miner logs.",
+        "operationId": "GetSystemLogs",
+        "parameters": [
+          {
+            "description": "Number of log lines to return from the tail of the log, up to a maximum of 10000 lines. Defaults to 100 lines.",
+            "explode": true,
+            "in": "query",
+            "name": "lines",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Source of logs to fetch. Defaults to miner software logs.",
+            "explode": true,
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "default": "miner_sw",
+              "enum": [
+                "os",
+                "pool_sw",
+                "miner_sw",
+                "miner_web_server"
+              ],
+              "example": "miner_sw",
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogsResponse"
+                }
+              }
+            },
+            "description": "Successfully returned linux system, miner pool interface, or MCDD logs."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/reboot": {
+      "post": {
+        "description": "The reboot endpoint can be used to reboot the entire system.",
+        "operationId": "RebootSystem",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "System reboot command was accepted."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/secure": {
+      "get": {
+        "description": "Returns whether the system is in a secure state. A system is secure when the device is locked (CLOSED) and the device certificate is valid.",
+        "operationId": "GetSecureStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureResponse"
+                }
+              }
+            },
+            "description": "The secure status was successfully returned."
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/ssh": {
+      "get": {
+        "description": "The get ssh endpoint returns if SSH is enabled or disabled on the control board",
+        "operationId": "GetSSH",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SshResponse"
+                }
+              }
+            },
+            "description": "The SSH status was successfully returned."
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      },
+      "put": {
+        "description": "The put ssh endpoint enables/disables SSH on the control board",
+        "operationId": "SetSSH",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SshConfig"
+              }
+            }
+          },
+          "description": "SSH configuration settings for enabling or disabling SSH access",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SshResponse"
+                }
+              }
+            },
+            "description": "The SSH status was successfully updated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "description": "Get system statuses",
+        "operationId": "GetSystemStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatuses"
+                }
+              }
+            },
+            "description": "The onboarded status of the mining device."
+          }
+        },
+        "tags": [
+          "System Information"
+        ]
+      }
+    },
+    "/api/v1/system/tag": {
+      "delete": {
+        "description": "Remove the current system tag.",
+        "operationId": "DeleteSystemTag",
+        "responses": {
+          "204": {
+            "description": "The system tag was successfully deleted. No content is returned."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System Tag"
+        ]
+      },
+      "get": {
+        "description": "Retrieve the current system tag value.",
+        "operationId": "GetSystemTag",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "array": {
+                    "summary": "Array tag",
+                    "value": [
+                      "tag1",
+                      "tag2",
+                      "tag3"
+                    ]
+                  },
+                  "boolean": {
+                    "summary": "Boolean tag",
+                    "value": true
+                  },
+                  "number": {
+                    "summary": "Number tag",
+                    "value": 12345
+                  },
+                  "object": {
+                    "summary": "Object tag",
+                    "value": {
+                      "location": "datacenter-1",
+                      "serial": "ABC123"
+                    }
+                  },
+                  "string": {
+                    "summary": "String tag",
+                    "value": "production-rig-001"
+                  }
+                },
+                "schema": {
+                  "description": "The system tag value as any non-null JSON value (string, number, boolean, object, or array)",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "object"
+                    },
+                    {
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Successfully retrieved the system tag."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "No system tag is set"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "No tag currently exists."
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "System Tag"
+        ]
+      },
+      "put": {
+        "description": "Set or update the system tag value. Accepts any non-null JSON value (string, number, boolean, object, or array). Maximum size is 10 KiB when serialized.",
+        "operationId": "PutSystemTag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "array": {
+                  "summary": "Array tag",
+                  "value": [
+                    "tag1",
+                    "tag2",
+                    "tag3"
+                  ]
+                },
+                "boolean": {
+                  "summary": "Boolean tag",
+                  "value": true
+                },
+                "number": {
+                  "summary": "Number tag",
+                  "value": 12345
+                },
+                "object": {
+                  "summary": "Object tag",
+                  "value": {
+                    "config": {
+                      "mode": "production"
+                    },
+                    "location": "datacenter-1",
+                    "serial": "ABC123"
+                  }
+                },
+                "string": {
+                  "summary": "String tag",
+                  "value": "production-rig-001"
+                }
+              },
+              "schema": {
+                "description": "Any non-null JSON value (string, number, boolean, object, or array). Cannot be null.",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "array"
+                  }
+                ]
+              }
+            }
+          },
+          "description": "The tag value to set as any non-null JSON value",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Tag updated successfully"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The system tag was successfully updated."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Tag created successfully"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "The system tag was successfully created."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_json": {
+                    "summary": "Invalid JSON error",
+                    "value": {
+                      "message": "Invalid JSON payload"
+                    }
+                  },
+                  "null_value": {
+                    "summary": "Null value error",
+                    "value": {
+                      "message": "Tag value cannot be null"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Bad request due to invalid tag format or null value."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Tag payload exceeds 10240B limit (current size: 15000B)"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Request entity too large - tag exceeds maximum size limit."
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System Tag"
+        ]
+      }
+    },
+    "/api/v1/system/telemetry": {
+      "get": {
+        "description": "Get the current system telemetry enabled status.",
+        "operationId": "GetSystemTelemetryEnabled",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "disabled": {
+                    "value": {
+                      "enabled": false,
+                      "message": "Telemetry is disabled"
+                    }
+                  },
+                  "enabled": {
+                    "value": {
+                      "enabled": true,
+                      "message": "Telemetry is enabled"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the telemetry status."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryResponse"
+                }
+              }
+            },
+            "description": "Internal server error while reading telemetry configuration."
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      },
+      "put": {
+        "description": "Configure system telemetry enabled settings.",
+        "operationId": "SetSystemTelemetryEnabled",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "enabled": true
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TelemetryConfig"
+              }
+            }
+          },
+          "description": "Telemetry configuration settings for data collection",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "enabled": true,
+                  "message": "Enabling telemetry"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryResponse"
+                }
+              }
+            },
+            "description": "The telemetry configuration has been successfully updated."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryResponse"
+                }
+              }
+            },
+            "description": "Internal server error while setting telemetry configuration."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/unlock": {
+      "get": {
+        "description": "The get UNLOCK endpoint returns current lock status of the control board.",
+        "operationId": "GetUnlock",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockResponse"
+                }
+              }
+            },
+            "description": "The lock status was successfully returned."
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "tags": [
+          "System"
+        ]
+      },
+      "put": {
+        "description": "The put UNLOCK endpoint execute device unlock on the control board when correct password is used.",
+        "operationId": "SetUnlock",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockConfig"
+              }
+            }
+          },
+          "description": "Unlock password configuration for device unlock operation",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnlockResponse"
+                }
+              }
+            },
+            "description": "The control board successfully performed device unlock."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/update": {
+      "post": {
+        "description": "Initiates a system update of the miner software. This will download the update and automatically install it once the download completes.",
+        "operationId": "PostUpdateSystem",
+        "responses": {
+          "202": {
+            "description": "The mining device has successfully started the update process."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/UpdateAlreadyInProgress"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      },
+      "put": {
+        "description": "Uploads a firmware update file to the device. This endpoint will also install it once the upload completes.",
+        "operationId": "PutUpdateSystem",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "example": {
+                "file": "@firmware-update-v2.0.2.swu"
+              },
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "The firmware update file to upload (.swu format)",
+                    "example": "firmware-update-v2.0.2.swu",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Firmware update file to be uploaded to the device.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The firmware update file has been successfully uploaded."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/UpdateAlreadyInProgress"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/system/update/check": {
+      "post": {
+        "description": "Initiates a check with the update server to determine whether a new version of the miner software is available. This request does not perform a download or installation, only a version availability check.",
+        "operationId": "UpdateCheck",
+        "responses": {
+          "200": {
+            "description": "The mining device has successfully started system update check."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/UpdateAlreadyInProgress"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/v1/telemetry": {
+      "get": {
+        "description": "Returns current telemetry values. The 'level' parameter is a comma-separated list that controls which data types are included. If not specified, defaults to 'miner'. Note: 'asic' implicitly includes 'hashboard' since ASIC data is nested within hashboards. Examples: no level param (miner only), ?level=hashboard (hashboards only), ?level=asic (hashboards with ASIC data), ?level=miner,asic,psu (all data).",
+        "operationId": "GetCurrentTelemetry",
+        "parameters": [
+          {
+            "description": "Comma-separated list of data types to include (e.g. ?level=miner,psu,hashboard). If not specified, defaults to 'miner'. Options: miner (miner-level aggregated data), hashboard (per-hashboard metrics), psu (per-PSU metrics), asic (ASIC-level data within hashboards, implicitly includes hashboard).",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "description": "Data types to include in response. Defaults to 'miner' if not specified.",
+              "items": {
+                "enum": [
+                  "miner",
+                  "hashboard",
+                  "psu",
+                  "asic"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "all_data": {
+                    "summary": "Response with level=miner,hashboard,asic,psu: Full detail including miner, hashboard (with ASIC data), and PSU metrics",
+                    "value": {
+                      "hashboards": [
+                        {
+                          "asics": {
+                            "hashrate": {
+                              "unit": "TH/s",
+                              "values": [
+                                0.265,
+                                0.264
+                              ]
+                            },
+                            "temperature": {
+                              "unit": "\u00b0C",
+                              "values": [
+                                72.5,
+                                73.0
+                              ]
+                            }
+                          },
+                          "current": {
+                            "unit": "A",
+                            "value": 89.3
+                          },
+                          "efficiency": {
+                            "unit": "J/TH",
+                            "value": 33.96
+                          },
+                          "hashrate": {
+                            "unit": "TH/s",
+                            "value": 31.8
+                          },
+                          "index": 0,
+                          "power": {
+                            "unit": "W",
+                            "value": 1080
+                          },
+                          "serial_number": "HB001",
+                          "temperature": {
+                            "average": 56.85,
+                            "inlet": 45.2,
+                            "outlet": 68.5,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "unit": "V",
+                            "value": 12.1
+                          }
+                        }
+                      ],
+                      "miner": {
+                        "efficiency": {
+                          "unit": "J/TH",
+                          "value": 34.03
+                        },
+                        "hashrate": {
+                          "unit": "TH/s",
+                          "value": 95.5
+                        },
+                        "power": {
+                          "unit": "W",
+                          "value": 3250
+                        },
+                        "temperature": {
+                          "unit": "\u00b0C",
+                          "value": 65.5
+                        }
+                      },
+                      "timestamp": "2024-01-15T14:30:00Z"
+                    }
+                  },
+                  "mienr_hashboard_and_psu": {
+                    "summary": "Response with level=miner,hashboard,psu: Includes miner-level, per-hashboard, and per-PSU metrics",
+                    "value": {
+                      "hashboards": [
+                        {
+                          "current": {
+                            "unit": "A",
+                            "value": 89.3
+                          },
+                          "efficiency": {
+                            "unit": "J/TH",
+                            "value": 33.96
+                          },
+                          "hashrate": {
+                            "unit": "TH/s",
+                            "value": 31.8
+                          },
+                          "index": 0,
+                          "power": {
+                            "unit": "W",
+                            "value": 1080
+                          },
+                          "serial_number": "HB001",
+                          "temperature": {
+                            "average": 56.85,
+                            "inlet": 45.2,
+                            "outlet": 68.5,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "unit": "V",
+                            "value": 12.1
+                          }
+                        },
+                        {
+                          "current": {
+                            "unit": "A",
+                            "value": 88.9
+                          },
+                          "efficiency": {
+                            "unit": "J/TH",
+                            "value": 34.01
+                          },
+                          "hashrate": {
+                            "unit": "TH/s",
+                            "value": 31.9
+                          },
+                          "index": 1,
+                          "power": {
+                            "unit": "W",
+                            "value": 1085
+                          },
+                          "serial_number": "HB002",
+                          "temperature": {
+                            "average": 56.35,
+                            "inlet": 44.8,
+                            "outlet": 67.9,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "unit": "V",
+                            "value": 12.2
+                          }
+                        },
+                        {
+                          "current": {
+                            "unit": "A",
+                            "value": 90.4
+                          },
+                          "efficiency": {
+                            "unit": "J/TH",
+                            "value": 34.12
+                          },
+                          "hashrate": {
+                            "unit": "TH/s",
+                            "value": 31.8
+                          },
+                          "index": 2,
+                          "power": {
+                            "unit": "W",
+                            "value": 1085
+                          },
+                          "serial_number": "HB003",
+                          "temperature": {
+                            "average": 57.3,
+                            "inlet": 45.5,
+                            "outlet": 69.1,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "unit": "V",
+                            "value": 12.0
+                          }
+                        }
+                      ],
+                      "miner": {
+                        "efficiency": {
+                          "unit": "J/TH",
+                          "value": 34.03
+                        },
+                        "hashrate": {
+                          "unit": "TH/s",
+                          "value": 95.5
+                        },
+                        "power": {
+                          "unit": "W",
+                          "value": 3250
+                        },
+                        "temperature": {
+                          "unit": "\u00b0C",
+                          "value": 65.5
+                        }
+                      },
+                      "psus": [
+                        {
+                          "current": {
+                            "input": 14.5,
+                            "output": 268.6,
+                            "unit": "A"
+                          },
+                          "index": 0,
+                          "power": {
+                            "input": 3480,
+                            "output": 3250,
+                            "unit": "W"
+                          },
+                          "serial_number": "PSU001234",
+                          "temperature": {
+                            "ambient": 45.2,
+                            "average": 55.4,
+                            "hotspot": 65.5,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "input": 240.0,
+                            "output": 12.1,
+                            "unit": "V"
+                          }
+                        }
+                      ],
+                      "timestamp": "2024-01-15T14:30:00Z"
+                    }
+                  },
+                  "miner": {
+                    "summary": "Response when level=miner: Only aggregated miner-level metrics",
+                    "value": {
+                      "miner": {
+                        "efficiency": {
+                          "unit": "J/TH",
+                          "value": 34.03
+                        },
+                        "hashrate": {
+                          "unit": "TH/s",
+                          "value": 95.5
+                        },
+                        "power": {
+                          "unit": "W",
+                          "value": 3250
+                        },
+                        "temperature": {
+                          "unit": "\u00b0C",
+                          "value": 65.5
+                        }
+                      },
+                      "timestamp": "2024-01-15T14:30:00Z"
+                    }
+                  },
+                  "psu": {
+                    "summary": "Response when level=psu: Only PSU metrics",
+                    "value": {
+                      "psus": [
+                        {
+                          "current": {
+                            "input": 14.5,
+                            "output": 268.6,
+                            "unit": "A"
+                          },
+                          "index": 0,
+                          "power": {
+                            "input": 3480,
+                            "output": 3250,
+                            "unit": "W"
+                          },
+                          "serial_number": "PSU001234",
+                          "temperature": {
+                            "ambient": 45.2,
+                            "average": 55.4,
+                            "hotspot": 65.5,
+                            "unit": "\u00b0C"
+                          },
+                          "voltage": {
+                            "input": 240.0,
+                            "output": 12.1,
+                            "unit": "V"
+                          }
+                        }
+                      ],
+                      "timestamp": "2024-01-15T14:30:00Z"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryData"
+                }
+              }
+            },
+            "description": "Successfully returned current telemetry data"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get current telemetry data",
+        "tags": [
+          "Telemetry"
+        ]
+      }
+    },
+    "/api/v1/temperature": {
+      "get": {
+        "description": "The temperature endpoint provides miner-level historical temperature operation data.",
+        "operationId": "GetMinerTemperature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested miner-level temperature data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Temperature"
+        ]
+      }
+    },
+    "/api/v1/temperature/{hb_sn}": {
+      "get": {
+        "description": "The temperature endpoint provides hashboard-level historical operation data.",
+        "operationId": "GetHashboardTemperature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested hashboard-level temperature data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Temperature"
+        ]
+      }
+    },
+    "/api/v1/temperature/{hb_sn}/{asic_id}": {
+      "get": {
+        "description": "The hashrate endpoint provides ASIC-level historical temperature operation data.",
+        "operationId": "GetAsicTemperature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HashboardSerialNumberParam"
+          },
+          {
+            "description": "The ID of the ASIC to provide temperature information for.",
+            "explode": false,
+            "in": "path",
+            "name": "asic_id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "simple"
+          },
+          {
+            "$ref": "#/components/parameters/DurationParam"
+          },
+          {
+            "$ref": "#/components/parameters/GranularityParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemperatureResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested ASIC-level temperature data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Temperature"
+        ]
+      }
+    },
+    "/api/v1/timeseries": {
+      "post": {
+        "description": "The time series endpoint provides unified access to historical data for multiple metrics and levels. It allows querying hashrate, temperature, power, and efficiency data for miner, hashboard, ASIC, and PSU levels in a single request with flexible time ranges and aggregation options.",
+        "operationId": "GetTimeSeries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeSeriesRequest"
+              }
+            }
+          },
+          "description": "Time series query parameters",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeSeriesResponse"
+                }
+              }
+            },
+            "description": "Successfully returned the requested time series data."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "tags": [
+          "Time Series"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Simulator default instance, used in API contract testing against the spec",
+      "url": "http://127.0.0.1:8080"
+    }
+  ],
+  "tags": [
+    {
+      "description": "The mining endpoint group allows for control and configuration of mining functionality.",
+      "name": "Mining"
+    },
+    {
+      "description": "The system endpoint group exposes information and actions related to the overall miner system.",
+      "name": "System"
+    },
+    {
+      "description": "The network endpoint group provides information on the network configuration of the miner.",
+      "name": "Network"
+    },
+    {
+      "description": "The errors endpoint group provides active system errors (severity level errors or warnings) to surface to the UI.",
+      "name": "Errors"
+    },
+    {
+      "description": "The pools endpoint group allows users to configure the list of pools the miner will connect to.",
+      "name": "Pools"
+    },
+    {
+      "description": "The cooling endpoint group provides information and control over the cooling system of the miner.",
+      "name": "Cooling"
+    },
+    {
+      "description": "The authentication endpoint group contains functions related to changing the password, and other authentication-related actions.",
+      "name": "Authentication"
+    },
+    {
+      "description": "The hashboards endpoint group provides information related to the various hashboards or ASICs on those hashboards in the system.",
+      "name": "Hashboards"
+    },
+    {
+      "description": "The hashrate endpoint group provides historical hashrate information for the entire miner, individual hashboards, or individual ASICs.",
+      "name": "Hashrate"
+    },
+    {
+      "description": "The temperature endpoint group provides historical temperature information for the entire miner, individual hashboards, or individual ASICs.",
+      "name": "Temperature"
+    },
+    {
+      "description": "The power endpoint group provides historical power information for the entire miner or individual hashboards.",
+      "name": "Power"
+    },
+    {
+      "description": "The efficiency endpoint group provides historical efficiency information for the entire miner or individual hashboards.",
+      "name": "Efficiency"
+    },
+    {
+      "description": "The system information endpoint group provides status and configuration details about the mining device system.",
+      "name": "System Information"
+    },
+    {
+      "description": "The hardware endpoint group provides information about the physical hardware components of the mining device.",
+      "name": "Hardware"
+    },
+    {
+      "description": "The PSUs endpoint group provides information about the power supply units in the mining device.",
+      "name": "PSUs"
+    },
+    {
+      "description": "The fans endpoint group provides information about the cooling fans in the mining device.",
+      "name": "Fans"
+    },
+    {
+      "description": "The time series endpoint provides unified access to historical data for multiple metrics including hashrate, temperature, power, and efficiency in a single request.",
+      "name": "Time Series"
+    },
+    {
+      "description": "The telemetry endpoint provides current (real-time) values for all metrics available in the timeseries endpoint, with support for brief and extended detail levels.",
+      "name": "Telemetry"
+    },
+    {
+      "description": "The system tag endpoint group provides a simple way to set and retrieve a custom tag for the mining device.",
+      "name": "System Tag"
+    },
+    {
+      "description": "The pairing endpoint group provides device pairing functionality including retrieving pairing info and managing authentication keys.",
+      "name": "Pairing"
+    }
+  ]
+}

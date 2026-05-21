@@ -154,6 +154,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
         asic_rs_firmwares_auradine::firmware::AuradineFirmware::default(),
     ));
 
+    #[cfg(feature = "proto")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_proto::firmware::ProtoFirmware::default(),
+    ));
+
     // NerdAxe before Bitaxe — both check web root but NerdAxe is more specific
     #[cfg(feature = "nerdaxe")]
     registry.push(Arc::new(
