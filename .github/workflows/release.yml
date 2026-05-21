@@ -47,10 +47,50 @@ jobs:
           sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/version = "'"$VERSION"'"/g}' Cargo.toml
           sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
 
-          cargo update --workspace
+          # Update every Cargo.lock owned by the repo, including nested independent
+          # workspaces. A Cargo.lock belongs to the Cargo.toml in the same directory.
+          declare -A CARGO_MANIFESTS=()
+          CARGO_MANIFESTS["./Cargo.toml"]=1
+
+          while IFS= read -r -d '' manifest; do
+          dir="$(dirname "$manifest")"
+
+          # Include workspace roots, plus any manifest sitting next to a Cargo.lock.
+          # This catches nested independent workspaces and standalone Rust packages.
+          if grep -q '^[[:space:]]*\[workspace\]' "$manifest" || [ -f "$dir/Cargo.lock" ]; then
+          CARGO_MANIFESTS["$manifest"]=1
+          fi
+          done < <(
+          find . \
+          \( -path './.git' -o -path '*/target' \) -prune -o \
+          -name Cargo.toml -print0
+          )
+
+          for manifest in "${!CARGO_MANIFESTS[@]}"; do
+          echo "::group::cargo update --workspace --manifest-path ${manifest}"
+          cargo update --workspace --manifest-path "$manifest"
+          echo "::endgroup::"
+          done
+
           docker run --rm -v "$PWD:/workspace" -w /workspace codeberg.org/msrd0/cargo-doc2readme cargo doc2readme
 
-          git add Cargo.toml pyproject.toml README.md Cargo.lock
+          git add Cargo.toml pyproject.toml README.md
+
+          # Stage all lockfiles, not just ./Cargo.lock.
+          while IFS= read -r -d '' lockfile; do
+          git add "$lockfile"
+          done < <(
+          find . \
+          \( -path './.git' -o -path '*/target' \) -prune -o \
+          -name Cargo.lock -print0
+          )
+
+          # Safety check: fail before tagging if generated changes were missed.
+          if ! git diff --quiet; then
+          echo "Unstaged generated changes remain:" >&2
+          git status --short
+          exit 1
+          fi
           if git diff --cached --quiet; then
             echo "No version changes to commit" >&2
             exit 1
