@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -100,7 +100,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-core"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-pydantic",
@@ -122,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-antminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -143,7 +143,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-auradine"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-avalonminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-bitaxe"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-braiins"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -215,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-epic"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -237,7 +237,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-luxminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-marathon"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-nerdaxe"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-sealminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-vnish"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-whatsminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "aes",
  "anyhow",
@@ -350,7 +350,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-antminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-auradine"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -372,7 +372,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-avalon"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -383,7 +383,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-bitaxe"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-braiins"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -405,7 +405,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-epic"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-marathon"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -426,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-nerdaxe"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -437,7 +437,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-sealminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -448,7 +448,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-whatsminer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -459,7 +459,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-pydantic"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-pydantic-macros",
  "macaddr",
@@ -469,7 +469,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-pydantic-macros"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "asic-rs-pydantic",
  "proc-macro2",
