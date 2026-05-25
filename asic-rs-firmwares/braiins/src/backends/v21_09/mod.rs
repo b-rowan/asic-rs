@@ -154,6 +154,18 @@ impl GetDataLocations for BraiinsV2109 {
                 }
             }"#,
         };
+        const GQL_EVENTS_QUERY: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                events {
+                    appeals {
+                        id
+                        kind
+                        message
+                        timestamp
+                    }
+                }
+            }"#,
+        };
         const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
@@ -277,9 +289,7 @@ impl GetDataLocations for BraiinsV2109 {
                 },
             )],
             DataField::Messages => vec![(
-                MinerCommand::GraphQL {
-                    command: "{ events { appeals { kind timestamp message } } }",
-                },
+                GQL_EVENTS_QUERY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/events/appeals"),

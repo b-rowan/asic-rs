@@ -24,7 +24,6 @@ use asic_rs_core::{
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_braiins::hardware::BraiinsControlBoard;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
@@ -32,7 +31,7 @@ use serde_json::{Value, json};
 
 use web::BraiinsWebAPI;
 
-use crate::firmware::BraiinsFirmware;
+use crate::{backends::v21_09::graphql::BraiinsGraphQLAPI, firmware::BraiinsFirmware};
 
 pub mod web;
 
@@ -40,6 +39,7 @@ pub mod web;
 pub struct BraiinsV2604 {
     pub ip: IpAddr,
     pub web: BraiinsWebAPI,
+    pub graphql: BraiinsGraphQLAPI,
     pub device_info: DeviceInfo,
 }
 
@@ -48,7 +48,8 @@ impl BraiinsV2604 {
         let auth = Self::default_auth();
         BraiinsV2604 {
             ip,
-            web: BraiinsWebAPI::new(ip, auth),
+            web: BraiinsWebAPI::new(ip, auth.clone()),
+            graphql: BraiinsGraphQLAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -59,6 +60,7 @@ impl APIClient for BraiinsV2604 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            MinerCommand::GraphQL { .. } => self.graphql.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
         }
     }
@@ -103,10 +105,6 @@ impl GetDataLocations for BraiinsV2604 {
             command: "performance/tuner-state",
             parameters: None,
         };
-        const WEB_MINER_ERRORS: MinerCommand = MinerCommand::WebAPI {
-            command: "miner/errors",
-            parameters: None,
-        };
         const WEB_POOLS: MinerCommand = MinerCommand::WebAPI {
             command: "pools",
             parameters: None,
@@ -118,6 +116,18 @@ impl GetDataLocations for BraiinsV2604 {
         const WEB_HASHBOARDS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/hw/hashboards",
             parameters: None,
+        };
+        const GQL_EVENTS_QUERY: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                events {
+                    appeals {
+                        id
+                        kind
+                        message
+                        timestamp
+                    }
+                }
+            }"#,
         };
 
         match data_field {
@@ -250,10 +260,10 @@ impl GetDataLocations for BraiinsV2604 {
                 },
             )],
             DataField::Messages => vec![(
-                WEB_MINER_ERRORS,
+                GQL_EVENTS_QUERY,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/errors"),
+                    key: Some("/events/appeals"),
                     tag: None,
                 },
             )],
@@ -541,26 +551,30 @@ impl GetMessages for BraiinsV2604 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages: Vec<MinerMessage> = Vec::new();
 
-        if let Some(errors_data) = data.get(&DataField::Messages)
-            && let Some(errors_array) = errors_data.as_array()
+        if let Some(appeals_data) = data.get(&DataField::Messages)
+            && let Some(appeals_array) = appeals_data.as_array()
         {
-            for error in errors_array.iter() {
-                let timestamp = error
+            for appeal in appeals_array {
+                let timestamp = appeal
                     .get("timestamp")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32;
+
+                let message = appeal
+                    .get("message")
                     .and_then(|v| v.as_str())
-                    .and_then(|dt| dt.parse::<DateTime<Utc>>().ok())
-                    .map(|dt| dt.timestamp() as u32);
-                let message = error.get("message").and_then(|v| v.as_str());
-                if let Some(ts) = timestamp {
-                    messages.push(MinerMessage::new(
-                        ts,
-                        0,
-                        message.unwrap_or("Unknown error").to_string(),
-                        MessageSeverity::Error,
-                    ))
-                }
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                let severity = match appeal.get("kind").and_then(|v| v.as_str()) {
+                    Some(k) if k.eq_ignore_ascii_case("error") => MessageSeverity::Error,
+                    Some(k) if k.eq_ignore_ascii_case("warning") => MessageSeverity::Warning,
+                    _ => MessageSeverity::Info,
+                };
+
+                messages.push(MinerMessage::new(timestamp, 0, message, severity));
             }
-        };
+        }
 
         messages
     }
@@ -765,7 +779,8 @@ impl HasDefaultAuth for BraiinsV2604 {
 
 impl HasAuth for BraiinsV2604 {
     fn set_auth(&mut self, auth: MinerAuth) {
-        self.web.set_auth(auth);
+        self.web.set_auth(auth.clone());
+        self.graphql.set_auth(auth);
     }
 }
 
@@ -795,9 +810,8 @@ mod tests {
     use super::*;
     use crate::test::json::v26_04::{
         WEB_COOLING_STATE_COMMAND, WEB_HASHBOARDS_COMMAND, WEB_LOCATE_COMMAND,
-        WEB_MINER_DETAILS_COMMAND, WEB_MINER_ERRORS_COMMAND, WEB_MINER_STATS_COMMAND,
-        WEB_NETWORK_COMMAND, WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND,
-        WEB_VERSION_COMMAND,
+        WEB_MINER_DETAILS_COMMAND, WEB_MINER_STATS_COMMAND, WEB_NETWORK_COMMAND,
+        WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND, WEB_VERSION_COMMAND,
     };
 
     #[tokio::test]
@@ -842,11 +856,13 @@ mod tests {
             Value::from_str(WEB_PERFORMANCE_TUNER_STATE_COMMAND).unwrap(),
         );
         results.insert(
-            MinerCommand::WebAPI {
-                command: "miner/errors",
-                parameters: None,
-            },
-            Value::from_str(WEB_MINER_ERRORS_COMMAND).unwrap(),
+            miner
+                .get_locations(DataField::Messages)
+                .into_iter()
+                .next()
+                .unwrap()
+                .0,
+            json!({ "events": { "appeals": [] } }),
         );
         results.insert(
             MinerCommand::WebAPI {

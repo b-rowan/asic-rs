@@ -24,7 +24,6 @@ use asic_rs_core::{
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_braiins::hardware::BraiinsControlBoard;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
@@ -105,10 +104,6 @@ impl GetDataLocations for BraiinsV2507 {
             command: "performance/tuner-state",
             parameters: None,
         };
-        const WEB_MINER_ERRORS: MinerCommand = MinerCommand::WebAPI {
-            command: "miner/errors",
-            parameters: None,
-        };
         const WEB_POOLS: MinerCommand = MinerCommand::WebAPI {
             command: "pools",
             parameters: None,
@@ -120,6 +115,18 @@ impl GetDataLocations for BraiinsV2507 {
         const WEB_HASHBOARDS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/hw/hashboards",
             parameters: None,
+        };
+        const GQL_EVENTS_QUERY: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                events {
+                    appeals {
+                        id
+                        kind
+                        message
+                        timestamp
+                    }
+                }
+            }"#,
         };
 
         match data_field {
@@ -252,10 +259,10 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Messages => vec![(
-                WEB_MINER_ERRORS,
+                GQL_EVENTS_QUERY,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/errors"),
+                    key: Some("/events/appeals"),
                     tag: None,
                 },
             )],
@@ -548,26 +555,30 @@ impl GetMessages for BraiinsV2507 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages: Vec<MinerMessage> = Vec::new();
 
-        if let Some(errors_data) = data.get(&DataField::Messages)
-            && let Some(errors_array) = errors_data.as_array()
+        if let Some(appeals_data) = data.get(&DataField::Messages)
+            && let Some(appeals_array) = appeals_data.as_array()
         {
-            for error in errors_array.iter() {
-                let timestamp = error
+            for appeal in appeals_array {
+                let timestamp = appeal
                     .get("timestamp")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32;
+
+                let message = appeal
+                    .get("message")
                     .and_then(|v| v.as_str())
-                    .and_then(|dt| dt.parse::<DateTime<Utc>>().ok())
-                    .map(|dt| dt.timestamp() as u32);
-                let message = error.get("message").and_then(|v| v.as_str());
-                if let Some(ts) = timestamp {
-                    messages.push(MinerMessage::new(
-                        ts,
-                        0, // They have codes, but they include a string
-                        message.unwrap_or("Unknown error").to_string(),
-                        MessageSeverity::Error,
-                    ))
-                }
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                let severity = match appeal.get("kind").and_then(|v| v.as_str()) {
+                    Some(k) if k.eq_ignore_ascii_case("error") => MessageSeverity::Error,
+                    Some(k) if k.eq_ignore_ascii_case("warning") => MessageSeverity::Warning,
+                    _ => MessageSeverity::Info,
+                };
+
+                messages.push(MinerMessage::new(timestamp, 0, message, severity));
             }
-        };
+        }
 
         messages
     }
@@ -785,16 +796,16 @@ mod tests {
     use crate::test::json::v25_07::{
         WEB_COOLING_STATE_COMMAND as V07_COOLING, WEB_HASHBOARDS_COMMAND as V07_BOARDS,
         WEB_LOCATE_COMMAND as V07_LOCATE, WEB_MINER_DETAILS_COMMAND as V07_DETAILS,
-        WEB_MINER_ERRORS_COMMAND as V07_ERRORS, WEB_MINER_STATS_COMMAND as V07_STATS,
-        WEB_NETWORK_COMMAND as V07_NETWORK, WEB_PERFORMANCE_TUNER_STATE_COMMAND as V07_TUNER,
-        WEB_POOLS_COMMAND as V07_POOLS, WEB_VERSION_COMMAND as V07_VERSION,
+        WEB_MINER_STATS_COMMAND as V07_STATS, WEB_NETWORK_COMMAND as V07_NETWORK,
+        WEB_PERFORMANCE_TUNER_STATE_COMMAND as V07_TUNER, WEB_POOLS_COMMAND as V07_POOLS,
+        WEB_VERSION_COMMAND as V07_VERSION,
     };
     use crate::test::json::v25_11::{
         WEB_COOLING_STATE_COMMAND as V11_COOLING, WEB_HASHBOARDS_COMMAND as V11_BOARDS,
         WEB_LOCATE_COMMAND as V11_LOCATE, WEB_MINER_DETAILS_COMMAND as V11_DETAILS,
-        WEB_MINER_ERRORS_COMMAND as V11_ERRORS, WEB_MINER_STATS_COMMAND as V11_STATS,
-        WEB_NETWORK_COMMAND as V11_NETWORK, WEB_PERFORMANCE_TUNER_STATE_COMMAND as V11_TUNER,
-        WEB_POOLS_COMMAND as V11_POOLS, WEB_VERSION_COMMAND as V11_VERSION,
+        WEB_MINER_STATS_COMMAND as V11_STATS, WEB_NETWORK_COMMAND as V11_NETWORK,
+        WEB_PERFORMANCE_TUNER_STATE_COMMAND as V11_TUNER, WEB_POOLS_COMMAND as V11_POOLS,
+        WEB_VERSION_COMMAND as V11_VERSION,
     };
 
     #[tokio::test]
@@ -838,11 +849,13 @@ mod tests {
             Value::from_str(V07_TUNER).unwrap(),
         );
         results.insert(
-            MinerCommand::WebAPI {
-                command: "miner/errors",
-                parameters: None,
-            },
-            Value::from_str(V07_ERRORS).unwrap(),
+            miner
+                .get_locations(DataField::Messages)
+                .into_iter()
+                .next()
+                .unwrap()
+                .0,
+            json!({ "events": { "appeals": [] } }),
         );
         results.insert(
             MinerCommand::WebAPI {
@@ -945,11 +958,13 @@ mod tests {
             Value::from_str(V11_TUNER).unwrap(),
         );
         results.insert(
-            MinerCommand::WebAPI {
-                command: "miner/errors",
-                parameters: None,
-            },
-            Value::from_str(V11_ERRORS).unwrap(),
+            miner
+                .get_locations(DataField::Messages)
+                .into_iter()
+                .next()
+                .unwrap()
+                .0,
+            json!({ "events": { "appeals": [] } }),
         );
         results.insert(
             MinerCommand::WebAPI {
