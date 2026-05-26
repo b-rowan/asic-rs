@@ -1,4 +1,12 @@
+use asic_rs_core::data::message::MinerComponent;
+
 const UNKNOWN: &str = "Unknown error type.";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ErrorInfo {
+    pub message: String,
+    pub component: Option<MinerComponent>,
+}
 
 /// Look up a human-readable description for a WhatsMiner error code.
 ///
@@ -12,19 +20,111 @@ const UNKNOWN: &str = "Unknown error type.";
 /// * Everything else →
 ///   type = all-but-last-2 digits, subtype = second-to-last digit,
 ///   value = last digit
+#[allow(dead_code)]
 pub fn error_message(code: u64) -> String {
-    if code < 100 {
-        return UNKNOWN.to_string();
-    }
+    error_info(code).message
+}
 
-    let (err_type, err_subtype, err_value) =
-        if code.checked_ilog10() == Some(5) && code / 100_000 != 1 {
-            (code / 10_000, (code / 1_000) % 10, code % 1_000)
-        } else {
-            (code / 100, (code / 10) % 10, code % 10)
+/// Look up a WhatsMiner error code description and the affected component.
+pub fn error_info(code: u64) -> ErrorInfo {
+    let Some((err_type, err_subtype, err_value)) = decode_error_code(code) else {
+        return ErrorInfo {
+            message: UNKNOWN.to_string(),
+            component: None,
         };
+    };
 
-    lookup(err_type, err_subtype, err_value)
+    let message = lookup(err_type, err_subtype, err_value);
+    let component = if message == UNKNOWN {
+        None
+    } else {
+        lookup_component(err_type, err_subtype, err_value)
+    };
+
+    ErrorInfo { message, component }
+}
+
+fn decode_error_code(code: u64) -> Option<(u64, u64, u64)> {
+    if code < 100 {
+        None
+    } else if code.checked_ilog10() == Some(5) && code / 100_000 != 1 {
+        Some((code / 10_000, (code / 1_000) % 10, code % 1_000))
+    } else {
+        Some((code / 100, (code / 10) % 10, code % 10))
+    }
+}
+
+fn lookup_component(err_type: u64, err_subtype: u64, err_value: u64) -> Option<MinerComponent> {
+    match err_type {
+        1 => match (err_subtype, err_value) {
+            (1..=3, 0 | 1) => fan_component(err_value),
+            _ => None,
+        },
+        2 => Some(MinerComponent::power_supply(0)),
+        3 => match (err_subtype, err_value) {
+            (0, n) | (2, n) if n != 9 => hashboard_component(n),
+            (2, 9) => Some(MinerComponent::control_board()),
+            (5, n) | (6, n @ 0..=3) => hashboard_component(n),
+            _ => None,
+        },
+        4 => match (err_subtype, err_value) {
+            (1..=5, n) => hashboard_component(n),
+            _ => None,
+        },
+        5 => match (err_subtype, err_value) {
+            (1..=9, n) => hashboard_component(n),
+            _ => None,
+        },
+        7 => match (err_subtype, err_value) {
+            (2, n) => hashboard_component(n),
+            _ => Some(MinerComponent::control_board()),
+        },
+        8 => match (err_subtype, err_value) {
+            (0, 0..=2) => Some(MinerComponent::control_board()),
+            _ => None,
+        },
+        9 => Some(MinerComponent::power_supply(0)),
+        21 => match (err_subtype, err_value) {
+            (1, n) => hashboard_component(n),
+            _ => None,
+        },
+        50 => match (err_subtype, err_value) {
+            (1..=5, n) | (7, n) | (9, n) => hashboard_component(n),
+            _ => None,
+        },
+        51 => match (err_subtype, err_value) {
+            (1..=3, n) | (7, n) => hashboard_component(n),
+            _ => None,
+        },
+        52..=56 => chip_component(err_subtype, err_value),
+        82 => match (err_subtype, err_value) {
+            (0, 0) => Some(MinerComponent::power_supply(0)),
+            (2, 0) => Some(MinerComponent::control_board()),
+            _ => None,
+        },
+        84 | 90 | 1000 | 1001 | 1100 => Some(MinerComponent::control_board()),
+        86 => match (err_subtype, err_value) {
+            (3, 0 | 1) | (4, 0..=4) => Some(MinerComponent::power_supply(0)),
+            _ => None,
+        },
+        87 => Some(MinerComponent::power_supply(0)),
+        _ => None,
+    }
+}
+
+fn fan_component(idx: u64) -> Option<MinerComponent> {
+    u16::try_from(idx).ok().map(MinerComponent::fan)
+}
+
+fn hashboard_component(idx: u64) -> Option<MinerComponent> {
+    u16::try_from(idx).ok().map(MinerComponent::hashboard)
+}
+
+fn chip_component(board_idx: u64, chip_idx: u64) -> Option<MinerComponent> {
+    Some(MinerComponent::chip(
+        u16::try_from(board_idx).ok()?,
+        u16::try_from(chip_idx).ok()?,
+    ))
 }
 
 /// Three-level lookup against the WhatsMiner error code table.
@@ -535,5 +635,30 @@ mod tests {
 
         // Assert
         assert_eq!(result, "Slot 2 not found.");
+    }
+
+    #[test]
+    fn component_targets_are_decoded_from_error_codes() {
+        assert_eq!(error_info(110).component, Some(MinerComponent::fan(0)));
+        assert_eq!(
+            error_info(218).component,
+            Some(MinerComponent::power_supply(0))
+        );
+        assert_eq!(
+            error_info(301).component,
+            Some(MinerComponent::hashboard(1))
+        );
+        assert_eq!(
+            error_info(329).component,
+            Some(MinerComponent::control_board())
+        );
+        assert_eq!(error_info(5213).component, Some(MinerComponent::chip(1, 3)));
+        assert_eq!(error_info(5625).component, Some(MinerComponent::chip(2, 5)));
+        assert_eq!(
+            error_info(532).component,
+            Some(MinerComponent::hashboard(2))
+        );
+        assert_eq!(error_info(600).component, None);
+        assert_eq!(error_info(12).component, None);
     }
 }

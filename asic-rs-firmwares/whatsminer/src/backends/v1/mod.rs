@@ -449,11 +449,13 @@ impl GetMessages for WhatsMinerV1 {
                 .and_then(|val| val.pointer(&format!("/Error Code {}", idx)))
                 .and_then(|val| val.as_u64());
             if let Some(code) = e_code {
-                messages.push(MinerMessage::new(
+                let info = crate::error_codes::error_info(code);
+                messages.push(MinerMessage::with_component(
                     0,
                     code,
-                    crate::error_codes::error_message(code),
+                    info.message,
                     MessageSeverity::Error,
+                    info.component,
                 ));
             }
         }
@@ -651,7 +653,7 @@ mod tests {
 
 #[cfg(test)]
 mod integration_tests {
-    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_core::{data::message::MinerComponent, test::api::MockAPIClient};
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
     use super::*;
@@ -806,11 +808,16 @@ mod integration_tests {
         assert_eq!(miner_data.messages.len(), 2);
         assert_eq!(miner_data.messages[0].code, 110);
         assert_eq!(miner_data.messages[0].message, "Intake fan speed error.");
+        assert_eq!(
+            miner_data.messages[0].component,
+            Some(MinerComponent::fan(0))
+        );
         assert_eq!(miner_data.messages[1].code, 600);
         assert_eq!(
             miner_data.messages[1].message,
             "Environment temperature is too high."
         );
+        assert_eq!(miner_data.messages[1].component, None);
 
         Ok(())
     }

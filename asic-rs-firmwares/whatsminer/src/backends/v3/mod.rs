@@ -549,11 +549,13 @@ impl GetMessages for WhatsMinerV3 {
 
                         if let Ok(ts) = timestamp {
                             let code = key.parse::<u64>().unwrap_or(0);
-                            messages.push(MinerMessage::new(
+                            let info = crate::error_codes::error_info(code);
+                            messages.push(MinerMessage::with_component(
                                 ts,
                                 code,
-                                crate::error_codes::error_message(code),
+                                info.message,
                                 MessageSeverity::Error,
+                                info.component,
                             ));
                         }
                     }
@@ -1033,7 +1035,7 @@ mod tests {
 
 #[cfg(test)]
 mod integration_tests {
-    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_core::{data::message::MinerComponent, test::api::MockAPIClient};
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
     use super::*;
@@ -1173,9 +1175,17 @@ mod integration_tests {
         assert_eq!(miner_data.messages[0].code, 264);
         assert_eq!(miner_data.messages[0].timestamp, 1779527950);
         assert_eq!(miner_data.messages[0].message, "Power communication error.");
+        assert_eq!(
+            miner_data.messages[0].component,
+            Some(MinerComponent::power_supply(0))
+        );
         assert_eq!(miner_data.messages[1].code, 265);
         assert_eq!(miner_data.messages[1].timestamp, 1779527950);
         assert_eq!(miner_data.messages[1].message, "Power unknown error.");
+        assert_eq!(
+            miner_data.messages[1].component,
+            Some(MinerComponent::power_supply(0))
+        );
 
         Ok(())
     }
