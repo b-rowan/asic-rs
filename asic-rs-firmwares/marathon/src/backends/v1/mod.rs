@@ -909,6 +909,7 @@ impl GetMessages for MaraV1 {
                     code: 0,
                     message: message_text,
                     severity: level,
+                    component: None,
                 };
 
                 result.push(m_msg);

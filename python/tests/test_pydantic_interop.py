@@ -12,8 +12,11 @@ from pyasic_rs.data import (
     ChipData,
     HashRate,
     HashRateUnit,
+    MessageSeverity,
+    MinerComponent,
     MinerControlBoard,
     MinerData,
+    MinerMessage,
     MiningMode,
 )
 
@@ -44,6 +47,14 @@ class MinerDataModel(BaseModel):
 
 class MinerControlBoardModel(BaseModel):
     control_board: MinerControlBoard
+
+
+class MinerComponentModel(BaseModel):
+    component: MinerComponent
+
+
+class MinerMessageModel(BaseModel):
+    message: MinerMessage
 
 
 HASHRATE_UNIT_CASES = [
@@ -581,6 +592,74 @@ def test_miner_data_control_board_uses_model_shape() -> None:
     assert model.model_dump()["miner"]["control_board_version"] == {
         "known": True,
         "name": "CV1835",
+    }
+
+
+def test_miner_component_validates_and_serializes_as_tagged_union() -> None:
+    model = MinerComponentModel.model_validate(
+        {"component": {"type": "HashBoard", "idx": 1, "chip_idx": 12}}
+    )
+
+    assert isinstance(model.component, MinerComponent)
+    assert model.component.model_dump() == {
+        "type": "HashBoard",
+        "idx": 1,
+        "chip_idx": 12,
+    }
+    assert model.model_dump() == {
+        "component": {"type": "HashBoard", "idx": 1, "chip_idx": 12}
+    }
+
+
+def test_miner_component_accepts_variant_instances() -> None:
+    component = MinerComponent.Fan(idx=2)
+    hashboard = MinerComponent.hashboard(1)
+    model = MinerComponentModel.model_validate({"component": component})
+
+    assert isinstance(model.component, MinerComponent.Fan)
+    assert model.component.idx == 2
+    assert hashboard.model_dump() == {"type": "HashBoard", "idx": 1, "chip_idx": None}
+    assert model.model_dump() == {"component": {"type": "Fan", "idx": 2}}
+
+
+def test_miner_message_component_defaults_to_none() -> None:
+    message = MinerMessage.model_validate(
+        {"timestamp": 1, "code": 2, "message": "ok", "severity": "Info"}
+    )
+
+    assert message.component is None
+    assert message.model_dump() == {
+        "timestamp": 1,
+        "code": 2,
+        "message": "ok",
+        "severity": "Info",
+        "component": None,
+    }
+
+
+def test_miner_message_round_trips_component() -> None:
+    model = MinerMessageModel.model_validate(
+        {
+            "message": {
+                "timestamp": 1,
+                "code": 2,
+                "message": "fan speed low",
+                "severity": MessageSeverity.Warning,
+                "component": {"type": "Fan", "idx": 0},
+            }
+        }
+    )
+
+    assert isinstance(model.message.component, MinerComponent.Fan)
+    assert model.message.component.idx == 0
+    assert model.model_dump() == {
+        "message": {
+            "timestamp": 1,
+            "code": 2,
+            "message": "fan speed low",
+            "severity": "Warning",
+            "component": {"type": "Fan", "idx": 0},
+        }
     }
 
 

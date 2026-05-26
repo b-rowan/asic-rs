@@ -393,6 +393,7 @@ impl GetMessages for Bitaxe200 {
                 code: 0u64,
                 message: "Overheat Mode is Enabled!".to_string(),
                 severity: MessageSeverity::Warning,
+                component: None,
             });
         };
         messages

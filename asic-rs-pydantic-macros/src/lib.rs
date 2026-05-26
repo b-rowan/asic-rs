@@ -769,6 +769,101 @@ fn expand_py_pydantic_enum(input: &DeriveInput) -> syn::Result<proc_macro2::Toke
     })
 }
 
+fn expand_pydantic_type_pymethods(
+    name: &syn::Ident,
+    name_str: &LitStr,
+) -> proc_macro2::TokenStream {
+    quote! {
+        #[::pyo3::pymethods]
+        impl #name {
+            #[classmethod]
+            #[pyo3(signature = (_source_type: "object", _handler: "object") -> "object")]
+            pub fn __get_pydantic_core_schema__(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                _source_type: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+                _handler: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                let core_schema = cls.py().import("pydantic_core")?.getattr("core_schema")?;
+                let validation_schema =
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
+                        &core_schema,
+                        ::asic_rs_pydantic::PydanticSchemaMode::Validation,
+                    )?;
+                let serialization_schema =
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
+                        &core_schema,
+                        ::asic_rs_pydantic::PydanticSchemaMode::Serialization,
+                    )?;
+                ::asic_rs_pydantic::model_core_schema(
+                    cls,
+                    &validation_schema,
+                    &serialization_schema,
+                )
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (obj: "object", **_kwargs: "object") -> #name_str)]
+            pub fn model_validate(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                obj: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+                _kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                use ::pyo3::IntoPyObject as _;
+                ::asic_rs_pydantic::reject_model_kwargs(_kwargs, "model_validate")?;
+                if obj.is_instance(cls)? {
+                    return Ok(obj.clone().unbind());
+                }
+                Ok(
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(obj)?
+                        .into_pyobject(obj.py())?
+                        .into_any()
+                        .unbind()
+                )
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (**kwargs: "object") -> "dict[str, object]")]
+            pub fn model_json_schema(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                ::asic_rs_pydantic::model_json_schema(cls, kwargs)
+            }
+
+            #[pyo3(signature = (**_kwargs: "object") -> "object")]
+            pub fn model_dump(
+                &self,
+                py: ::pyo3::Python<'_>,
+                _kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                ::asic_rs_pydantic::reject_model_kwargs(_kwargs, "model_dump")?;
+                <Self as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(self, py)
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (value: "object") -> #name_str)]
+            fn _pydantic_validate(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                value: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                Self::model_validate(cls, value, None)
+            }
+
+            #[staticmethod]
+            #[pyo3(signature = (value: #name_str) -> "object")]
+            fn _pydantic_serialize(
+                value: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                let model = value.extract::<Self>()?;
+                <Self as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(&model, value.py())
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct TaggedUnionOptions {
     discriminator: Option<LitStr>,
@@ -871,6 +966,14 @@ fn parse_tagged_union_variant(variant: &syn::Variant) -> syn::Result<TaggedUnion
 pub fn derive_py_pydantic_tagged_union(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     expand_py_pydantic_tagged_union(&input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(PyPydanticTaggedEnum, attributes(pydantic))]
+pub fn derive_py_pydantic_tagged_enum(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    expand_py_pydantic_tagged_enum(&input)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
@@ -1141,6 +1244,369 @@ fn expand_py_pydantic_tagged_union(input: &DeriveInput) -> syn::Result<proc_macr
         }
 
         #into_pyobject_impl
+    })
+}
+
+struct TaggedEnumField<'a> {
+    ident: &'a syn::Ident,
+    ty: &'a syn::Type,
+    options: PydanticModelFieldOptions,
+}
+
+enum TaggedEnumVariantFields<'a> {
+    Unit,
+    Named(Vec<TaggedEnumField<'a>>),
+}
+
+struct TaggedEnumVariant<'a> {
+    ident: &'a syn::Ident,
+    tag: LitStr,
+    fields: TaggedEnumVariantFields<'a>,
+}
+
+fn parse_tagged_enum_variant(variant: &syn::Variant) -> syn::Result<TaggedEnumVariant<'_>> {
+    let mut tag = None;
+    for attr in &variant.attrs {
+        if !attr.path().is_ident("pydantic") {
+            continue;
+        }
+
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("tag") {
+                if tag.is_some() {
+                    return Err(meta.error("duplicate pydantic tag"));
+                }
+                tag = Some(meta.value()?.parse()?);
+                Ok(())
+            } else {
+                Err(meta.error("unknown pydantic tagged enum variant option"))
+            }
+        })?;
+    }
+
+    let tag = tag.ok_or_else(|| {
+        syn::Error::new_spanned(
+            variant,
+            "PyPydanticTaggedEnum variants require #[pydantic(tag = \"...\")]",
+        )
+    })?;
+
+    let fields = match &variant.fields {
+        Fields::Unit => TaggedEnumVariantFields::Unit,
+        Fields::Named(fields) => TaggedEnumVariantFields::Named(
+            fields
+                .named
+                .iter()
+                .map(|field| {
+                    let ident = field
+                        .ident
+                        .as_ref()
+                        .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
+                    Ok(TaggedEnumField {
+                        ident,
+                        ty: &field.ty,
+                        options: PydanticModelFieldOptions::parse(field)?,
+                    })
+                })
+                .collect::<syn::Result<Vec<_>>>()?,
+        ),
+        Fields::Unnamed(_) => {
+            return Err(syn::Error::new_spanned(
+                variant,
+                "PyPydanticTaggedEnum supports unit variants and named-field variants",
+            ));
+        }
+    };
+
+    Ok(TaggedEnumVariant {
+        ident: &variant.ident,
+        tag,
+        fields,
+    })
+}
+
+fn expand_tagged_enum_field_schema(field: &TaggedEnumField<'_>) -> proc_macro2::TokenStream {
+    let ident = field.ident;
+    let ty = field.ty;
+    let key = LitStr::new(&ident.to_string(), ident.span());
+    let schema = if let Some(literal) = &field.options.literal {
+        quote! {
+            ::asic_rs_pydantic::literal_schema(core_schema, &[#literal])?
+        }
+    } else {
+        quote! {
+            <#ty as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
+                core_schema,
+                mode,
+            )?
+        }
+    };
+    let required = if field.options.default.is_some() || field.options.literal.is_some() {
+        quote!(mode == ::asic_rs_pydantic::PydanticSchemaMode::Serialization)
+    } else {
+        quote!(true)
+    };
+
+    quote! {
+        let field_schema = #schema;
+        fields.set_item(
+            #key,
+            ::asic_rs_pydantic::typed_dict_field(core_schema, &field_schema, #required)?,
+        )?;
+    }
+}
+
+fn expand_tagged_enum_field_parse(field: &TaggedEnumField<'_>) -> proc_macro2::TokenStream {
+    let ident = field.ident;
+    let ty = field.ty;
+    let key = LitStr::new(&ident.to_string(), ident.span());
+
+    if let Some(literal) = &field.options.literal {
+        quote! {
+            #ident: {
+                if let Some(actual) = ::asic_rs_pydantic::get_optional_field(value, #key)? {
+                    let actual = ::asic_rs_pydantic::py_to_string(&actual)?;
+                    if actual != #literal {
+                        return Err(::pyo3::exceptions::PyValueError::new_err(
+                            format!(
+                                "Expected {} to be {:?}, got {:?}",
+                                #key,
+                                #literal,
+                                actual,
+                            ),
+                        ));
+                    }
+                }
+                #literal.to_owned()
+            },
+        }
+    } else if let Some(default) = &field.options.default {
+        quote! {
+            #ident: if let Some(field) = ::asic_rs_pydantic::get_optional_field(value, #key)? {
+                <#ty as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(&field)?
+            } else {
+                #default
+            },
+        }
+    } else {
+        quote! {
+            #ident: <#ty as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(
+                &::asic_rs_pydantic::get_required_field(value, #key)?,
+            )?,
+        }
+    }
+}
+
+fn expand_tagged_enum_field_data(field: &TaggedEnumField<'_>) -> proc_macro2::TokenStream {
+    let ident = field.ident;
+    let ty = field.ty;
+    let key = LitStr::new(&ident.to_string(), ident.span());
+
+    quote! {
+        dict.set_item(
+            #key,
+            <#ty as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(#ident, py)?,
+        )?;
+    }
+}
+
+fn expand_py_pydantic_tagged_enum(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let name = &input.ident;
+    let name_str = name.to_string();
+    let name_str_lit = LitStr::new(&name_str, name.span());
+    if !input.generics.params.is_empty() {
+        return Err(syn::Error::new_spanned(
+            &input.generics,
+            "PyPydanticTaggedEnum does not support generic enums",
+        ));
+    }
+
+    let options = TaggedUnionOptions::parse(input)?;
+    if options.value_field.is_some() {
+        return Err(syn::Error::new_spanned(
+            input,
+            "PyPydanticTaggedEnum does not support #[pydantic(value = \"...\")]",
+        ));
+    }
+    let discriminator = options.discriminator.ok_or_else(|| {
+        syn::Error::new_spanned(
+            input,
+            "PyPydanticTaggedEnum requires #[pydantic(discriminator = \"...\")]",
+        )
+    })?;
+    let ref_name = options.ref_name.unwrap_or_else(|| {
+        LitStr::new(
+            &format!("asic_rs.{name_str}"),
+            proc_macro2::Span::call_site(),
+        )
+    });
+    let Data::Enum(data) = &input.data else {
+        return Err(syn::Error::new_spanned(
+            input,
+            "PyPydanticTaggedEnum requires an enum",
+        ));
+    };
+    let variants = data
+        .variants
+        .iter()
+        .map(parse_tagged_enum_variant)
+        .collect::<syn::Result<Vec<_>>>()?;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let schema_choices = variants.iter().map(|variant| {
+        let tag = &variant.tag;
+        let variant_name = variant.ident.to_string();
+        let variant_ref = LitStr::new(
+            &format!("{}{}", ref_name.value(), variant_name),
+            proc_macro2::Span::call_site(),
+        );
+        let field_schemas = match &variant.fields {
+            TaggedEnumVariantFields::Unit => Vec::new(),
+            TaggedEnumVariantFields::Named(fields) => fields
+                .iter()
+                .map(expand_tagged_enum_field_schema)
+                .collect::<Vec<_>>(),
+        };
+        quote! {
+            {
+                let fields = ::pyo3::types::PyDict::new(core_schema.py());
+                let tag_schema = ::asic_rs_pydantic::literal_schema(core_schema, &[#tag])?;
+                fields.set_item(
+                    #discriminator,
+                    ::asic_rs_pydantic::typed_dict_field(core_schema, &tag_schema, true)?,
+                )?;
+                #(#field_schemas)*
+                (
+                    #tag,
+                    ::asic_rs_pydantic::typed_dict_schema(
+                        core_schema,
+                        &fields,
+                        Some(#variant_ref),
+                    )?,
+                )
+            }
+        }
+    });
+
+    let parse_matches = variants.iter().map(|variant| {
+        let ident = variant.ident;
+        let tag = &variant.tag;
+        match &variant.fields {
+            TaggedEnumVariantFields::Unit => quote! {
+                #tag => Ok(Self::#ident),
+            },
+            TaggedEnumVariantFields::Named(fields) => {
+                let field_parsers = fields
+                    .iter()
+                    .map(expand_tagged_enum_field_parse)
+                    .collect::<Vec<_>>();
+                quote! {
+                    #tag => Ok(Self::#ident {
+                        #(#field_parsers)*
+                    }),
+                }
+            }
+        }
+    });
+
+    let data_matches = variants.iter().map(|variant| {
+        let ident = variant.ident;
+        let tag = &variant.tag;
+        match &variant.fields {
+            TaggedEnumVariantFields::Unit => quote! {
+                Self::#ident => {
+                    use ::pyo3::types::PyDictMethods as _;
+                    let dict = ::pyo3::types::PyDict::new(py);
+                    dict.set_item(#discriminator, #tag)?;
+                    Ok(dict.into_any().unbind())
+                }
+            },
+            TaggedEnumVariantFields::Named(fields) => {
+                let field_idents = fields.iter().map(|field| field.ident).collect::<Vec<_>>();
+                let field_data = fields
+                    .iter()
+                    .map(expand_tagged_enum_field_data)
+                    .collect::<Vec<_>>();
+                quote! {
+                    Self::#ident { #(#field_idents,)* } => {
+                        use ::pyo3::types::PyDictMethods as _;
+                        let dict = ::pyo3::types::PyDict::new(py);
+                        dict.set_item(#discriminator, #tag)?;
+                        #(#field_data)*
+                        Ok(dict.into_any().unbind())
+                    }
+                }
+            }
+        }
+    });
+
+    let methods = expand_pydantic_type_pymethods(name, &name_str_lit);
+
+    Ok(quote! {
+        impl #impl_generics ::asic_rs_pydantic::PyPydanticType for #name #ty_generics #where_clause {
+            fn pydantic_schema<'py>(
+                core_schema: &::pyo3::Bound<'py, ::pyo3::PyAny>,
+                mode: ::asic_rs_pydantic::PydanticSchemaMode,
+            ) -> ::pyo3::PyResult<::pyo3::Bound<'py, ::pyo3::PyAny>> {
+                use ::pyo3::types::PyDictMethods as _;
+                let tagged_union = ::asic_rs_pydantic::tagged_union_schema(
+                    core_schema,
+                    [#(#schema_choices),*],
+                    #discriminator,
+                    Some(#ref_name),
+                )?;
+
+                if mode == ::asic_rs_pydantic::PydanticSchemaMode::Serialization {
+                    return Ok(tagged_union);
+                }
+
+                let instance_schema = core_schema.call_method1(
+                    "is_instance_schema",
+                    (core_schema.py().get_type::<Self>(),),
+                )?;
+                ::asic_rs_pydantic::union_schema(core_schema, [instance_schema, tagged_union])
+            }
+
+            fn from_pydantic(value: &::pyo3::Bound<'_, ::pyo3::PyAny>) -> ::pyo3::PyResult<Self> {
+                use ::pyo3::types::PyAnyMethods as _;
+
+                if let Ok(value) = value.extract::<Self>() {
+                    return Ok(value);
+                }
+
+                let tag = ::asic_rs_pydantic::get_required_field(value, #discriminator)?
+                    .extract::<String>()?;
+                match tag.as_str() {
+                    #(#parse_matches)*
+                    tag => Err(::pyo3::exceptions::PyValueError::new_err(format!(
+                        "Unknown {} tag: {tag:?}",
+                        #name_str_lit,
+                    ))),
+                }
+            }
+
+            fn to_pydantic_data(
+                &self,
+                py: ::pyo3::Python<'_>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                match self {
+                    #(#data_matches)*
+                }
+            }
+
+            fn to_pydantic_repr_value(
+                &self,
+                py: ::pyo3::Python<'_>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::IntoPyObject as _;
+                Ok(<Self as ::std::clone::Clone>::clone(self)
+                    .into_pyobject(py)?
+                    .into_any()
+                    .unbind())
+            }
+        }
+
+        #methods
     })
 }
 
