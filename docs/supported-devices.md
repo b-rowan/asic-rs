@@ -83,17 +83,6 @@ Legend: ✅ means every backend subtype for that firmware type supports the func
       <td>✅</td>
     </tr>
     <tr>
-      <td>ePIC</td>
-      <td>✅</td>
-      <td>✅</td>
-      <td>✅</td>
-      <td>✅</td>
-      <td>✅</td>
-      <td>❌</td>
-      <td>✅</td>
-      <td>✅</td>
-    </tr>
-    <tr>
       <td>LuxOS</td>
       <td>✅</td>
       <td>❌</td>
@@ -134,6 +123,17 @@ Legend: ✅ means every backend subtype for that firmware type supports the func
       <td>❌</td>
       <td>✅</td>
       <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>UMC OS</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>❌</td>
       <td>✅</td>
       <td>✅</td>
     </tr>
