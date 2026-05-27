@@ -39,7 +39,7 @@ mod asic_rs {
         board::{BoardData, ChipData, MinerControlBoard},
         device::{DeviceInfo, MinerHardware},
         fan::FanData,
-        message::{MessageSeverity, MinerMessage},
+        message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::{MinerData, TuningTargetHashRate, TuningTargetMode, TuningTargetPower},
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
     };

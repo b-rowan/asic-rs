@@ -118,4 +118,18 @@ impl FromStr for GeneratedEnum {
     }
 }
 
+#[pyclass(from_py_object)]
+#[derive(Clone, asic_rs_pydantic::PyPydanticTaggedEnum)]
+#[pydantic(discriminator = "type")]
+enum GeneratedTaggedEnum {
+    #[pydantic(tag = "Unit")]
+    Unit {},
+    #[pydantic(tag = "Payload")]
+    Payload {
+        value: u32,
+        #[pydantic(default = None)]
+        maybe: Option<u16>,
+    },
+}
+
 fn main() {}

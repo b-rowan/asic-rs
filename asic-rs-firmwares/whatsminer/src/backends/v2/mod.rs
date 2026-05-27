@@ -521,11 +521,13 @@ impl GetMessages for WhatsMinerV2 {
 
                         if let Ok(ts) = timestamp {
                             let parsed_code = code.parse::<u64>().unwrap_or(0);
-                            messages.push(MinerMessage::new(
+                            let info = crate::error_codes::error_info(parsed_code);
+                            messages.push(MinerMessage::with_component(
                                 ts,
                                 parsed_code,
-                                crate::error_codes::error_message(parsed_code),
+                                info.message,
                                 MessageSeverity::Error,
+                                info.component,
                             ))
                         }
                     }
@@ -986,7 +988,7 @@ mod tests {
 
 #[cfg(test)]
 mod integration_tests {
-    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_core::{data::message::MinerComponent, test::api::MockAPIClient};
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
     use super::*;
@@ -1184,8 +1186,16 @@ mod integration_tests {
             miner_data.messages[0].message,
             "Power input voltage is lower than 230V for high power mode."
         );
+        assert_eq!(
+            miner_data.messages[0].component,
+            Some(MinerComponent::power_supply(0))
+        );
         assert_eq!(miner_data.messages[1].code, 110);
         assert_eq!(miner_data.messages[1].message, "Intake fan speed error.");
+        assert_eq!(
+            miner_data.messages[1].component,
+            Some(MinerComponent::fan(0))
+        );
 
         Ok(())
     }

@@ -20,7 +20,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
+        message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -565,6 +565,7 @@ impl GetMessages for SealMinerV2025 {
                 code: 0,
                 message: format!("Error Code: {code}"),
                 severity: MessageSeverity::Error,
+                component: None,
             });
         }
 
@@ -580,6 +581,7 @@ impl GetMessages for SealMinerV2025 {
                     code: 0,
                     message: format!("Board {i}: {bad} bad chip(s)"),
                     severity: MessageSeverity::Warning,
+                    component: Some(MinerComponent::hashboard(i as u16)),
                 });
             }
         }

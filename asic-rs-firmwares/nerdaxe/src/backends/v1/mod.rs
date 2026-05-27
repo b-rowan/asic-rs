@@ -382,6 +382,7 @@ impl GetMessages for NerdAxeV1 {
                 code: 0u64,
                 message: "Overheat Mode is Enabled!".to_string(),
                 severity: MessageSeverity::Warning,
+                component: None,
             });
         };
         messages

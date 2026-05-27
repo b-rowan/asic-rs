@@ -10,7 +10,8 @@ use pyo3::{
 };
 
 pub use asic_rs_pydantic_macros::{
-    PyPydanticData, PyPydanticEnum, PyPydanticModel, PyPydanticTaggedUnion, py_pydantic_model,
+    PyPydanticData, PyPydanticEnum, PyPydanticModel, PyPydanticTaggedEnum, PyPydanticTaggedUnion,
+    py_pydantic_model,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
