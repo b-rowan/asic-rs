@@ -20,7 +20,7 @@ pub struct ErrorInfo {
 /// * Everything else →
 ///   type = all-but-last-2 digits, subtype = second-to-last digit,
 ///   value = last digit
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn error_message(code: u64) -> String {
     error_info(code).message
 }
@@ -62,8 +62,8 @@ fn lookup_component(err_type: u64, err_subtype: u64, err_value: u64) -> Option<M
         },
         2 => Some(MinerComponent::power_supply(0)),
         3 => match (err_subtype, err_value) {
-            (0, n) | (2, n) if n != 9 => hashboard_component(n),
             (2, 9) => Some(MinerComponent::control_board()),
+            (0, n) | (2, n) => hashboard_component(n),
             (5, n) | (6, n @ 0..=3) => hashboard_component(n),
             _ => None,
         },
