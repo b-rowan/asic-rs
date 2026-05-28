@@ -3,8 +3,11 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanConfig,
         pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
     },
     data::{
         board::{BoardData, MinerControlBoard},
@@ -30,7 +33,10 @@ use reqwest::Method;
 use serde_json::{Value, json};
 use web::BraiinsWebAPI;
 
-use crate::{backends::v21_09::graphql::BraiinsGraphQLAPI, firmware::BraiinsFirmware};
+use crate::{
+    backends::{config as braiins_config, v21_09::graphql::BraiinsGraphQLAPI},
+    firmware::BraiinsFirmware,
+};
 
 pub mod web;
 
@@ -66,9 +72,23 @@ impl APIClient for BraiinsV2507 {
 }
 
 impl GetConfigsLocations for BraiinsV2507 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_PERFORMANCE_TUNER_STATE: MinerCommand = MinerCommand::WebAPI {
+            command: "performance/tuner-state",
+            parameters: None,
+        };
+
+        match data_field {
+            ConfigField::Tuning => vec![(
+                WEB_PERFORMANCE_TUNER_STATE,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -744,8 +764,25 @@ impl FactoryReset for BraiinsV2507 {
 
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2507 {
+    async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
+        Ok(self
+            .web
+            .send_command(
+                "performance/dps",
+                true,
+                Some(braiins_config::openapi_scaling_payload(
+                    &config,
+                    braiins_config::TuningKind::Power,
+                    Some(1),
+                )),
+                Method::PUT,
+            )
+            .await
+            .is_ok())
+    }
+
     fn supports_scaling_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -771,15 +808,67 @@ impl HasAuth for BraiinsV2507 {
 
 #[async_trait]
 impl SupportsTuningConfig for BraiinsV2507 {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
+    ) -> anyhow::Result<bool> {
+        if let Some(scaling_config) = scaling_config {
+            self.web
+                .send_command(
+                    "performance/dps",
+                    true,
+                    Some(braiins_config::openapi_scaling_payload(
+                        &scaling_config,
+                        braiins_config::tuning_kind(&config)?,
+                        Some(1),
+                    )),
+                    Method::PUT,
+                )
+                .await?;
+        }
+
+        Ok(self
+            .web
+            .send_command(
+                "performance/mode",
+                true,
+                Some(braiins_config::openapi_tuning_payload(&config)?),
+                Method::PUT,
+            )
+            .await
+            .is_ok())
+    }
+
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        braiins_config::parse_openapi_tuning_config(data)
+    }
+
     fn supports_tuning_config(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl SupportsFanConfig for BraiinsV2507 {
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        Ok(self
+            .web
+            .send_command(
+                "cooling/mode",
+                true,
+                Some(braiins_config::openapi_fan_payload(&config)?),
+                Method::PUT,
+            )
+            .await
+            .is_ok())
+    }
+
     fn supports_fan_config(&self) -> bool {
-        false
+        true
     }
 }
 

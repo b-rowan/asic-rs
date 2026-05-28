@@ -1,3 +1,4 @@
+pub(crate) mod config;
 pub mod v21_09;
 pub mod v25_03;
 pub mod v25_05;

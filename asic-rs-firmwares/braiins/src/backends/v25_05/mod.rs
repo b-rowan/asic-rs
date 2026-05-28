@@ -3,8 +3,11 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanConfig,
         pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
     },
     data::{
         board::BoardData,
@@ -27,7 +30,10 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::{Value, json};
 
 use crate::{
-    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    backends::{
+        config as braiins_config,
+        v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    },
     firmware::BraiinsFirmware,
 };
 
@@ -66,9 +72,71 @@ impl APIClient for BraiinsV2505 {
 }
 
 impl GetConfigsLocations for BraiinsV2505 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const GQL_CONFIG: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            tempControl {
+                                mode
+                                targetTemp
+                            }
+                            fanControl {
+                                speed
+                                minFans
+                                minFanSpeed
+                                maxFanSpeed
+                            }
+                            autotuning {
+                                enabled
+                                mode
+                                powerTarget
+                                hashrateTarget
+                            }
+                            performanceScaling {
+                                enabled
+                                powerStep
+                                minPowerTarget
+                                hashrateStep
+                                minHashrateTarget
+                                shutdownEnabled
+                                shutdownDuration
+                                dpsMode
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+
+        match data_field {
+            ConfigField::Scaling => vec![(
+                GQL_CONFIG,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/config/performanceScaling"),
+                    tag: None,
+                },
+            )],
+            ConfigField::Tuning => vec![(
+                GQL_CONFIG,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/config/autotuning"),
+                    tag: None,
+                },
+            )],
+            ConfigField::Fan => vec![(
+                GQL_CONFIG,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/config"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -861,8 +929,30 @@ impl SupportsPoolsConfig for BraiinsV2505 {
 
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2505 {
+    async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
+        let result = self
+            .graphql
+            .send_command(
+                braiins_config::LEGACY_UPDATE_AUTOTUNING_MUTATION,
+                true,
+                Some(braiins_config::legacy_scaling_variables(&config)),
+            )
+            .await?;
+
+        Ok(result
+            .pointer("/bosminer/config/updateAutotuning/message")
+            .is_none())
+    }
+
+    fn parse_scaling_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ScalingConfig> {
+        braiins_config::parse_legacy_scaling_config(data)
+    }
+
     fn supports_scaling_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -888,15 +978,62 @@ impl HasAuth for BraiinsV2505 {
 
 #[async_trait]
 impl SupportsTuningConfig for BraiinsV2505 {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
+    ) -> anyhow::Result<bool> {
+        let variables = braiins_config::legacy_tuning_variables(&config, scaling_config.as_ref())?;
+        let result = self
+            .graphql
+            .send_command(
+                braiins_config::LEGACY_UPDATE_AUTOTUNING_MUTATION,
+                true,
+                Some(variables),
+            )
+            .await?;
+
+        Ok(result
+            .pointer("/bosminer/config/updateAutotuning/message")
+            .is_none())
+    }
+
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        braiins_config::parse_legacy_tuning_config(data)
+    }
+
     fn supports_tuning_config(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl SupportsFanConfig for BraiinsV2505 {
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        let variables = braiins_config::legacy_fan_variables(&config, true)?;
+        let result = self
+            .graphql
+            .send_command(
+                braiins_config::LEGACY_UPDATE_TEMP_AND_FANS_MUTATION,
+                true,
+                Some(variables),
+            )
+            .await?;
+
+        Ok(result
+            .pointer("/bosminer/config/updateTempAndFans/message")
+            .is_none())
+    }
+
+    fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
+        braiins_config::parse_legacy_fan_config(data)
+    }
+
     fn supports_fan_config(&self) -> bool {
-        false
+        true
     }
 }
 

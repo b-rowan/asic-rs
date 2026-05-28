@@ -1,12 +1,17 @@
 use once_cell::sync::OnceCell;
 use std::{net::IpAddr, time::Duration};
 
-use anyhow;
-use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
+use anyhow::{self, Context};
+use asic_rs_core::{
+    data::{command::MinerCommand, firmware::FirmwareImage},
+    traits::miner::*,
+};
 use async_trait::async_trait;
-use reqwest::{Client, Method, Response};
-use serde_json::Value;
+use reqwest::{Client, Method, Response, multipart};
+use serde_json::{Value, json};
 use tokio::sync::RwLock;
+
+use crate::backends::config as braiins_config;
 
 /// Braiins WebAPI client
 #[derive(Debug)]
@@ -158,6 +163,60 @@ impl BraiinsWebAPI {
 
         let logs = response.text().await?;
         Ok(logs)
+    }
+
+    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        self.ensure_authenticated()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
+
+        let FirmwareImage { filename, bytes } = image;
+        let metadata = json!({
+            "size": bytes.len() as u64,
+            "hash": braiins_config::sha256_hex(&bytes).await,
+            "discard_settings": false,
+            "disable_cleanup": false,
+        });
+        let form = multipart::Form::new()
+            .text("metadata", metadata.to_string())
+            .part(
+                "data",
+                multipart::Part::bytes(bytes)
+                    .file_name(filename)
+                    .mime_str("application/octet-stream")
+                    .context("failed to set firmware part mime type")?,
+            );
+
+        let url = format!(
+            "http://{}:{}/api/v1/upgrade/system-upgrade",
+            self.ip, self.port
+        );
+        let mut request = self
+            .client()?
+            .post(url)
+            .timeout(self.timeout.max(Duration::from_secs(300)))
+            .multipart(form);
+
+        if let Some(ref token) = *self.bearer_token.read().await {
+            request = request.header("Authorization", token.to_string());
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(|e| BraiinsError::NetworkError(e.to_string()))?;
+        let status = response.status();
+
+        if status.is_success() {
+            return Ok(true);
+        }
+
+        let body = response.text().await.unwrap_or_default();
+        Err(anyhow::anyhow!(
+            "firmware upgrade failed with status {}: {}",
+            status,
+            body
+        ))
     }
 
     /// Execute the actual HTTP request

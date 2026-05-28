@@ -203,7 +203,6 @@ dependencies = [
  "asic-rs-makes-antminer",
  "asic-rs-makes-braiins",
  "async-trait",
- "chrono",
  "macaddr",
  "measurements",
  "once_cell",
@@ -211,6 +210,7 @@ dependencies = [
  "reqwest",
  "semver",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
