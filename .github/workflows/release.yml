@@ -72,7 +72,7 @@ jobs:
           echo "::endgroup::"
           done
 
-          docker run --rm -v "$PWD:/workspace" -w /workspace codeberg.org/msrd0/cargo-doc2readme cargo doc2readme
+          docker run --rm -v "$PWD:/workspace" -w /workspace codeberg.org/msrd0/cargo-doc2readme:nightly cargo doc2readme --expand-macros
 
           git add Cargo.toml pyproject.toml README.md
 
@@ -259,11 +259,18 @@ jobs:
     needs: prepare-release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
       - name: Install cargo-workspaces
         run: cargo install cargo-workspaces
+      - name: Commit Cargo.lock changes
+        run: |
+          if [ -n "$(git status --short Cargo.lock)" ]; then
+            git add Cargo.lock
+            git commit -m "chore(release): update Cargo.lock"
+            git push origin HEAD:main  # Adjust branch name as needed
+          fi
       - name: Publish crates
         run: cargo workspaces publish --from-git --yes --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -275,7 +282,7 @@ jobs:
       contents: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
           fetch-depth: 0
