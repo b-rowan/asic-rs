@@ -1,3 +1,4 @@
+pub(crate) mod util;
 pub mod v21_09;
 pub mod v25_03;
 pub mod v25_05;
@@ -10,6 +11,7 @@ use asic_rs_core::traits::{
     miner::{Miner, MinerConstructor},
     model::MinerModel,
 };
+
 use semver::Version;
 use v21_09::BraiinsV2109;
 use v25_03::BraiinsV2503;

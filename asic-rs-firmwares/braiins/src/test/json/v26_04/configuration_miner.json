@@ -1,0 +1,11 @@
+{
+  "pool_groups": [],
+  "tuner": {
+    "enabled": true,
+    "hashrate_target": null,
+    "power_target": {
+      "watt": 3500
+    },
+    "tuner_mode": 1
+  }
+}

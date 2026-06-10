@@ -27,6 +27,8 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::{Value, json};
 use web::BraiinsWebAPI;
 
+use crate::backends::util::{parse_configured_tuning_target, parse_scaled_tuning_target};
+
 use crate::{
     backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI},
     firmware::BraiinsFirmware,
@@ -119,6 +121,26 @@ impl GetDataLocations for BraiinsV2109 {
                                 hwDetails { chips frequencyMhz voltageV }
                                 temperatures { name degreesC }
                             }
+                        }
+                    }
+                }
+            }"#,
+        };
+        const GQL_TUNING: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            autotuning {
+                                mode
+                                powerTarget
+                                hashrateTarget
+                            }
+                        }
+                    }
+                    info {
+                        summary {
+                            power { limitW }
                         }
                     }
                 }
@@ -272,14 +294,40 @@ impl GetDataLocations for BraiinsV2109 {
                     tag: None,
                 },
             )],
-            DataField::TuningTarget => vec![(
-                GQL_SYSTEM,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/bosminer/info/summary/power/limitW"),
-                    tag: None,
-                },
-            )],
+            DataField::TuningTarget => vec![
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/mode"),
+                        tag: Some("mode"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/powerTarget"),
+                        tag: Some("configured_power"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/hashrateTarget"),
+                        tag: Some("configured_hashrate"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/info/summary/power/limitW"),
+                        tag: Some("scaled_power"),
+                    },
+                ),
+            ],
             DataField::IsMining => vec![(
                 GQL_SYSTEM,
                 DataExtractor {
@@ -481,12 +529,17 @@ impl GetWattage for BraiinsV2109 {
 
 impl GetTuningTarget for BraiinsV2109 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
-            .map(TuningTarget::Power)
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_configured_tuning_target)
     }
 }
 
-impl GetScaledTuningTarget for BraiinsV2109 {}
+impl GetScaledTuningTarget for BraiinsV2109 {
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_scaled_tuning_target)
+    }
+}
 
 impl GetLightFlashing for BraiinsV2109 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
@@ -915,9 +968,13 @@ mod tests {
 
     use super::*;
     use crate::test::json::v21_09::{
-        GQL_BOARDS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND, VERSION_COMMAND,
-        WEB_NET_CONF_COMMAND,
+        GQL_BOARDS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND, GQL_TUNING_COMMAND,
+        VERSION_COMMAND, WEB_NET_CONF_COMMAND,
     };
+
+    fn gql(raw: &str) -> Value {
+        Value::from_str(raw).unwrap()["data"].clone()
+    }
 
     #[tokio::test]
     async fn test_braiins_os() {
@@ -994,6 +1051,26 @@ mod tests {
                 }
             }"#,
         };
+        let gql_tuning_command = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            autotuning {
+                                mode
+                                powerTarget
+                                hashrateTarget
+                            }
+                        }
+                    }
+                    info {
+                        summary {
+                            power { limitW }
+                        }
+                    }
+                }
+            }"#,
+        };
         let rpc_version_command = MinerCommand::RPC {
             command: "version",
             parameters: None,
@@ -1003,18 +1080,10 @@ mod tests {
             parameters: None,
         };
 
-        results.insert(
-            gql_system_command,
-            Value::from_str(GQL_SYSTEM_COMMAND).unwrap(),
-        );
-        results.insert(
-            gql_boards_command,
-            Value::from_str(GQL_BOARDS_COMMAND).unwrap(),
-        );
-        results.insert(
-            gql_pools_command,
-            Value::from_str(GQL_POOLS_COMMAND).unwrap(),
-        );
+        results.insert(gql_system_command, gql(GQL_SYSTEM_COMMAND));
+        results.insert(gql_boards_command, gql(GQL_BOARDS_COMMAND));
+        results.insert(gql_pools_command, gql(GQL_POOLS_COMMAND));
+        results.insert(gql_tuning_command, gql(GQL_TUNING_COMMAND));
         results.insert(
             rpc_version_command,
             Value::from_str(VERSION_COMMAND).unwrap(),
@@ -1048,6 +1117,10 @@ mod tests {
         assert_eq!(miner_data.wattage, Some(Power::from_watts(735.0)));
         assert_eq!(
             miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(900.0)))
+        );
+        assert_eq!(
+            miner_data.scaled_tuning_target,
             Some(TuningTarget::Power(Power::from_watts(900.0)))
         );
         assert_eq!(

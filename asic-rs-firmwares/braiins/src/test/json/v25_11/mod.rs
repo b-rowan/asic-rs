@@ -6,6 +6,7 @@ pub(crate) const WEB_MINER_DETAILS_COMMAND: &str = include_str!("miner_details.j
 pub(crate) const WEB_MINER_STATS_COMMAND: &str = include_str!("miner_stats.json");
 pub(crate) const WEB_PERFORMANCE_TUNER_STATE_COMMAND: &str =
     include_str!("performance_tuner_state.json");
+pub(crate) const WEB_MINER_CONFIGURATION_COMMAND: &str = include_str!("configuration_miner.json");
 pub(crate) const WEB_MINER_ERRORS_COMMAND: &str = include_str!("miner_errors.json");
 pub(crate) const WEB_POOLS_COMMAND: &str = include_str!("pools.json");
 pub(crate) const WEB_COOLING_STATE_COMMAND: &str = include_str!("cooling_state.json");
