@@ -31,7 +31,13 @@ use serde_json::{Value, json};
 
 use web::BraiinsWebAPI;
 
-use crate::{backends::v21_09::graphql::BraiinsGraphQLAPI, firmware::BraiinsFirmware};
+use crate::{
+    backends::{
+        util::{parse_configured_tuning_target, parse_scaled_tuning_target},
+        v21_09::graphql::BraiinsGraphQLAPI,
+    },
+    firmware::BraiinsFirmware,
+};
 
 pub mod web;
 
@@ -103,6 +109,10 @@ impl GetDataLocations for BraiinsV2604 {
         };
         const WEB_PERFORMANCE_TUNER_STATE: MinerCommand = MinerCommand::WebAPI {
             command: "performance/tuner-state",
+            parameters: None,
+        };
+        const WEB_MINER_CONFIGURATION: MinerCommand = MinerCommand::WebAPI {
+            command: "configuration/miner",
             parameters: None,
         };
         const WEB_POOLS: MinerCommand = MinerCommand::WebAPI {
@@ -243,14 +253,50 @@ impl GetDataLocations for BraiinsV2604 {
                     tag: None,
                 },
             )],
-            DataField::TuningTarget => vec![(
-                WEB_PERFORMANCE_TUNER_STATE,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/mode_state/powertargetmodestate/current_target/watt"),
-                    tag: None,
-                },
-            )],
+            DataField::TuningTarget => vec![
+                (
+                    WEB_MINER_CONFIGURATION,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/tuner/tuner_mode"),
+                        tag: Some("mode"),
+                    },
+                ),
+                (
+                    WEB_MINER_CONFIGURATION,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/tuner/power_target/watt"),
+                        tag: Some("configured_power"),
+                    },
+                ),
+                (
+                    WEB_MINER_CONFIGURATION,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/tuner/hashrate_target/terahash_per_second"),
+                        tag: Some("configured_hashrate"),
+                    },
+                ),
+                (
+                    WEB_PERFORMANCE_TUNER_STATE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/mode_state/powertargetmodestate/current_target/watt"),
+                        tag: Some("scaled_power"),
+                    },
+                ),
+                (
+                    WEB_PERFORMANCE_TUNER_STATE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(
+                            "/mode_state/hashratetargetmodestate/current_target/terahash_per_second",
+                        ),
+                        tag: Some("scaled_hashrate"),
+                    },
+                ),
+            ],
             DataField::SerialNumber => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
@@ -547,12 +593,17 @@ impl GetWattage for BraiinsV2604 {
 
 impl GetTuningTarget for BraiinsV2604 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<i64, _>(DataField::TuningTarget, |w| Power::from_watts(w as f64))
-            .map(TuningTarget::Power)
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_configured_tuning_target)
     }
 }
 
-impl GetScaledTuningTarget for BraiinsV2604 {}
+impl GetScaledTuningTarget for BraiinsV2604 {
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_scaled_tuning_target)
+    }
+}
 
 impl GetFluidTemperature for BraiinsV2604 {}
 
@@ -821,8 +872,9 @@ mod tests {
     use super::*;
     use crate::test::json::v26_04::{
         WEB_COOLING_STATE_COMMAND, WEB_HASHBOARDS_COMMAND, WEB_LOCATE_COMMAND,
-        WEB_MINER_DETAILS_COMMAND, WEB_MINER_STATS_COMMAND, WEB_NETWORK_COMMAND,
-        WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND, WEB_VERSION_COMMAND,
+        WEB_MINER_CONFIGURATION_COMMAND, WEB_MINER_DETAILS_COMMAND, WEB_MINER_STATS_COMMAND,
+        WEB_NETWORK_COMMAND, WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND,
+        WEB_VERSION_COMMAND,
     };
 
     #[tokio::test]
@@ -865,6 +917,13 @@ mod tests {
                 parameters: None,
             },
             Value::from_str(WEB_PERFORMANCE_TUNER_STATE_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "configuration/miner",
+                parameters: None,
+            },
+            Value::from_str(WEB_MINER_CONFIGURATION_COMMAND).unwrap(),
         );
         results.insert(
             miner
@@ -935,9 +994,47 @@ mod tests {
             miner_data.tuning_target,
             Some(TuningTarget::Power(Power::from_watts(3500.0)))
         );
+        assert_eq!(
+            miner_data.scaled_tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3500.0)))
+        );
         assert_eq!(miner_data.pools.len(), 1);
         assert_eq!(miner_data.pools[0].len(), 2);
         assert!(miner_data.hashrate.is_some());
         assert!(miner_data.expected_hashrate.is_some());
+    }
+
+    #[test]
+    fn test_braiins_v26_04_tuner_mode_selects_hashrate_targets() {
+        let miner = BraiinsV2604::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Pro);
+        let mut data = HashMap::new();
+
+        data.insert(
+            DataField::TuningTarget,
+            json!({
+                "mode": 2,
+                "configured_power": 3500.0,
+                "configured_hashrate": 230.0,
+                "scaled_power": 3300.0,
+                "scaled_hashrate": 215.5,
+            }),
+        );
+
+        assert_eq!(
+            miner.parse_tuning_target(&data),
+            Some(TuningTarget::HashRate(HashRate {
+                value: 230.0,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }))
+        );
+        assert_eq!(
+            miner.parse_scaled_tuning_target(&data),
+            Some(TuningTarget::HashRate(HashRate {
+                value: 215.5,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }))
+        );
     }
 }

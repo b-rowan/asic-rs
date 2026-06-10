@@ -1,7 +1,10 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use crate::{
-    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    backends::{
+        util::{parse_configured_tuning_target, parse_scaled_tuning_target},
+        v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    },
     firmware::BraiinsFirmware,
 };
 use anyhow;
@@ -113,6 +116,26 @@ impl GetDataLocations for BraiinsV2503 {
                                 hwDetails { chips frequencyMhz voltageV hbSerialNumber }
                                 temperatures { name degreesC }
                             }
+                        }
+                    }
+                }
+            }"#,
+        };
+        const GQL_TUNING: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            autotuning {
+                                mode
+                                powerTarget
+                                hashrateTarget
+                            }
+                        }
+                    }
+                    info {
+                        summary {
+                            power { limitW }
                         }
                     }
                 }
@@ -266,14 +289,40 @@ impl GetDataLocations for BraiinsV2503 {
                     tag: None,
                 },
             )],
-            DataField::TuningTarget => vec![(
-                GQL_SYSTEM,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/bosminer/info/summary/power/limitW"),
-                    tag: None,
-                },
-            )],
+            DataField::TuningTarget => vec![
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/mode"),
+                        tag: Some("mode"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/powerTarget"),
+                        tag: Some("configured_power"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/config/autotuning/hashrateTarget"),
+                        tag: Some("configured_hashrate"),
+                    },
+                ),
+                (
+                    GQL_TUNING,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bosminer/info/summary/power/limitW"),
+                        tag: Some("scaled_power"),
+                    },
+                ),
+            ],
             DataField::IsMining => vec![(
                 GQL_SYSTEM,
                 DataExtractor {
@@ -479,12 +528,17 @@ impl GetWattage for BraiinsV2503 {
 
 impl GetTuningTarget for BraiinsV2503 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
-            .map(TuningTarget::Power)
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_configured_tuning_target)
     }
 }
 
-impl GetScaledTuningTarget for BraiinsV2503 {}
+impl GetScaledTuningTarget for BraiinsV2503 {
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget)
+            .and_then(parse_scaled_tuning_target)
+    }
+}
 
 impl GetLightFlashing for BraiinsV2503 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
@@ -910,16 +964,15 @@ impl SupportsFanConfig for BraiinsV2503 {
 mod tests {
     use std::str::FromStr;
 
+    use super::*;
+    use crate::test::json::v25_03::{
+        GQL_BOARDS_COMMAND, GQL_EVENTS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND,
+        GQL_TUNING_COMMAND, VERSION_COMMAND, WEB_NET_CONF_COMMAND,
+    };
     use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
     use asic_rs_makes_antminer::models::AntMinerModel;
     use macaddr::MacAddr;
     use measurements::Power;
-
-    use super::*;
-    use crate::test::json::v25_03::{
-        GQL_BOARDS_COMMAND, GQL_EVENTS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND,
-        VERSION_COMMAND, WEB_NET_CONF_COMMAND,
-    };
 
     /// GQL responses from real miners include a "data" wrapper that the real
     /// GraphQL client strips before returning. Strip it here to match.
@@ -932,9 +985,8 @@ mod tests {
         let miner = BraiinsV2503::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Plus);
 
         let mut results = HashMap::new();
-        results.insert(
-            MinerCommand::GraphQL {
-                command: r#"{
+        let gql_system_command = MinerCommand::GraphQL {
+            command: r#"{
                 bos {
                     hostname
                     faultLight
@@ -954,12 +1006,9 @@ mod tests {
                     }
                 }
             }"#,
-            },
-            gql(GQL_SYSTEM_COMMAND),
-        );
-        results.insert(
-            MinerCommand::GraphQL {
-                command: r#"{
+        };
+        let gql_boards_command = MinerCommand::GraphQL {
+            command: r#"{
                 bosminer {
                     info {
                         workSolver {
@@ -967,19 +1016,16 @@ mod tests {
                                 name
                                 realHashrate { mhs5S }
                                 nominalMhs
-                                hwDetails { chips frequencyMhz voltageV hbSerialNumber }
+                                hwDetails { chips frequencyMhz voltageV }
                                 temperatures { name degreesC }
                             }
                         }
                     }
                 }
             }"#,
-            },
-            gql(GQL_BOARDS_COMMAND),
-        );
-        results.insert(
-            MinerCommand::GraphQL {
-                command: r#"{
+        };
+        let gql_pools_command = MinerCommand::GraphQL {
+            command: r#"{
                 bosminer {
                     config {
                         ... on BosminerConfig {
@@ -1007,30 +1053,59 @@ mod tests {
                     }
                 }
             }"#,
-            },
-            gql(GQL_POOLS_COMMAND),
-        );
+        };
+        let gql_tuning_command = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            autotuning {
+                                mode
+                                powerTarget
+                                hashrateTarget
+                            }
+                        }
+                    }
+                    info {
+                        summary {
+                            power { limitW }
+                        }
+                    }
+                }
+            }"#,
+        };
+        let gql_events_command = MinerCommand::GraphQL {
+            command: r#"{
+                events {
+                    appeals {
+                        id
+                        kind
+                        message
+                        timestamp
+                    }
+                }
+            }"#,
+        };
+        let rpc_version_command = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+        let web_net_conf_command = MinerCommand::WebAPI {
+            command: "admin/network/iface_status/lan",
+            parameters: None,
+        };
+
+        results.insert(gql_system_command, gql(GQL_SYSTEM_COMMAND));
+        results.insert(gql_boards_command, gql(GQL_BOARDS_COMMAND));
+        results.insert(gql_pools_command, gql(GQL_POOLS_COMMAND));
+        results.insert(gql_tuning_command, gql(GQL_TUNING_COMMAND));
+        results.insert(gql_events_command, gql(GQL_EVENTS_COMMAND));
         results.insert(
-            miner
-                .get_locations(DataField::Messages)
-                .into_iter()
-                .next()
-                .unwrap()
-                .0,
-            gql(GQL_EVENTS_COMMAND),
-        );
-        results.insert(
-            MinerCommand::RPC {
-                command: "version",
-                parameters: None,
-            },
+            rpc_version_command,
             Value::from_str(VERSION_COMMAND).unwrap(),
         );
         results.insert(
-            MinerCommand::WebAPI {
-                command: "admin/network/iface_status/lan",
-                parameters: None,
-            },
+            web_net_conf_command,
             Value::from_str(WEB_NET_CONF_COMMAND).unwrap(),
         );
 
@@ -1055,6 +1130,10 @@ mod tests {
         assert_eq!(miner_data.wattage, Some(Power::from_watts(4448.0)));
         assert_eq!(
             miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3878.0)))
+        );
+        assert_eq!(
+            miner_data.scaled_tuning_target,
             Some(TuningTarget::Power(Power::from_watts(3878.0)))
         );
         assert_eq!(miner_data.pools.len(), 1);

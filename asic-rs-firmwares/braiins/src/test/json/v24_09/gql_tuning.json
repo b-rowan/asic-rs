@@ -1,0 +1,20 @@
+{
+  "data": {
+    "bosminer": {
+      "config": {
+        "autotuning": {
+          "hashrateTarget": null,
+          "mode": "POWER_TARGET",
+          "powerTarget": 900
+        }
+      },
+      "info": {
+        "summary": {
+          "power": {
+            "limitW": 900
+          }
+        }
+      }
+    }
+  }
+}
