@@ -55,23 +55,26 @@ features = [
     "toc.integrate",
     "content.tooltips",
     "content.tabs.link",
+    "content.code.copy",
 ]
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme: light)"
 scheme = "default"
 
-[project.theme.palette.toggle]
-icon = "lucide/sun"
-name = "Switch to dark mode"
-
 [[project.theme.palette]]
 media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 
-[project.theme.palette.toggle]
-icon = "lucide/moon"
-name = "Switch to light mode"
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
 
 [project.theme.font]
 text = "Inter"
