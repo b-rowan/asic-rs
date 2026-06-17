@@ -89,8 +89,10 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S19 HYDRO")]
     S19Hydro,
     #[serde(alias = "ANTMINER S19 PRO HYD.")]
+    #[serde(alias = "ANTMINER S19 PRO HYDRO")]
     S19ProHydro,
     #[serde(alias = "ANTMINER S19 PRO+ HYD.")]
+    #[serde(alias = "ANTMINER S19 PRO+ HYDRO")]
     S19ProPlusHydro,
     #[serde(alias = "ANTMINER S19K PRO")]
     S19KPro,
@@ -111,10 +113,13 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S21+")]
     S21Plus,
     #[serde(alias = "ANTMINER S21 HYD.")]
+    #[serde(alias = "ANTMINER S21 HYDRO")]
     S21Hydro,
     #[serde(alias = "ANTMINER S21+ HYD.")]
+    #[serde(alias = "ANTMINER S21+ HYDRO")]
     S21PlusHydro,
     #[serde(alias = "ANTMINER S21E XP HYD.")]
+    #[serde(alias = "ANTMINER S21E XP HYDRO")]
     S21eXPHydro,
     #[serde(alias = "ANTMINER T21")]
     T21,

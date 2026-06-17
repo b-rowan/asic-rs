@@ -253,6 +253,14 @@ impl GetDataLocations for VnishV120 {
                     tag: None,
                 },
             )],
+            DataField::FluidTemperature => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/chains"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -378,11 +386,19 @@ impl GetHashboards for VnishV120 {
                 .pointer("/pcb_temp/max")
                 .and_then(|v| v.as_i64())
                 .map(|t| Temperature::from_celsius(t as f64));
-            board.intake_temperature = chain
-                .pointer("/chip_temp/max")
+            // Hydro miners report per-board water temperatures; air-cooled
+            // models do not, so fall back to the chip temperature there.
+            let chip_max = chain.pointer("/chip_temp/max").and_then(|v| v.as_i64());
+            let intake = chain
+                .pointer("/inlet_water_temp")
                 .and_then(|v| v.as_i64())
-                .map(|t| Temperature::from_celsius(t as f64));
-            board.outlet_temperature = board.intake_temperature;
+                .or(chip_max);
+            let outlet = chain
+                .pointer("/outlet_water_temp")
+                .and_then(|v| v.as_i64())
+                .or(intake);
+            board.intake_temperature = intake.map(|t| Temperature::from_celsius(t as f64));
+            board.outlet_temperature = outlet.map(|t| Temperature::from_celsius(t as f64));
             board.working_chips = chain
                 .pointer("/chips")
                 .and_then(|v| v.as_array())
@@ -525,7 +541,21 @@ impl GetFans for VnishV120 {
 
 impl GetPsuFans for VnishV120 {}
 
-impl GetFluidTemperature for VnishV120 {}
+impl GetFluidTemperature for VnishV120 {
+    fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
+        // Fluid temperature mirrors other firmwares' "environment temperature":
+        // the coolant entering the machine. For hydro miners that's the
+        // per-board inlet water temperature.
+        let chains = data
+            .get(&DataField::FluidTemperature)
+            .and_then(|v| v.as_array())?;
+        chains
+            .iter()
+            .filter_map(|c| c.pointer("/inlet_water_temp").and_then(|v| v.as_i64()))
+            .max()
+            .map(|t| Temperature::from_celsius(t as f64))
+    }
+}
 
 impl GetWattage for VnishV120 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
