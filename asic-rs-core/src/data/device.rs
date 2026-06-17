@@ -7,7 +7,7 @@ use crate::traits::{firmware::MinerFirmware, model::MinerModel};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 /// Static identity and hardware information for a miner model.
 pub struct DeviceInfo {
     /// Miner manufacturer or make.
@@ -36,7 +36,7 @@ impl DeviceInfo {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Default)]
 /// Expected hardware counts for a miner model.
 pub struct MinerHardware {
@@ -72,16 +72,6 @@ impl MinerHardware {
 #[cfg(feature = "python")]
 #[pymethods]
 impl MinerHardware {
-    #[getter]
-    pub fn fans(&self) -> Option<u8> {
-        self.fans
-    }
-
-    #[getter]
-    pub fn boards(&self) -> Option<Vec<Option<u16>>> {
-        self.boards.clone()
-    }
-
     #[getter]
     pub fn chips(&self) -> Option<u16> {
         self.total_chips()
