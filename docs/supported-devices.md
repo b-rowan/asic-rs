@@ -73,8 +73,8 @@ Legend:
 		 - [x] `ANTMINER S19`
 		 - [x] `ANTMINER S19 HYDRO`
 		 - [x] `ANTMINER S19 PRO`
-		 - [x] `ANTMINER S19 PRO HYD.`
-		 - [x] `ANTMINER S19 PRO+ HYD.`
+		 - [x] `ANTMINER S19 PRO HYD.` (also: `ANTMINER S19 PRO HYDRO`)
+		 - [x] `ANTMINER S19 PRO+ HYD.` (also: `ANTMINER S19 PRO+ HYDRO`)
 		 - [x] `ANTMINER S19 XP`
 		 - [x] `ANTMINER S19+`
 		 - [x] `ANTMINER S19A`
@@ -90,13 +90,13 @@ Legend:
 		 - [x] `ANTMINER S19PRO+`
 	??? note "S21 family (8 models)"
 		 - [x] `ANTMINER S21` (also: `ANTMINER BHB68601`, `ANTMINER BHB68606`)
-		 - [x] `ANTMINER S21 HYD.`
+		 - [x] `ANTMINER S21 HYD.` (also: `ANTMINER S21 HYDRO`)
 		 - [x] `ANTMINER S21 PRO`
 		 - [x] `ANTMINER S21 PRO+`
 		 - [x] `ANTMINER S21 XP`
 		 - [x] `ANTMINER S21+`
-		 - [x] `ANTMINER S21+ HYD.`
-		 - [x] `ANTMINER S21E XP HYD.`
+		 - [x] `ANTMINER S21+ HYD.` (also: `ANTMINER S21+ HYDRO`)
+		 - [x] `ANTMINER S21E XP HYD.` (also: `ANTMINER S21E XP HYDRO`)
 	??? note "T9 family (1 model)"
 		 - [x] `ANTMINER T9`
 	??? note "T17 family (3 models)"
