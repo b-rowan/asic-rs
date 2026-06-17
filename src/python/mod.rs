@@ -4,7 +4,7 @@ mod factory;
 mod miner;
 mod typing;
 
-#[pymodule(module = "asic_rs")]
+#[pymodule(module = "pyasic_rs.asic_rs")]
 mod asic_rs {
     use pyo3::prelude::*;
 
