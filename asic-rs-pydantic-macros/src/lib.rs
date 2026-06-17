@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, Field, Fields, ItemStruct, LitStr, Path, parse_macro_input,
-    spanned::Spanned,
+    Data, DeriveInput, Expr, Field, Fields, GenericArgument, ItemStruct, LitStr, Path,
+    PathArguments, Type, parse_macro_input, spanned::Spanned,
 };
 
 #[derive(Default)]
@@ -439,16 +439,12 @@ fn expand_generated_pydantic_getters(input: &DeriveInput) -> syn::Result<proc_ma
                 .as_ref()
                 .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
             let ty = &field.ty;
+            let value = quote!(&self.#ident);
+            let (return_type, value_expr) = getter_return_type(ty, &value);
             Ok(quote! {
                 #[getter]
-                fn #ident(
-                    &self,
-                    py: ::pyo3::Python<'_>,
-                ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
-                    <#ty as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_repr_value(
-                        &self.#ident,
-                        py,
-                    )
+                fn #ident(&self) -> #return_type {
+                    #value_expr
                 }
             })
         })
@@ -456,6 +452,65 @@ fn expand_generated_pydantic_getters(input: &DeriveInput) -> syn::Result<proc_ma
 
     Ok(quote! {
         #(#fields)*
+    })
+}
+
+fn getter_return_type(
+    ty: &Type,
+    value: &proc_macro2::TokenStream,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+    let Type::Path(type_path) = ty else {
+        return (quote!(#ty), quote!(::std::clone::Clone::clone((#value))));
+    };
+
+    let Some(segment) = type_path.path.segments.last() else {
+        return (quote!(#ty), quote!(::std::clone::Clone::clone((#value))));
+    };
+
+    if segment.ident == "Option"
+        && let Some(inner) = generic_type_argument(segment)
+    {
+        let inner_value = quote!(value);
+        if let Some((inner_return, inner_expr)) = custom_getter_return_type(inner, &inner_value) {
+            return (
+                quote!(::std::option::Option<#inner_return>),
+                quote!((#value).as_ref().map(|value| #inner_expr)),
+            );
+        }
+    }
+
+    custom_getter_return_type(ty, value)
+        .unwrap_or_else(|| (quote!(#ty), quote!(::std::clone::Clone::clone((#value)))))
+}
+
+fn custom_getter_return_type(
+    ty: &Type,
+    value: &proc_macro2::TokenStream,
+) -> Option<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
+    let Type::Path(type_path) = ty else {
+        return None;
+    };
+
+    let ident = type_path.path.segments.last()?.ident.to_string();
+    match ident.as_str() {
+        "MacAddr" => Some((quote!(::std::string::String), quote!((#value).to_string()))),
+        "AngularVelocity" => Some((quote!(f64), quote!((#value).as_rpm()))),
+        "Frequency" => Some((quote!(f64), quote!((#value).as_megahertz()))),
+        "Power" => Some((quote!(f64), quote!((#value).as_watts()))),
+        "Temperature" => Some((quote!(f64), quote!((#value).as_celsius()))),
+        "Voltage" => Some((quote!(f64), quote!((#value).as_volts()))),
+        _ => None,
+    }
+}
+
+fn generic_type_argument(segment: &syn::PathSegment) -> Option<&Type> {
+    let PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return None;
+    };
+
+    args.args.iter().find_map(|arg| match arg {
+        GenericArgument::Type(ty) => Some(ty),
+        _ => None,
     })
 }
 

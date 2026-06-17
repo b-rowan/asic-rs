@@ -15,7 +15,7 @@ use pyo3::{
 };
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 /// Unit used to represent a [`HashRate`] value.
@@ -168,6 +168,10 @@ impl HashRateUnit {
     }
 
     fn __repr__(&self) -> String {
+        self.to_string()
+    }
+
+    fn __str__(&self) -> String {
         self.to_string()
     }
 }

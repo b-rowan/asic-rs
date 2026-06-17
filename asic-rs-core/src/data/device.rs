@@ -84,7 +84,7 @@ impl MinerHardware {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(
     Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, StrumDisplay, EnumString,
@@ -116,6 +116,10 @@ pub enum HashAlgorithm {
 #[cfg_attr(feature = "python", pymethods)]
 impl HashAlgorithm {
     pub fn __repr__(&self) -> String {
+        self.to_string()
+    }
+
+    pub fn __str__(&self) -> String {
         self.to_string()
     }
 }
