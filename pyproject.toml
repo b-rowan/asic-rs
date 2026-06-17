@@ -13,7 +13,7 @@ source = "https://github.com/256foundation/asic-rs"
 documentation = "https://256foundation.github.io/asic-rs"
 issues = "https://github.com/256foundation/asic-rs/issues"
 
-license = "Apache 2.0"
+license = "Apache-2.0"
 readme = "docs-shared/guide.md"
 
 requires-python = ">=3.11, <4.0"
