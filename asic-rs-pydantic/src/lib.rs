@@ -183,10 +183,6 @@ impl PyPydanticType for MacAddr {
     }
 }
 
-fn duration_to_seconds(duration: Duration) -> f64 {
-    duration.as_secs() as f64
-}
-
 impl PyPydanticType for Duration {
     fn pydantic_schema<'py>(
         core_schema: &Bound<'py, PyAny>,
@@ -194,7 +190,7 @@ impl PyPydanticType for Duration {
     ) -> PyResult<Bound<'py, PyAny>> {
         match mode {
             PydanticSchemaMode::Validation => core_schema.call_method0("any_schema"),
-            PydanticSchemaMode::Serialization => core_schema.call_method0("float_schema"),
+            PydanticSchemaMode::Serialization => core_schema.call_method0("timedelta_schema"),
         }
     }
 
@@ -218,10 +214,11 @@ impl PyPydanticType for Duration {
     }
 
     fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        Ok(duration_to_seconds(*self)
-            .into_pyobject(py)?
-            .into_any()
-            .unbind())
+        // Expose Duration as a Python `datetime.timedelta` (pyo3 native), so it
+        // round-trips with `from_pydantic` (which already accepts timedelta) and
+        // matches the `get_uptime()` method. Previously serialized as a bare
+        // float (seconds), which broke `.total_seconds()` on consumers.
+        Ok((*self).into_pyobject(py)?.into_any().unbind())
     }
 }
 
