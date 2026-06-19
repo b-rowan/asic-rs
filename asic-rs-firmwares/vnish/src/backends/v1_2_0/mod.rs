@@ -710,7 +710,65 @@ impl SetFaultLight for VnishV120 {
 #[async_trait]
 impl SetPowerLimit for VnishV120 {
     fn supports_set_power_limit(&self) -> bool {
-        false
+        true
+    }
+
+    /// VNish sets power by selecting a tuned autotune preset, not an arbitrary
+    /// wattage (mirrors pyasic's behaviour). Pick the highest tuned preset whose
+    /// power is <= the requested limit, set `overclock.preset` to it and verify.
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        let target_watts = limit.as_watts() as i64;
+
+        let presets = self.web.autotune_presets().await?;
+        let preset_list = presets
+            .as_array()
+            .or_else(|| presets.get("presets").and_then(|p| p.as_array()))
+            .ok_or_else(|| anyhow::anyhow!("unexpected /autotune/presets response"))?;
+
+        // Each preset: { "name": "3495", "pretty": "3495 watt ~ 132 TH",
+        //               "status": "tuned", ... }.
+        // Consider ALL presets (tuned and un-tuned): an un-tuned preset is a
+        // valid target, it just triggers a tuning cycle (effectively a restart)
+        // before it settles — same behaviour as e.g. Whatsminer rebooting on a
+        // power-limit change. Watts come from the preset `name` (the bare number,
+        // present for tuned and un-tuned alike); non-numeric names like
+        // "disabled" are skipped by the parse.
+        let best = preset_list
+            .iter()
+            .filter_map(|p| {
+                let name = p.get("name")?.as_str()?;
+                name.trim().parse::<i64>().ok()
+            })
+            .filter(|&w| w <= target_watts)
+            .max();
+
+        let Some(preset_watts) = best else {
+            return Ok(false);
+        };
+
+        let mut settings = self.web.settings().await?;
+        {
+            let overclock = settings
+                .pointer_mut("/miner/overclock")
+                .ok_or_else(|| anyhow::anyhow!("settings missing miner.overclock"))?;
+            overclock["preset"] = json!(preset_watts.to_string());
+        }
+        let overclock = settings
+            .pointer("/miner/overclock")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("settings missing miner.overclock"))?;
+
+        self.web
+            .set_settings(json!({ "miner": { "overclock": overclock } }))
+            .await?;
+
+        // Verify the preset was accepted.
+        let updated = self.web.settings().await?;
+        let applied = updated.pointer("/miner/overclock/preset").and_then(|p| {
+            p.as_i64()
+                .or_else(|| p.as_str().and_then(|s| s.parse().ok()))
+        });
+        Ok(applied == Some(preset_watts))
     }
 }
 

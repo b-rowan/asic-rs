@@ -241,6 +241,18 @@ impl VnishWebAPI {
             .await
     }
 
+    /// GET the current miner settings (includes `miner.overclock`).
+    pub async fn settings(&self) -> anyhow::Result<Value> {
+        self.send_command("settings", false, None, Method::GET)
+            .await
+    }
+
+    /// GET the available autotune presets.
+    pub async fn autotune_presets(&self) -> anyhow::Result<Value> {
+        self.send_command("autotune/presets", false, None, Method::GET)
+            .await
+    }
+
     pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
         let settings = json!({
             "password": {
