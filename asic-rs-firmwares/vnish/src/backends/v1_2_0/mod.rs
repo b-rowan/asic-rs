@@ -15,6 +15,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -258,6 +259,14 @@ impl GetDataLocations for VnishV120 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/chains"),
+                    tag: None,
+                },
+            )],
+            DataField::Messages => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/miner_status"),
                     tag: None,
                 },
             )],
@@ -573,7 +582,38 @@ impl GetLightFlashing for VnishV120 {
     }
 }
 
-impl GetMessages for VnishV120 {}
+impl GetMessages for VnishV120 {
+    /// Surface the miner's own state verdict as a message. VNish self-manages
+    /// (won't start mining below the configured `min_startup_water_temp`, and
+    /// protects itself above `restart_temp`), so any non-operating state is
+    /// reported here rather than computed from invented thresholds.
+    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
+        let mut messages = Vec::new();
+
+        if let Some(status) = data.get(&DataField::Messages)
+            && let Some(state) = status.pointer("/miner_state").and_then(|v| v.as_str())
+        {
+            let normal = matches!(
+                state.to_lowercase().as_str(),
+                "mining" | "auto-tuning" | "auto_tuning" | "tuning"
+            );
+            if !normal {
+                let severity = match state.to_lowercase().as_str() {
+                    "failure" | "failed" | "error" | "broken" | "stopped" => MessageSeverity::Error,
+                    _ => MessageSeverity::Warning,
+                };
+                messages.push(MinerMessage::new(
+                    0,
+                    0,
+                    format!("Miner state: {state}"),
+                    severity,
+                ));
+            }
+        }
+
+        messages
+    }
+}
 
 impl GetUptime for VnishV120 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
