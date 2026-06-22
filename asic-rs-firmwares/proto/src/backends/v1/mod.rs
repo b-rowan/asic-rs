@@ -537,11 +537,11 @@ impl GetHashboards for ProtoV1 {
                 .pointer("/temperature/average")
                 .and_then(Value::as_f64)
                 .map(Temperature::from_celsius);
-            board.intake_temperature = telemetry
+            board.inlet_chip_temperature = telemetry
                 .pointer("/temperature/inlet")
                 .and_then(Value::as_f64)
                 .map(Temperature::from_celsius);
-            board.outlet_temperature = telemetry
+            board.outlet_chip_temperature = telemetry
                 .pointer("/temperature/outlet")
                 .and_then(Value::as_f64)
                 .map(Temperature::from_celsius);
@@ -1126,8 +1126,8 @@ mod tests {
         );
         assert!(hashboards[0].hashrate.is_some());
         assert!(hashboards[0].board_temperature.is_some());
-        assert!(hashboards[0].intake_temperature.is_some());
-        assert!(hashboards[0].outlet_temperature.is_some());
+        assert!(hashboards[0].inlet_chip_temperature.is_some());
+        assert!(hashboards[0].outlet_chip_temperature.is_some());
         assert!(hashboards[0].voltage.is_some());
         assert_eq!(hashboards[0].expected_chips, Some(120));
         assert_eq!(hashboards[0].working_chips, Some(120));
@@ -1174,14 +1174,14 @@ mod tests {
         );
         assert!(
             parsed.hashboards[0]
-                .intake_temperature
+                .inlet_chip_temperature
                 .expect("intake temperature")
                 .as_celsius()
                 > 30.0
         );
         assert!(
             parsed.hashboards[0]
-                .outlet_temperature
+                .outlet_chip_temperature
                 .expect("outlet temperature")
                 .as_celsius()
                 > 50.0

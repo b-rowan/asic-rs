@@ -286,8 +286,8 @@ impl GetHashboards for Bitaxe290 {
             .get("vrTemp")
             .and_then(|v| v.as_f64())
             .map(Temperature::from_celsius);
-        board.intake_temperature = board.board_temperature;
-        board.outlet_temperature = board.board_temperature;
+        board.inlet_chip_temperature = board.board_temperature;
+        board.outlet_chip_temperature = board.board_temperature;
         board.working_chips = api_data
             .get("asicCount")
             .and_then(|v| v.as_u64())

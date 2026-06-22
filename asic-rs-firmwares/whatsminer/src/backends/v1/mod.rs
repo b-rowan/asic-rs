@@ -329,11 +329,11 @@ impl GetHashboards for WhatsMinerV1 {
                 .pointer(&format!("/DEVS/{idx}/Temperature"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
-            board.intake_temperature = hashboard_data
+            board.inlet_chip_temperature = hashboard_data
                 .pointer(&format!("/DEVS/{idx}/Chip Temp Min"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
-            board.outlet_temperature = hashboard_data
+            board.outlet_chip_temperature = hashboard_data
                 .pointer(&format!("/DEVS/{idx}/Chip Temp Max"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);

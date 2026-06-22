@@ -499,7 +499,7 @@ impl GetHashboards for AvalonQMiner {
                 board.board_temperature =
                     summary_f64(summary, "HBITemp", idx).map(Temperature::from_celsius);
 
-                board.intake_temperature =
+                board.inlet_chip_temperature =
                     summary_f64(summary, "ITemp", idx).map(Temperature::from_celsius);
             }
 

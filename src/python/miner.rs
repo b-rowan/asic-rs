@@ -385,6 +385,18 @@ impl Miner {
             Ok(data.map(|t| t.as_celsius()))
         })
     }
+    /// Await coolant exhaust (outlet fluid) temperature in Celsius, if available.
+    pub fn get_outlet_fluid_temperature<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Option<f64>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            let data = inner.get_outlet_fluid_temperature().await;
+            Ok(data.map(|t| t.as_celsius()))
+        })
+    }
     /// Await current power draw in watts, if available.
     pub fn get_wattage<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);

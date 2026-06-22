@@ -691,8 +691,8 @@ impl GetHashboards for AuradineV1 {
                     .get("Temperature")
                     .and_then(Value::as_f64)
                     .map(Temperature::from_celsius);
-                hashboard.intake_temperature = hashboard.board_temperature;
-                hashboard.outlet_temperature = hashboard.board_temperature;
+                hashboard.inlet_chip_temperature = hashboard.board_temperature;
+                hashboard.outlet_chip_temperature = hashboard.board_temperature;
                 hashboard.hashrate = board.get("MHS 5s").and_then(Value::as_f64).map(|value| {
                     HashRate {
                         value,
@@ -758,10 +758,10 @@ impl GetHashboards for AuradineV1 {
                     let min_temp = sensor_values.iter().copied().min_by(|a, b| a.total_cmp(b));
                     let max_temp = sensor_values.iter().copied().max_by(|a, b| a.total_cmp(b));
                     if let Some(temp) = min_temp {
-                        hashboard.intake_temperature = Some(Temperature::from_celsius(temp));
+                        hashboard.inlet_chip_temperature = Some(Temperature::from_celsius(temp));
                     }
                     if let Some(temp) = max_temp {
-                        hashboard.outlet_temperature = Some(Temperature::from_celsius(temp));
+                        hashboard.outlet_chip_temperature = Some(Temperature::from_celsius(temp));
                     }
                     if hashboard.board_temperature.is_none() {
                         let avg = sensor_values.iter().sum::<f64>() / sensor_values.len() as f64;
@@ -1621,11 +1621,11 @@ mod tests {
         assert_eq!(miner_data.hashboards[2].working_chips, Some(132));
         assert_eq!(miner_data.hashboards[0].chips.len(), 3);
         assert_eq!(
-            miner_data.hashboards[0].intake_temperature,
+            miner_data.hashboards[0].inlet_chip_temperature,
             Some(Temperature::from_celsius(20.5))
         );
         assert_eq!(
-            miner_data.hashboards[0].outlet_temperature,
+            miner_data.hashboards[0].outlet_chip_temperature,
             Some(Temperature::from_celsius(41.5))
         );
         assert!(miner_data.hashboards[0].voltage.is_some());

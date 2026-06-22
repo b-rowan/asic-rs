@@ -768,7 +768,7 @@ impl GetHashboards for MaraV1 {
                 {
                     let temps: Vec<f64> = temp_raw.iter().filter_map(|t| t.as_f64()).collect();
                     if !temps.is_empty() {
-                        board.intake_temperature = Some(Temperature::from_celsius(
+                        board.inlet_chip_temperature = Some(Temperature::from_celsius(
                             temps.iter().sum::<f64>() / temps.len() as f64,
                         ));
                     }

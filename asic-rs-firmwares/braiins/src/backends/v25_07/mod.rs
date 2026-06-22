@@ -418,8 +418,8 @@ impl GetHashboards for BraiinsV2507 {
                 .pointer("/board_temp/degree_c")
                 .and_then(|v| v.as_f64())
                 .map(Temperature::from_celsius);
-            board.intake_temperature = chip_temperature;
-            board.outlet_temperature = chip_temperature;
+            board.inlet_chip_temperature = chip_temperature;
+            board.outlet_chip_temperature = chip_temperature;
             board.working_chips = chain
                 .pointer("/chips_count")
                 .and_then(|v| v.as_u64())

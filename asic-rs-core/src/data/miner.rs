@@ -108,6 +108,9 @@ pub struct MinerData {
     /// The environment temperature of the miner, such as air temperature or immersion fluid temperature
     #[serde(serialize_with = "serialize_temperature")]
     pub fluid_temperature: Option<Temperature>,
+    /// The coolant exhaust temperature, only for water-cooled miners with dedicated sensors
+    #[serde(serialize_with = "serialize_temperature")]
+    pub outlet_fluid_temperature: Option<Temperature>,
     /// The current power consumption of the miner
     #[serde(serialize_with = "serialize_power")]
     pub wattage: Option<Power>,

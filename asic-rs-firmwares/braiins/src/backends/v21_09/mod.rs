@@ -443,8 +443,8 @@ impl GetHashboards for BraiinsV2109 {
                         board.board_temperature = degrees.map(Temperature::from_celsius);
                     } else if name.contains("Chip") {
                         let t = degrees.map(Temperature::from_celsius);
-                        board.intake_temperature = t;
-                        board.outlet_temperature = t;
+                        board.inlet_chip_temperature = t;
+                        board.outlet_chip_temperature = t;
                     }
                 }
             }

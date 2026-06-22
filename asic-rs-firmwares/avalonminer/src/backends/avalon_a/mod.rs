@@ -534,10 +534,10 @@ impl GetHashboards for AvalonAMiner {
             board.board_temperature =
                 array_f64(hb_info, "MTavg", idx).map(Temperature::from_celsius);
 
-            board.outlet_temperature =
+            board.outlet_chip_temperature =
                 array_f64(hb_info, "MTmax", idx).map(Temperature::from_celsius);
 
-            board.intake_temperature =
+            board.inlet_chip_temperature =
                 array_f64(hb_info, "ITemp", idx).map(Temperature::from_celsius);
 
             board.voltage = array_f64(hb_info, "MVavg", idx).map(Voltage::from_millivolts);
@@ -854,7 +854,7 @@ mod tests {
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 120);
         assert_eq!(
-            miner_data.hashboards[0].outlet_temperature,
+            miner_data.hashboards[0].outlet_chip_temperature,
             Some(Temperature::from_celsius(77.0))
         );
         assert_eq!(

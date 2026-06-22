@@ -225,6 +225,7 @@ impl<
         let tuning_target = self.parse_tuning_target(&data);
         let scaled_tuning_target = self.parse_scaled_tuning_target(&data);
         let fluid_temperature = self.parse_fluid_temperature(&data);
+        let outlet_fluid_temperature = self.parse_outlet_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
         let psu_fans = self.parse_psu_fans(&data);
         let hashboards = self.parse_hashboards(&data);
@@ -307,6 +308,7 @@ impl<
             psu_fans,
             average_temperature,
             fluid_temperature,
+            outlet_fluid_temperature,
 
             // Power information
             wattage,
@@ -584,6 +586,21 @@ pub trait GetFluidTemperature: CollectData {
     }
     #[allow(unused_variables)]
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
+        None
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_outlet_fluid_temperature(&self) -> Option<Temperature> {
+        let mut collector = self.get_collector();
+        let data = collector
+            .collect(&[DataField::OutletFluidTemperature])
+            .await;
+        self.parse_outlet_fluid_temperature(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_outlet_fluid_temperature(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<Temperature> {
         None
     }
 }

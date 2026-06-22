@@ -703,7 +703,7 @@ impl GetHashboards for LuxMinerV1 {
                     .get(format!("temp_pcb{b_id}"))
                     .and_then(|v| v.as_str())
                     .and_then(Self::parse_temp_string);
-                board.intake_temperature = stats
+                board.inlet_chip_temperature = stats
                     .get(format!("temp_chip{b_id}"))
                     .and_then(|v| v.as_str())
                     .and_then(Self::parse_temp_string);
@@ -730,7 +730,7 @@ impl GetHashboards for LuxMinerV1 {
                 .filter(|&t| t > 0.0)
                 .collect();
                 if !exhaust_temps.is_empty() {
-                    board.outlet_temperature = Some(Temperature::from_celsius(
+                    board.outlet_chip_temperature = Some(Temperature::from_celsius(
                         exhaust_temps.iter().sum::<f64>() / exhaust_temps.len() as f64,
                     ));
                 }
@@ -744,7 +744,7 @@ impl GetHashboards for LuxMinerV1 {
                 .filter(|&t| t > 0.0)
                 .collect();
                 if !intake_temps.is_empty() {
-                    board.intake_temperature = Some(Temperature::from_celsius(
+                    board.inlet_chip_temperature = Some(Temperature::from_celsius(
                         intake_temps.iter().sum::<f64>() / intake_temps.len() as f64,
                     ));
                 }

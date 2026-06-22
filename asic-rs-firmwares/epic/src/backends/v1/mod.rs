@@ -639,12 +639,12 @@ impl GetHashboards for PowerPlayV1 {
                     && let Some(hashboard) = hashboards.get_mut(idx as usize)
                 {
                     let temps = board.get("Data").and_then(|v| v.as_array());
-                    hashboard.outlet_temperature = temps
+                    hashboard.outlet_chip_temperature = temps
                         .and_then(|arr| {
                             arr.iter().filter_map(|v| v.as_f64()).max_by(f64::total_cmp)
                         })
                         .map(Temperature::from_celsius);
-                    hashboard.intake_temperature = temps
+                    hashboard.inlet_chip_temperature = temps
                         .and_then(|arr| {
                             arr.iter().filter_map(|v| v.as_f64()).min_by(f64::total_cmp)
                         })
@@ -1625,8 +1625,12 @@ mod tests {
         assert!(hashboards_without_chips[1].serial_number.is_some());
         assert!(hashboards_without_chips[1].hashrate.is_some());
         assert!(hashboards_without_chips[1].board_temperature.is_some());
-        assert!(hashboards_without_chips[1].intake_temperature.is_some());
-        assert!(hashboards_without_chips[1].outlet_temperature.is_some());
+        assert!(hashboards_without_chips[1].inlet_chip_temperature.is_some());
+        assert!(
+            hashboards_without_chips[1]
+                .outlet_chip_temperature
+                .is_some()
+        );
         assert!(hashboards_without_chips[1].tuned.is_some());
 
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
@@ -1654,12 +1658,12 @@ mod tests {
             hashboards_with_chips[1].board_temperature
         );
         assert_eq!(
-            hashboards_without_chips[1].intake_temperature,
-            hashboards_with_chips[1].intake_temperature
+            hashboards_without_chips[1].inlet_chip_temperature,
+            hashboards_with_chips[1].inlet_chip_temperature
         );
         assert_eq!(
-            hashboards_without_chips[1].outlet_temperature,
-            hashboards_with_chips[1].outlet_temperature
+            hashboards_without_chips[1].outlet_chip_temperature,
+            hashboards_with_chips[1].outlet_chip_temperature
         );
         assert_eq!(
             hashboards_without_chips[1].tuned,

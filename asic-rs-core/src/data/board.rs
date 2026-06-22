@@ -52,14 +52,14 @@ pub struct BoardData {
     #[serde(serialize_with = "serialize_temperature")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub board_temperature: Option<Temperature>,
-    /// The temperature of the chips at the intake, usually from the first sensor on the board
+    /// The temperature of the coolest / first-in-chain chip on the board
     #[serde(serialize_with = "serialize_temperature")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub intake_temperature: Option<Temperature>,
-    /// The temperature of the chips at the outlet, usually from the last sensor on the board
+    pub inlet_chip_temperature: Option<Temperature>,
+    /// The temperature of the hottest / last-in-chain chip on the board
     #[serde(serialize_with = "serialize_temperature")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub outlet_temperature: Option<Temperature>,
+    pub outlet_chip_temperature: Option<Temperature>,
     /// The expected number of chips on this board
     pub expected_chips: Option<u16>,
     /// The number of working chips on this board

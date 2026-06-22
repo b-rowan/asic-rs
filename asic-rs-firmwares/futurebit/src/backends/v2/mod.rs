@@ -534,8 +534,9 @@ impl GetHashboards for ApolloV2 {
         board.expected_hashrate =
             hash_rate_from_ghs(as_f64(stats.pointer("/master/intervals/int_30/byDiff")));
         board.board_temperature = as_f64(slot.get("temperature")).map(Temperature::from_celsius);
-        board.intake_temperature = board.board_temperature;
-        board.outlet_temperature = as_f64(slot.get("temperature1")).map(Temperature::from_celsius);
+        board.inlet_chip_temperature = board.board_temperature;
+        board.outlet_chip_temperature =
+            as_f64(slot.get("temperature1")).map(Temperature::from_celsius);
         board.serial_number = stats
             .pointer("/slaves/0/uid")
             .and_then(Value::as_str)

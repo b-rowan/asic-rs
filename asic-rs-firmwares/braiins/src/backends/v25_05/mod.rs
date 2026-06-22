@@ -443,9 +443,9 @@ impl GetHashboards for BraiinsV2505 {
                     if name.contains("board") {
                         board.board_temperature = degrees.map(Temperature::from_celsius);
                     } else if name.contains("inlet") {
-                        board.intake_temperature = degrees.map(Temperature::from_celsius);
+                        board.inlet_chip_temperature = degrees.map(Temperature::from_celsius);
                     } else if name.contains("outlet") {
-                        board.outlet_temperature = degrees.map(Temperature::from_celsius);
+                        board.outlet_chip_temperature = degrees.map(Temperature::from_celsius);
                     }
                 }
             }

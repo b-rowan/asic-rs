@@ -68,6 +68,9 @@ pub enum DataField {
     /// Fluid temperature reported by the miner.
     #[cfg_attr(feature = "python", pydantic(value = "FluidTemperature"))]
     FluidTemperature,
+    /// Coolant exhaust (outlet) fluid temperature reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "OutletFluidTemperature"))]
+    OutletFluidTemperature,
     /// Current power consumption in watts.
     #[cfg_attr(feature = "python", pydantic(value = "Wattage"))]
     Wattage,
