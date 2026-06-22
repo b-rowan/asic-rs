@@ -267,7 +267,8 @@ impl GetDataLocations for VnishV120 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/chains"),
-              },
+                    tag: None,
+                },
             )],
             DataField::Messages => vec![(
                 WEB_SUMMARY,
