@@ -20,6 +20,7 @@ use crate::{
     },
     data::{
         board::{BoardData, MinerControlBoard},
+        capabilities::TuningCapabilities,
         collector::{DataCollector, DataField, DataLocation},
         command::MinerCommand,
         device::DeviceInfo,
@@ -133,6 +134,7 @@ pub trait GetMinerData:
     + GetWattage
     + GetTuningTarget
     + GetScaledTuningTarget
+    + GetTuningCapabilities
     + GetLightFlashing
     + GetMessages
     + GetUptime
@@ -191,6 +193,7 @@ impl<
         + GetWattage
         + GetTuningTarget
         + GetScaledTuningTarget
+        + GetTuningCapabilities
         + GetLightFlashing
         + GetMessages
         + GetUptime
@@ -227,6 +230,7 @@ impl<
         let wattage = self.parse_wattage(&data);
         let tuning_target = self.parse_tuning_target(&data);
         let scaled_tuning_target = self.parse_scaled_tuning_target(&data);
+        let tuning_capabilities = self.parse_tuning_capabilities(&data);
         let fluid_temperature = self.parse_fluid_temperature(&data);
         let outlet_fluid_temperature = self.parse_outlet_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
@@ -317,6 +321,7 @@ impl<
             wattage,
             tuning_target,
             scaled_tuning_target,
+            tuning_capabilities,
             efficiency,
 
             // Status information
@@ -650,6 +655,25 @@ pub trait GetScaledTuningTarget: CollectData {
 
     #[allow(unused_variables)]
     fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        None
+    }
+}
+
+// Tuning Capabilities
+#[async_trait]
+pub trait GetTuningCapabilities: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_tuning_capabilities(&self) -> Option<TuningCapabilities> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::TuningCapabilities]).await;
+        self.parse_tuning_capabilities(&data)
+    }
+
+    #[allow(unused_variables)]
+    fn parse_tuning_capabilities(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<TuningCapabilities> {
         None
     }
 }

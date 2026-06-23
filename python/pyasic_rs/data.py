@@ -6,6 +6,12 @@ applicable.
 """
 
 from pyasic_rs.asic_rs import BoardData, ChipData
+from pyasic_rs.asic_rs import (
+    HashRateTuningCapabilities,
+    PowerTuningCapabilities,
+    PresetTuningCapabilities,
+    TuningCapabilities,
+)
 from pyasic_rs.asic_rs import DeviceInfo, MinerHardware
 from pyasic_rs.asic_rs import FanData
 from pyasic_rs.asic_rs import HashRate, HashRateUnit
@@ -20,6 +26,10 @@ __all__ = [
     "BoardData",
     "ChipData",
     "DeviceInfo",
+    "HashRateTuningCapabilities",
+    "PowerTuningCapabilities",
+    "PresetTuningCapabilities",
+    "TuningCapabilities",
     "FanData",
     "HashRate",
     "HashRateUnit",

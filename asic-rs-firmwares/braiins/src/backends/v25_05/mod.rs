@@ -8,6 +8,7 @@ use asic_rs_core::{
     },
     data::{
         board::BoardData,
+        capabilities::TuningCapabilities,
         collector::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
@@ -28,7 +29,9 @@ use serde_json::{Value, json};
 
 use crate::{
     backends::{
-        util::{parse_configured_tuning_target, parse_scaled_tuning_target},
+        util::{
+            parse_configured_tuning_target, parse_scaled_tuning_target, power_target_capabilities,
+        },
         v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
     },
     firmware::BraiinsFirmware,
@@ -192,6 +195,21 @@ impl GetDataLocations for BraiinsV2505 {
             command: "admin/network/iface_status/lan",
             parameters: None,
         };
+        const GQL_POWER_TARGET_META_QUERY: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    metadata {
+                        autotuning {
+                            powerTarget {
+                                default
+                                min
+                                max
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
 
         match data_field {
             DataField::ApiVersion => vec![(
@@ -340,6 +358,14 @@ impl GetDataLocations for BraiinsV2505 {
                     tag: None,
                 },
             )],
+            DataField::TuningCapabilities => vec![(
+                GQL_POWER_TARGET_META_QUERY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/metadata/autotuning/powerTarget"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -390,6 +416,15 @@ impl GetFirmwareVersion for BraiinsV2505 {
 }
 
 impl GetControlBoardVersion for BraiinsV2505 {}
+impl GetTuningCapabilities for BraiinsV2505 {
+    fn parse_tuning_capabilities(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<TuningCapabilities> {
+        let power_target = data.get(&DataField::TuningCapabilities)?;
+        Some(power_target_capabilities(power_target))
+    }
+}
 
 impl GetHashboards for BraiinsV2505 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {

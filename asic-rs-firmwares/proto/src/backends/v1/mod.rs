@@ -623,7 +623,7 @@ impl GetTuningTarget for ProtoV1 {
 }
 
 impl GetScaledTuningTarget for ProtoV1 {}
-
+impl GetTuningCapabilities for ProtoV1 {}
 // No endpoint reports locate-LED state, so it's set-only.
 impl GetLightFlashing for ProtoV1 {}
 

@@ -3,6 +3,7 @@
 //! The most important data type is [`MinerData`][`miner::MinerData`], it contains all the data asic-rs gathers with `get_data`.
 
 pub mod board;
+pub mod capabilities;
 pub mod collector;
 pub mod command;
 pub(crate) mod deserialize;

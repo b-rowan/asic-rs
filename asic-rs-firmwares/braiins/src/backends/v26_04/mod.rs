@@ -8,6 +8,7 @@ use asic_rs_core::{
     },
     data::{
         board::{BoardData, MinerControlBoard},
+        capabilities::TuningCapabilities,
         collector::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
@@ -33,7 +34,10 @@ use web::BraiinsWebAPI;
 
 use crate::{
     backends::{
-        util::{parse_configured_tuning_target, parse_scaled_tuning_target},
+        util::{
+            parse_configured_tuning_target, parse_scaled_tuning_target,
+            tuner_constraints_capabilities,
+        },
         v21_09::graphql::BraiinsGraphQLAPI,
     },
     firmware::BraiinsFirmware,
@@ -138,6 +142,10 @@ impl GetDataLocations for BraiinsV2604 {
                     }
                 }
             }"#,
+        };
+        const WEB_CONSTRAINTS: MinerCommand = MinerCommand::WebAPI {
+            command: "configuration/constraints",
+            parameters: None,
         };
 
         match data_field {
@@ -310,6 +318,14 @@ impl GetDataLocations for BraiinsV2604 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/events/appeals"),
+                    tag: None,
+                },
+            )],
+            DataField::TuningCapabilities => vec![(
+                WEB_CONSTRAINTS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/tuner_constraints"),
                     tag: None,
                 },
             )],
@@ -606,6 +622,17 @@ impl GetScaledTuningTarget for BraiinsV2604 {
 }
 
 impl GetFluidTemperature for BraiinsV2604 {}
+impl GetTuningCapabilities for BraiinsV2604 {
+    fn parse_tuning_capabilities(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<TuningCapabilities> {
+        // BOS+ REST `/configuration/constraints` → `tuner_constraints`, with
+        // power_target (watts) and hashrate_target (TH/s) envelopes.
+        let tuner = data.get(&DataField::TuningCapabilities)?;
+        Some(tuner_constraints_capabilities(tuner))
+    }
+}
 
 impl GetPsuFans for BraiinsV2604 {}
 

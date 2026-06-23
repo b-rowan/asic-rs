@@ -386,6 +386,7 @@ impl GetTuningTarget for Bitaxe200 {
 impl GetScaledTuningTarget for Bitaxe200 {
     // N/A
 }
+impl GetTuningCapabilities for Bitaxe200 {}
 impl GetLightFlashing for Bitaxe200 {
     // N/A
 }

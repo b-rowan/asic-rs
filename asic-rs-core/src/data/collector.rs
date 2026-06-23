@@ -77,6 +77,10 @@ pub enum DataField {
     /// Configured tuning target (power or hashrate).
     #[cfg_attr(feature = "python", pydantic(value = "TuningTarget"))]
     TuningTarget,
+    /// Factory tuning envelope the firmware exposes (default/min/max power or
+    /// hashrate, or selectable presets).
+    #[cfg_attr(feature = "python", pydantic(value = "TuningCapabilities"))]
+    TuningCapabilities,
     /// Efficiency of the miner (e.g., J/TH).
     #[cfg_attr(feature = "python", pydantic(value = "Efficiency"))]
     Efficiency,

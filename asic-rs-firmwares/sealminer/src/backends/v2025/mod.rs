@@ -553,7 +553,7 @@ impl GetTuningTarget for SealMinerV2025 {
 }
 
 impl GetScaledTuningTarget for SealMinerV2025 {}
-
+impl GetTuningCapabilities for SealMinerV2025 {}
 impl GetLightFlashing for SealMinerV2025 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<String>(DataField::LightFlashing)
