@@ -565,3 +565,5 @@ impl SupportsFanConfig for NerdAxeV1 {
         false
     }
 }
+
+impl SupportsTemperatureConfig for NerdAxeV1 {}

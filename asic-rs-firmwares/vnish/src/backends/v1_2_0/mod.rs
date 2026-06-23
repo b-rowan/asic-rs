@@ -3,8 +3,9 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
+        temperature::TemperatureConfig,
     },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -60,9 +61,22 @@ impl APIClient for VnishV120 {
 }
 
 impl GetConfigsLocations for VnishV120 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
+            command: "summary",
+            parameters: None,
+        };
+        match data_field {
+            ConfigField::Temperature => vec![(
+                WEB_SUMMARY,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -945,6 +959,33 @@ impl FactoryReset for VnishV120 {
 impl SupportsScalingConfig for VnishV120 {
     fn supports_scaling_config(&self) -> bool {
         false
+    }
+}
+
+#[async_trait]
+impl SupportsTemperatureConfig for VnishV120 {
+    fn supports_temperature_config(&self) -> bool {
+        true
+    }
+
+    /// VNish reports configured thermal limits in `/summary`: the minimum
+    /// startup water temperature and the self-protection restart temperature.
+    /// `hot` is not exposed via `/summary` (left `None` = not reported, not
+    /// "no limit").
+    fn parse_temperature_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TemperatureConfig> {
+        let miner = data
+            .get(&ConfigField::Temperature)
+            .ok_or_else(|| anyhow::anyhow!("No temperature config returned by miner"))?;
+        Ok(TemperatureConfig {
+            hot: None,
+            danger: miner.pointer("/misc/restart_temp").and_then(|v| v.as_f64()),
+            minimum: miner
+                .pointer("/cooling/min_startup_water_temp")
+                .and_then(|v| v.as_f64()),
+        })
     }
 }
 

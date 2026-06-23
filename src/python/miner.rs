@@ -5,7 +5,7 @@ use asic_rs_core::data::collector::DataField;
 use asic_rs_core::{
     config::{
         fan::FanConfig, pools::PoolGroupConfig as PoolGroup, scaling::ScalingConfig,
-        tuning::TuningConfig,
+        temperature::TemperatureConfig, tuning::TuningConfig,
     },
     data::{
         board::BoardData,
@@ -214,6 +214,11 @@ impl Miner {
     #[getter]
     fn supports_scaling_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_scaling_config())
+    }
+    /// Whether this miner reports configured thermal limits.
+    #[getter]
+    fn supports_temperature_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_temperature_config())
     }
     /// Whether this miner supports tuning configuration.
     #[getter]
@@ -481,6 +486,17 @@ impl Miner {
         future_into_py(py, async move {
             let inner = inner.read().await;
             Ok(inner.get_scaling_config().await.ok())
+        })
+    }
+    /// Await the configured thermal limits, or `None` when unsupported/unavailable.
+    pub fn get_temperature_config<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Option<TemperatureConfig>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_temperature_config().await.ok())
         })
     }
     /// Await tuning configuration, or `None` when unsupported/unavailable.

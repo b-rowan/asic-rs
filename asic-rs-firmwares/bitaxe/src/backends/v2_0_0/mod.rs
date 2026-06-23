@@ -580,6 +580,8 @@ impl SupportsFanConfig for Bitaxe200 {
     }
 }
 
+impl SupportsTemperatureConfig for Bitaxe200 {}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

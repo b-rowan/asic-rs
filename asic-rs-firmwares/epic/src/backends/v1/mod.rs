@@ -169,6 +169,7 @@ impl GetConfigsLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
+            _ => vec![],
         }
     }
 }
@@ -1570,6 +1571,8 @@ impl HasAuth for PowerPlayV1 {
         self.web.set_auth(auth);
     }
 }
+
+impl SupportsTemperatureConfig for PowerPlayV1 {}
 
 #[cfg(test)]
 mod tests {

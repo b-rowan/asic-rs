@@ -32,6 +32,7 @@ mod asic_rs {
         fan::{FanConfig, FanMode},
         pools::{PoolConfig as Pool, PoolGroupConfig as PoolGroup},
         scaling::ScalingConfig,
+        temperature::TemperatureConfig,
         tuning::TuningConfig,
     };
     #[pymodule_export]

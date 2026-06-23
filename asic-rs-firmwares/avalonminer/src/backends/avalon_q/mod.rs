@@ -710,6 +710,8 @@ impl SupportsFanConfig for AvalonQMiner {
     }
 }
 
+impl SupportsTemperatureConfig for AvalonQMiner {}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

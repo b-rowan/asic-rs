@@ -841,6 +841,8 @@ impl HasDefaultAuth for SealMinerV2025 {
     }
 }
 
+impl SupportsTemperatureConfig for SealMinerV2025 {}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;

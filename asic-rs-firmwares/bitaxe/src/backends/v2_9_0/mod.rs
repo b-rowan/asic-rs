@@ -563,3 +563,5 @@ impl SupportsFanConfig for Bitaxe290 {
         false
     }
 }
+
+impl SupportsTemperatureConfig for Bitaxe290 {}

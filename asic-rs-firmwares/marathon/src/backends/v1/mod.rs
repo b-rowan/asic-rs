@@ -1159,6 +1159,8 @@ impl SupportsFanConfig for MaraV1 {
     }
 }
 
+impl SupportsTemperatureConfig for MaraV1 {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

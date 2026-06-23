@@ -826,3 +826,5 @@ mod integration_tests {
         Ok(())
     }
 }
+
+impl SupportsTemperatureConfig for WhatsMinerV1 {}

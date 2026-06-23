@@ -860,6 +860,8 @@ impl SupportsFanConfig for BraiinsV2604 {
     }
 }
 
+impl SupportsTemperatureConfig for BraiinsV2604 {}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;

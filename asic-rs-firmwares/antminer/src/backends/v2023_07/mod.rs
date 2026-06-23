@@ -1170,6 +1170,8 @@ impl SupportsFanConfig for AntMinerV202307 {
     }
 }
 
+impl SupportsTemperatureConfig for AntMinerV202307 {}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

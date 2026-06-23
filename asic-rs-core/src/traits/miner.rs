@@ -15,6 +15,7 @@ use crate::{
         fan::FanConfig,
         pools::PoolGroupConfig,
         scaling::ScalingConfig,
+        temperature::TemperatureConfig,
         tuning::TuningConfig,
     },
     data::{
@@ -73,6 +74,7 @@ pub trait SupportsConfigs:
     CollectConfigs
     + SupportsPoolsConfig
     + SupportsScalingConfig
+    + SupportsTemperatureConfig
     + SupportsTuningConfig
     + SupportsFanConfig
 {
@@ -82,6 +84,7 @@ impl<
     T: CollectConfigs
         + SupportsPoolsConfig
         + SupportsScalingConfig
+        + SupportsTemperatureConfig
         + SupportsTuningConfig
         + SupportsFanConfig,
 > SupportsConfigs for T
@@ -855,6 +858,31 @@ pub trait SupportsScalingConfig: CollectConfigs {
     }
 
     fn supports_scaling_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsTemperatureConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_temperature_config(&self, config: TemperatureConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting temperature config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_temperature_config(&self) -> anyhow::Result<TemperatureConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Temperature]).await;
+        self.parse_temperature_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_temperature_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TemperatureConfig> {
+        anyhow::bail!("Getting temperature config is not supported on this platform");
+    }
+    /// Defaults to `false`; backends that report configured thermal limits override this.
+    fn supports_temperature_config(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]

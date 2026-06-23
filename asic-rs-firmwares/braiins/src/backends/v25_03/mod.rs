@@ -960,6 +960,8 @@ impl SupportsFanConfig for BraiinsV2503 {
     }
 }
 
+impl SupportsTemperatureConfig for BraiinsV2503 {}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
