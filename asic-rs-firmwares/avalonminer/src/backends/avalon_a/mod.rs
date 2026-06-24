@@ -767,6 +767,8 @@ impl SupportsFanConfig for AvalonAMiner {
 }
 
 impl SupportsTemperatureConfig for AvalonAMiner {}
+impl GetTuningPercent for AvalonAMiner {}
+impl SetTuningPercent for AvalonAMiner {}
 
 #[cfg(test)]
 mod tests {

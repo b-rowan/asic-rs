@@ -1433,6 +1433,8 @@ impl SupportsFanConfig for AuradineV1 {
 }
 
 impl SupportsTemperatureConfig for AuradineV1 {}
+impl GetTuningPercent for AuradineV1 {}
+impl SetTuningPercent for AuradineV1 {}
 
 #[cfg(test)]
 mod tests {

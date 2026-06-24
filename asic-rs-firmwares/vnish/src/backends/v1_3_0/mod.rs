@@ -33,16 +33,16 @@ use crate::firmware::VnishFirmware;
 mod web;
 
 #[derive(Debug)]
-pub struct VnishV120 {
+pub struct VnishV130 {
     ip: IpAddr,
     web: VnishWebAPI,
     device_info: DeviceInfo,
 }
 
-impl VnishV120 {
+impl VnishV130 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
-        VnishV120 {
+        VnishV130 {
             ip,
             web: VnishWebAPI::new(ip, 80, auth),
             device_info: DeviceInfo::new(model, VnishFirmware::default(), HashAlgorithm::SHA256),
@@ -51,7 +51,7 @@ impl VnishV120 {
 }
 
 #[async_trait]
-impl APIClient for VnishV120 {
+impl APIClient for VnishV130 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
@@ -60,7 +60,7 @@ impl APIClient for VnishV120 {
     }
 }
 
-impl GetConfigsLocations for VnishV120 {
+impl GetConfigsLocations for VnishV130 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -80,13 +80,13 @@ impl GetConfigsLocations for VnishV120 {
     }
 }
 
-impl CollectConfigs for VnishV120 {
+impl CollectConfigs for VnishV130 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for VnishV120 {
+impl GetDataLocations for VnishV130 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "info",
@@ -292,61 +292,69 @@ impl GetDataLocations for VnishV120 {
                     tag: None,
                 },
             )],
+            DataField::TuningPercent => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/miner_status/throttled"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
 }
 
-impl GetIP for VnishV120 {
+impl GetIP for VnishV130 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for VnishV120 {
+impl GetDeviceInfo for VnishV130 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for VnishV120 {
+impl CollectData for VnishV130 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for VnishV120 {
+impl GetMAC for VnishV130 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetSerialNumber for VnishV120 {
+impl GetSerialNumber for VnishV130 {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::SerialNumber)
     }
 }
 
-impl GetHostname for VnishV120 {
+impl GetHostname for VnishV130 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for VnishV120 {
+impl GetApiVersion for VnishV130 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for VnishV120 {
+impl GetFirmwareVersion for VnishV130 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetControlBoardVersion for VnishV120 {
+impl GetControlBoardVersion for VnishV130 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -356,7 +364,7 @@ impl GetControlBoardVersion for VnishV120 {
     }
 }
 
-impl GetHashboards for VnishV120 {
+impl GetHashboards for VnishV130 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let Some(all_chains) = data.get(&DataField::Hashboards).and_then(|v| v.as_array()) else {
             return Vec::new();
@@ -517,7 +525,7 @@ impl GetHashboards for VnishV120 {
     }
 }
 
-impl GetHashrate for VnishV120 {
+impl GetHashrate for VnishV130 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| {
             HashRate {
@@ -530,7 +538,7 @@ impl GetHashrate for VnishV120 {
     }
 }
 
-impl GetExpectedHashrate for VnishV120 {
+impl GetExpectedHashrate for VnishV130 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
             HashRate {
@@ -543,7 +551,7 @@ impl GetExpectedHashrate for VnishV120 {
     }
 }
 
-impl GetFans for VnishV120 {
+impl GetFans for VnishV130 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -564,9 +572,9 @@ impl GetFans for VnishV120 {
     }
 }
 
-impl GetPsuFans for VnishV120 {}
+impl GetPsuFans for VnishV130 {}
 
-impl GetFluidTemperature for VnishV120 {
+impl GetFluidTemperature for VnishV130 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         // Fluid temperature mirrors other firmwares' "environment temperature":
         // the coolant entering the machine. For hydro miners that's the
@@ -597,26 +605,30 @@ impl GetFluidTemperature for VnishV120 {
     }
 }
 
-impl GetWattage for VnishV120 {
+impl GetWattage for VnishV130 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<i64, _>(DataField::Wattage, |w| Power::from_watts(w as f64))
     }
 }
 
-// VNish 1.2.x has no manual throttle endpoint; tuning_percent lands in v1_3_0.
-impl GetTuningPercent for VnishV120 {}
+impl GetTuningPercent for VnishV130 {
+    fn parse_tuning_percent(&self, data: &HashMap<DataField, Value>) -> Option<u8> {
+        // `/miner/miner_status/throttled`: 100 = full power, <100 = throttled.
+        data.extract_map::<i64, _>(DataField::TuningPercent, |t| t.clamp(0, 100) as u8)
+    }
+}
 
-impl GetTuningTarget for VnishV120 {}
+impl GetTuningTarget for VnishV130 {}
 
-impl GetScaledTuningTarget for VnishV120 {}
-impl GetTuningCapabilities for VnishV120 {}
-impl GetLightFlashing for VnishV120 {
+impl GetScaledTuningTarget for VnishV130 {}
+impl GetTuningCapabilities for VnishV130 {}
+impl GetLightFlashing for VnishV130 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
-impl GetMessages for VnishV120 {
+impl GetMessages for VnishV130 {
     /// Surface the miner's own state verdict as a message. VNish self-manages
     /// (won't start mining below the configured `min_startup_water_temp`, and
     /// protects itself above `restart_temp`), so any non-operating state is
@@ -649,7 +661,7 @@ impl GetMessages for VnishV120 {
     }
 }
 
-impl GetUptime for VnishV120 {
+impl GetUptime for VnishV130 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract::<String>(DataField::Uptime)
             .and_then(|uptime_str| {
@@ -698,7 +710,7 @@ impl GetUptime for VnishV120 {
     }
 }
 
-impl GetIsMining for VnishV120 {
+impl GetIsMining for VnishV130 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|state| state == "mining" || state == "auto-tuning")
@@ -706,7 +718,7 @@ impl GetIsMining for VnishV120 {
     }
 }
 
-impl GetPools for VnishV120 {
+impl GetPools for VnishV130 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
 
@@ -750,7 +762,7 @@ impl GetPools for VnishV120 {
     }
 }
 
-impl VnishV120 {
+impl VnishV130 {
     fn parse_pool_status(status: Option<&str>) -> (Option<bool>, Option<bool>) {
         match status {
             Some("active" | "working") => (Some(true), Some(true)),
@@ -762,7 +774,7 @@ impl VnishV120 {
 }
 
 #[async_trait]
-impl SetFaultLight for VnishV120 {
+impl SetFaultLight for VnishV130 {
     fn supports_set_fault_light(&self) -> bool {
         true
     }
@@ -782,7 +794,7 @@ impl SetFaultLight for VnishV120 {
 }
 
 #[async_trait]
-impl SetPowerLimit for VnishV120 {
+impl SetPowerLimit for VnishV130 {
     fn supports_set_power_limit(&self) -> bool {
         true
     }
@@ -846,12 +858,23 @@ impl SetPowerLimit for VnishV120 {
     }
 }
 
-// VNish 1.2.x has no manual throttle endpoint; tuning_percent lands in v1_3_0.
 #[async_trait]
-impl SetTuningPercent for VnishV120 {}
+impl SetTuningPercent for VnishV130 {
+    fn supports_set_tuning_percent(&self) -> bool {
+        true
+    }
+
+    /// VNish throttles to a percent of full power via `POST /mining/throttle`
+    /// (100 = unthrottled). The firmware accepts 20..=100.
+    async fn set_tuning_percent(&self, percent: u8) -> anyhow::Result<bool> {
+        let percent = percent.clamp(20, 100);
+        self.web.throttle(percent).await?;
+        Ok(true)
+    }
+}
 
 #[async_trait]
-impl SupportsPoolsConfig for VnishV120 {
+impl SupportsPoolsConfig for VnishV130 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
         Ok(self
             .get_pools()
@@ -890,7 +913,7 @@ impl SupportsPoolsConfig for VnishV120 {
 }
 
 #[async_trait]
-impl Restart for VnishV120 {
+impl Restart for VnishV130 {
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.web.restart().await.is_ok())
     }
@@ -901,7 +924,7 @@ impl Restart for VnishV120 {
 }
 
 #[async_trait]
-impl Pause for VnishV120 {
+impl Pause for VnishV130 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.web.stop().await.is_ok())
@@ -913,7 +936,7 @@ impl Pause for VnishV120 {
 }
 
 #[async_trait]
-impl Resume for VnishV120 {
+impl Resume for VnishV130 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.web.start().await.is_ok())
@@ -925,7 +948,7 @@ impl Resume for VnishV120 {
 }
 
 #[async_trait]
-impl ChangePassword for VnishV120 {
+impl ChangePassword for VnishV130 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         let success = self.web.change_password(password).await?;
         if success {
@@ -941,7 +964,7 @@ impl ChangePassword for VnishV120 {
 }
 
 #[async_trait]
-impl ReadLogs for VnishV120 {
+impl ReadLogs for VnishV130 {
     async fn read_logs(&self) -> anyhow::Result<String> {
         self.web.read_logs().await
     }
@@ -952,7 +975,7 @@ impl ReadLogs for VnishV120 {
 }
 
 #[async_trait]
-impl FactoryReset for VnishV120 {
+impl FactoryReset for VnishV130 {
     async fn factory_reset(&self) -> anyhow::Result<bool> {
         self.web.factory_reset().await
     }
@@ -963,14 +986,14 @@ impl FactoryReset for VnishV120 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for VnishV120 {
+impl SupportsScalingConfig for VnishV130 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsTemperatureConfig for VnishV120 {
+impl SupportsTemperatureConfig for VnishV130 {
     fn supports_temperature_config(&self) -> bool {
         true
     }
@@ -997,33 +1020,33 @@ impl SupportsTemperatureConfig for VnishV120 {
 }
 
 #[async_trait]
-impl UpgradeFirmware for VnishV120 {
+impl UpgradeFirmware for VnishV130 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
     }
 }
 
-impl HasDefaultAuth for VnishV120 {
+impl HasDefaultAuth for VnishV130 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("", "admin")
     }
 }
 
-impl HasAuth for VnishV120 {
+impl HasAuth for VnishV130 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
 #[async_trait]
-impl SupportsTuningConfig for VnishV120 {
+impl SupportsTuningConfig for VnishV130 {
     fn supports_tuning_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsFanConfig for VnishV120 {
+impl SupportsFanConfig for VnishV130 {
     fn supports_fan_config(&self) -> bool {
         false
     }

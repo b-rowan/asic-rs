@@ -1574,6 +1574,8 @@ impl HasAuth for PowerPlayV1 {
 }
 
 impl SupportsTemperatureConfig for PowerPlayV1 {}
+impl GetTuningPercent for PowerPlayV1 {}
+impl SetTuningPercent for PowerPlayV1 {}
 
 #[cfg(test)]
 mod tests {

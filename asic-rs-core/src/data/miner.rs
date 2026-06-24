@@ -115,6 +115,8 @@ pub struct MinerData {
     /// The current power consumption of the miner
     #[serde(serialize_with = "serialize_power")]
     pub wattage: Option<Power>,
+    /// The current manual tuning percent of full power (100 = unthrottled), where supported
+    pub tuning_percent: Option<u8>,
     /// The current tuning target of the miner, such as power target or hashrate target
     pub tuning_target: Option<TuningTarget>,
     /// The current tuning target adjusted by scaling settings, when available.

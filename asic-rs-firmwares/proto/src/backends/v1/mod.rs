@@ -1007,6 +1007,8 @@ impl HasAuth for ProtoV1 {
 }
 
 impl SupportsTemperatureConfig for ProtoV1 {}
+impl GetTuningPercent for ProtoV1 {}
+impl SetTuningPercent for ProtoV1 {}
 
 #[cfg(test)]
 mod tests {

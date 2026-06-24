@@ -711,6 +711,8 @@ impl SupportsFanConfig for AvalonQMiner {
 }
 
 impl SupportsTemperatureConfig for AvalonQMiner {}
+impl GetTuningPercent for AvalonQMiner {}
+impl SetTuningPercent for AvalonQMiner {}
 
 #[cfg(test)]
 mod tests {

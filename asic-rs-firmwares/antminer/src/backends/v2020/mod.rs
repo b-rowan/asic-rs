@@ -1238,6 +1238,8 @@ impl SupportsFanConfig for AntMinerV2020 {
 }
 
 impl SupportsTemperatureConfig for AntMinerV2020 {}
+impl GetTuningPercent for AntMinerV2020 {}
+impl SetTuningPercent for AntMinerV2020 {}
 
 #[cfg(test)]
 mod tests {

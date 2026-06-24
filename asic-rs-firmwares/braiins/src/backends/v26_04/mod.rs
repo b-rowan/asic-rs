@@ -888,6 +888,8 @@ impl SupportsFanConfig for BraiinsV2604 {
 }
 
 impl SupportsTemperatureConfig for BraiinsV2604 {}
+impl GetTuningPercent for BraiinsV2604 {}
+impl SetTuningPercent for BraiinsV2604 {}
 
 #[cfg(test)]
 mod tests {

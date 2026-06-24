@@ -74,6 +74,9 @@ pub enum DataField {
     /// Current power consumption in watts.
     #[cfg_attr(feature = "python", pydantic(value = "Wattage"))]
     Wattage,
+    /// manual tuning percent of full power (100 = unthrottled).
+    #[cfg_attr(feature = "python", pydantic(value = "TuningPercent"))]
+    TuningPercent,
     /// Configured tuning target (power or hashrate).
     #[cfg_attr(feature = "python", pydantic(value = "TuningTarget"))]
     TuningTarget,

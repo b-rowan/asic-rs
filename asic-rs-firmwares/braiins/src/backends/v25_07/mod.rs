@@ -871,6 +871,8 @@ impl SupportsFanConfig for BraiinsV2507 {
 }
 
 impl SupportsTemperatureConfig for BraiinsV2507 {}
+impl GetTuningPercent for BraiinsV2507 {}
+impl SetTuningPercent for BraiinsV2507 {}
 
 #[cfg(test)]
 mod tests {

@@ -582,6 +582,8 @@ impl SupportsFanConfig for Bitaxe200 {
 }
 
 impl SupportsTemperatureConfig for Bitaxe200 {}
+impl GetTuningPercent for Bitaxe200 {}
+impl SetTuningPercent for Bitaxe200 {}
 
 #[cfg(test)]
 mod tests {

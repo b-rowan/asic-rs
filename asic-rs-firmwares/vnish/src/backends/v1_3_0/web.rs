@@ -1,0 +1,362 @@
+use std::{net::IpAddr, time::Duration};
+
+use once_cell::sync::OnceCell;
+
+use anyhow;
+use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
+use async_trait::async_trait;
+use reqwest::{Client, Method, Response};
+use serde_json::{Value, json};
+use tokio::sync::RwLock;
+
+/// VNish WebAPI client
+#[derive(Debug)]
+pub struct VnishWebAPI {
+    client: OnceCell<Client>,
+    pub ip: IpAddr,
+    port: u16,
+    timeout: Duration,
+    bearer_token: RwLock<Option<String>>,
+    auth: MinerAuth,
+}
+
+#[async_trait]
+impl APIClient for VnishWebAPI {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
+        match command {
+            MinerCommand::WebAPI {
+                command,
+                parameters,
+            } => self
+                .send_command(command, false, parameters.clone(), Method::GET)
+                .await
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non web command to web API")),
+        }
+    }
+}
+
+#[async_trait]
+impl WebAPIClient for VnishWebAPI {
+    /// Send a command to the Vnish miner API
+    async fn send_command(
+        &self,
+        command: &str,
+        _privileged: bool,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> anyhow::Result<Value> {
+        // Ensure we're authenticated before making the request
+        if let Err(e) = self.ensure_authenticated().await {
+            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
+        }
+
+        let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
+
+        let mut response = self
+            .execute_request(&url, &method, parameters.clone())
+            .await?;
+
+        if response.status().as_u16() == 401 {
+            *self.bearer_token.write().await = None;
+            self.ensure_authenticated().await?;
+            response = self.execute_request(&url, &method, parameters).await?;
+        }
+
+        let status = response.status();
+        if status.is_success() {
+            let json_data = response
+                .json()
+                .await
+                .map_err(|e| VnishError::ParseError(e.to_string()))?;
+            Ok(json_data)
+        } else {
+            let code = status.as_u16();
+            Err(match code {
+                401 => VnishError::Unauthorized,
+                _ => VnishError::HttpError(code),
+            })?
+        }
+    }
+}
+
+impl VnishWebAPI {
+    /// Create a new Vnish WebAPI client
+    pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        Self {
+            client: OnceCell::new(),
+            ip,
+            port,
+            timeout: Duration::from_secs(5),
+            bearer_token: RwLock::new(None),
+            auth,
+        }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
+        // Clear cached bearer token to force re-authentication with new creds
+        *self.bearer_token.get_mut() = None;
+    }
+
+    pub fn username(&self) -> &str {
+        self.auth.username()
+    }
+
+    fn build_client() -> Result<Client, VnishError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| VnishError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, VnishError> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
+    /// Ensure authentication token is present, authenticate if needed.
+    ///
+    /// Prefers a pre-issued token from the credentials (no username on VNish);
+    /// otherwise unlocks with the password to obtain one.
+    async fn ensure_authenticated(&self) -> anyhow::Result<(), VnishError> {
+        if self.bearer_token.read().await.is_some() {
+            return Ok(());
+        }
+
+        let token = match &self.auth {
+            MinerAuth::TokenAuth(token) => token.expose_secret().to_string(),
+            MinerAuth::UserAndPass(creds) => {
+                self.authenticate(creds.password.expose_secret()).await?
+            }
+        };
+        *self.bearer_token.write().await = Some(token);
+        Ok(())
+    }
+
+    async fn authenticate(&self, password: &str) -> anyhow::Result<String, VnishError> {
+        let unlock_payload = serde_json::json!({ "pw": password });
+        let url = format!("http://{}:{}/api/v1/unlock", self.ip, self.port);
+        let client = self.client()?;
+
+        let response = client
+            .post(&url)
+            .json(&unlock_payload)
+            .timeout(self.timeout)
+            .send()
+            .await
+            .map_err(|e| VnishError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(VnishError::AuthenticationFailed);
+        }
+
+        let unlock_response: Value = response
+            .json()
+            .await
+            .map_err(|e| VnishError::ParseError(e.to_string()))?;
+
+        unlock_response
+            .pointer("/token")
+            .and_then(|t| t.as_str())
+            .map(String::from)
+            .ok_or(VnishError::AuthenticationFailed)
+    }
+
+    /// Execute the actual HTTP request
+    async fn execute_request(
+        &self,
+        url: &str,
+        method: &Method,
+        parameters: Option<Value>,
+    ) -> anyhow::Result<Response, VnishError> {
+        let client = self.client()?;
+
+        let request_builder = match *method {
+            Method::GET => client.get(url),
+            Method::POST => {
+                let mut builder = client.post(url);
+                if let Some(params) = parameters {
+                    builder = builder.json(&params);
+                }
+                builder
+            }
+            Method::PATCH => {
+                let mut builder = client.patch(url);
+                if let Some(params) = parameters {
+                    builder = builder.json(&params);
+                }
+                builder
+            }
+            _ => return Err(VnishError::UnsupportedMethod(method.to_string())),
+        };
+
+        let mut request_builder = request_builder.timeout(self.timeout);
+
+        // Add authentication headers if provided
+        if let Some(ref token) = *self.bearer_token.read().await {
+            request_builder = request_builder.header("Authorization", format!("Bearer {token}"));
+        }
+
+        let request = request_builder
+            .build()
+            .map_err(|e| VnishError::RequestError(e.to_string()))?;
+
+        let response = client
+            .execute(request)
+            .await
+            .map_err(|e| VnishError::NetworkError(e.to_string()))?;
+
+        Ok(response)
+    }
+
+    pub async fn find_miner(&self, on: bool) -> anyhow::Result<Value> {
+        let url = format!("http://{}:{}/api/v1/find-miner", self.ip, self.port);
+        let response = self
+            .execute_request(&url, &Method::POST, Some(serde_json::json!({ "on": on })))
+            .await?;
+
+        let status = response.status();
+        if status.is_success() {
+            let json_data = response
+                .json()
+                .await
+                .map_err(|e| VnishError::ParseError(e.to_string()))?;
+            Ok(json_data)
+        } else {
+            Err(VnishError::HttpError(status.as_u16()))?
+        }
+    }
+
+    pub async fn restart(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/restart", true, None, Method::POST)
+            .await
+    }
+
+    pub async fn stop(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/stop", true, None, Method::POST)
+            .await
+    }
+
+    pub async fn start(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/start", true, None, Method::POST)
+            .await
+    }
+
+    /// Set a manual throttle as a percent of full power (100 = unthrottled).
+    pub async fn throttle(&self, percent: u8) -> anyhow::Result<Value> {
+        self.send_command(
+            "mining/throttle",
+            true,
+            Some(serde_json::json!({ "percent": percent })),
+            Method::POST,
+        )
+        .await
+    }
+
+    pub async fn set_settings(&self, settings: Value) -> anyhow::Result<Value> {
+        self.send_command("settings", true, Some(settings), Method::POST)
+            .await
+    }
+
+    /// GET the current miner settings (includes `miner.overclock`).
+    pub async fn settings(&self) -> anyhow::Result<Value> {
+        self.send_command("settings", false, None, Method::GET)
+            .await
+    }
+
+    /// GET the available autotune presets.
+    pub async fn autotune_presets(&self) -> anyhow::Result<Value> {
+        self.send_command("autotune/presets", false, None, Method::GET)
+            .await
+    }
+
+    pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
+        let settings = json!({
+            "password": {
+                "current": self.auth.password(),
+                "pw": password,
+            },
+        });
+
+        self.set_settings(settings).await.map(|_| true)
+    }
+
+    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.send_command("settings/factory-reset", true, None, Method::POST)
+            .await
+            .map(|_| true)
+    }
+
+    async fn read_log(&self, log_type: &str) -> anyhow::Result<String> {
+        self.ensure_authenticated().await?;
+
+        let url = format!("http://{}:{}/api/v1/logs/{}", self.ip, self.port, log_type);
+        let response = self.execute_request(&url, &Method::GET, None).await?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(VnishError::HttpError(status.as_u16()))?;
+        }
+
+        response
+            .text()
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to read {log_type} log response body: {e}"))
+    }
+
+    pub async fn read_logs(&self) -> anyhow::Result<String> {
+        const LOG_TYPES: &[&str] = &["status", "miner", "autotune", "system", "messages", "api"];
+
+        let mut logs = String::new();
+        for log_type in LOG_TYPES {
+            logs.push_str("== ");
+            logs.push_str(log_type);
+            logs.push_str(" ==\n");
+            logs.push_str(&self.read_log(log_type).await?);
+            logs.push('\n');
+        }
+
+        Ok(logs)
+    }
+}
+
+/// Error types for Vnish WebAPI operations
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub enum VnishError {
+    /// Network error (connection issues, DNS resolution, etc.)
+    NetworkError(String),
+    /// HTTP error with status code
+    HttpError(u16),
+    /// JSON parsing error
+    ParseError(String),
+    /// Request building error
+    RequestError(String),
+    /// Timeout error
+    Timeout,
+    /// Unsupported HTTP method
+    UnsupportedMethod(String),
+    /// Maximum retries exceeded
+    MaxRetriesExceeded,
+    /// Authentication failed
+    AuthenticationFailed,
+    /// Unauthorized (401)
+    Unauthorized,
+}
+
+impl std::fmt::Display for VnishError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VnishError::NetworkError(msg) => write!(f, "Network error: {msg}"),
+            VnishError::HttpError(code) => write!(f, "HTTP error: {code}"),
+            VnishError::ParseError(msg) => write!(f, "Parse error: {msg}"),
+            VnishError::RequestError(msg) => write!(f, "Request error: {msg}"),
+            VnishError::Timeout => write!(f, "Request timeout"),
+            VnishError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
+            VnishError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
+            VnishError::AuthenticationFailed => write!(f, "Authentication failed"),
+            VnishError::Unauthorized => write!(f, "Unauthorized access"),
+        }
+    }
+}
+
+impl std::error::Error for VnishError {}
