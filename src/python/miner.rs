@@ -53,6 +53,14 @@ impl Miner {
             f(inner.as_ref())
         })
     }
+
+    fn apply_auth(&mut self, auth: MinerAuth) -> PyResult<()> {
+        Arc::get_mut(&mut self.inner)
+            .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
+            .get_mut()
+            .set_auth(auth);
+        Ok(())
+    }
 }
 
 impl From<Box<dyn MinerTrait>> for Miner {
@@ -230,16 +238,23 @@ impl Miner {
     fn supports_fan_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_fan_config())
     }
-    /// Set credentials used by subsequent operations on this miner.
+    /// Set username/password credentials used by subsequent operations on this
+    /// miner.
     ///
     /// Call this before starting concurrent operations. It raises `RuntimeError`
     /// if the miner handle is already shared by an active async operation.
     pub fn set_auth(&mut self, username: String, password: String) -> PyResult<()> {
-        Arc::get_mut(&mut self.inner)
-            .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
-            .get_mut()
-            .set_auth(MinerAuth::new(username, password));
-        Ok(())
+        self.apply_auth(MinerAuth::new(username, password))
+    }
+
+    /// Set a pre-issued bearer token for firmwares that accept one (e.g. VNish);
+    /// backends that support it use the token instead of logging in with a
+    /// password.
+    ///
+    /// Call this before starting concurrent operations. It raises `RuntimeError`
+    /// if the miner handle is already shared by an active async operation.
+    pub fn set_token(&mut self, token: String) -> PyResult<()> {
+        self.apply_auth(MinerAuth::from_token(token))
     }
 
     // Data functions

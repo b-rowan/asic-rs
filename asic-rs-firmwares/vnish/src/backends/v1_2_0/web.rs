@@ -100,7 +100,7 @@ impl VnishWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> Result<Client, VnishError> {
@@ -114,15 +114,21 @@ impl VnishWebAPI {
         self.client.get_or_try_init(Self::build_client)
     }
 
-    /// Ensure authentication token is present, authenticate if needed
+    /// Ensure authentication token is present, authenticate if needed.
+    ///
+    /// Prefers a pre-issued token from the credentials (no username on VNish);
+    /// otherwise unlocks with the password to obtain one.
     async fn ensure_authenticated(&self) -> anyhow::Result<(), VnishError> {
         if self.bearer_token.read().await.is_some() {
             return Ok(());
         }
 
-        let token = self
-            .authenticate(self.auth.password.expose_secret())
-            .await?;
+        let token = match &self.auth {
+            MinerAuth::TokenAuth(token) => token.expose_secret().to_string(),
+            MinerAuth::UserAndPass(creds) => {
+                self.authenticate(creds.password.expose_secret()).await?
+            }
+        };
         *self.bearer_token.write().await = Some(token);
         Ok(())
     }
@@ -256,7 +262,7 @@ impl VnishWebAPI {
     pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
         let settings = json!({
             "password": {
-                "current": self.auth.password.expose_secret(),
+                "current": self.auth.password(),
                 "pw": password,
             },
         });

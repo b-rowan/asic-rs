@@ -243,10 +243,7 @@ impl WhatsMinerRPCAPI {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing time"))?;
 
-        let crypted = md5crypt(
-            self.auth.password.expose_secret().as_bytes(),
-            salt.as_bytes(),
-        );
+        let crypted = md5crypt(self.auth.password().as_bytes(), salt.as_bytes());
         let full_password = String::from_utf8_lossy(&crypted);
         let pwd_md5 = full_password
             .split('$')
@@ -322,10 +319,7 @@ impl WhatsMinerRPCAPI {
             .and_then(|v| v.as_str())
             .ok_or(anyhow::anyhow!("Could not get time"))?;
 
-        let crypted = md5crypt(
-            self.auth.password.expose_secret().as_bytes(),
-            salt.as_bytes(),
-        );
+        let crypted = md5crypt(self.auth.password().as_bytes(), salt.as_bytes());
         let full_password = String::from_utf8_lossy(&crypted);
         let host_password_md5 = full_password
             .split("$")

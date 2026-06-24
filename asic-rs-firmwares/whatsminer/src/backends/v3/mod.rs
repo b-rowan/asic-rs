@@ -800,10 +800,9 @@ impl HasDefaultAuth for WhatsMinerV3 {
 impl HasAuth for WhatsMinerV3 {
     fn set_auth(&mut self, auth: MinerAuth) {
         // WhatsMiner V3 username is always "super", V2 is always "admin"
-        self.rpc
-            .set_auth(MinerAuth::new("super", auth.password.expose_secret()));
+        self.rpc.set_auth(MinerAuth::new("super", auth.password()));
         self.v2_rpc
-            .set_auth(MinerAuth::new("admin", auth.password.expose_secret()));
+            .set_auth(MinerAuth::new("admin", auth.password()));
     }
 }
 

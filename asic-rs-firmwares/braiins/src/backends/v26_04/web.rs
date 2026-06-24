@@ -87,7 +87,7 @@ impl BraiinsWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> Result<Client, BraiinsError> {
@@ -101,21 +101,27 @@ impl BraiinsWebAPI {
         self.client.get_or_try_init(Self::build_client)
     }
 
-    /// Ensure authentication token is present, authenticate if needed
+    /// Ensure authentication token is present, authenticate if needed.
+    ///
+    /// Prefers a pre-issued bearer token from the credentials; otherwise logs in
+    /// with the username/password to obtain one.
     async fn ensure_authenticated(&self) -> anyhow::Result<(), BraiinsError> {
         if self.bearer_token.read().await.is_some() {
             return Ok(());
         }
 
-        let token = self
-            .authenticate(self.auth.password.expose_secret())
-            .await?;
+        let token = match &self.auth {
+            MinerAuth::TokenAuth(token) => token.expose_secret().to_string(),
+            MinerAuth::UserAndPass(creds) => {
+                self.authenticate(creds.password.expose_secret()).await?
+            }
+        };
         *self.bearer_token.write().await = Some(token);
 
         Ok(())
     }
     async fn authenticate(&self, password: &str) -> anyhow::Result<String, BraiinsError> {
-        let username = &self.auth.username;
+        let username = self.auth.username();
         let unlock_payload = serde_json::json!({ "password": password, "username": username });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
         let client = self.client()?;

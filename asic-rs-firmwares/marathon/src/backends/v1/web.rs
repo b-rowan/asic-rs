@@ -5,7 +5,7 @@ use once_cell::sync::OnceCell;
 use anyhow;
 use asic_rs_core::{
     data::command::MinerCommand,
-    traits::miner::{APIClient, ExposeSecret, MinerAuth, WebAPIClient},
+    traits::miner::{APIClient, MinerAuth, WebAPIClient},
 };
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
@@ -67,10 +67,7 @@ impl MaraWebAPI {
         }
 
         let response = request_builder
-            .send_digest_auth((
-                self.auth.username.as_str(),
-                self.auth.password.expose_secret(),
-            ))
+            .send_digest_auth((self.auth.username(), self.auth.password()))
             .await
             .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
 

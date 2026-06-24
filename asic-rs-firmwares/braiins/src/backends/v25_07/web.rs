@@ -100,7 +100,7 @@ impl BraiinsWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> Result<Client, BraiinsError> {
@@ -120,15 +120,13 @@ impl BraiinsWebAPI {
             return Ok(());
         }
 
-        let token = self
-            .authenticate(self.auth.password.expose_secret())
-            .await?;
+        let token = self.authenticate(self.auth.password()).await?;
         *self.bearer_token.write().await = Some(token);
 
         Ok(())
     }
     async fn authenticate(&self, password: &str) -> anyhow::Result<String, BraiinsError> {
-        let username = &self.auth.username;
+        let username = self.auth.username();
         let unlock_payload = serde_json::json!({ "password": password, "username": username });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
         let client = self.client()?;

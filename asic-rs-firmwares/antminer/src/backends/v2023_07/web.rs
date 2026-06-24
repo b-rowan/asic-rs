@@ -62,7 +62,7 @@ impl AntMinerWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        self.auth.username.as_str()
+        self.auth.username()
     }
 
     pub fn with_timeout(ip: IpAddr, timeout: Duration, auth: MinerAuth) -> Self {
@@ -151,10 +151,7 @@ impl AntMinerWebAPI {
             Method::GET => client
                 .get(url)
                 .timeout(self.timeout)
-                .send_digest_auth((
-                    self.auth.username.as_str(),
-                    self.auth.password.expose_secret(),
-                ))
+                .send_digest_auth((self.auth.username(), self.auth.password()))
                 .await
                 .map_err(|e| anyhow!(e.to_string()))?,
             Method::POST => {
@@ -163,10 +160,7 @@ impl AntMinerWebAPI {
                     .post(url)
                     .json(&data)
                     .timeout(self.timeout)
-                    .send_digest_auth((
-                        self.auth.username.as_str(),
-                        self.auth.password.expose_secret(),
-                    ))
+                    .send_digest_auth((self.auth.username(), self.auth.password()))
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?
             }
@@ -212,7 +206,7 @@ impl AntMinerWebAPI {
 
     pub async fn change_password(&self, password: &str) -> Result<bool> {
         let payload = json!({
-            "curPwd": self.auth.password.expose_secret(),
+            "curPwd": self.auth.password(),
             "newPwd": password,
             "confirmPwd": password,
         });
@@ -231,10 +225,7 @@ impl AntMinerWebAPI {
             .post(url)
             .multipart(form)
             .timeout(self.timeout.max(Duration::from_secs(60)))
-            .send_digest_auth((
-                self.auth.username.as_str(),
-                self.auth.password.expose_secret(),
-            ))
+            .send_digest_auth((self.auth.username(), self.auth.password()))
             .await
             .with_context(|| "firmware upload HTTP request failed".to_string())?;
 
