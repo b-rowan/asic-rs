@@ -186,31 +186,24 @@ impl PyPydanticType for MacAddr {
 impl PyPydanticType for Duration {
     fn pydantic_schema<'py>(
         core_schema: &Bound<'py, PyAny>,
-        mode: PydanticSchemaMode,
+        _mode: PydanticSchemaMode,
     ) -> PyResult<Bound<'py, PyAny>> {
-        match mode {
-            PydanticSchemaMode::Validation => core_schema.call_method0("any_schema"),
-            PydanticSchemaMode::Serialization => core_schema.call_method0("timedelta_schema"),
-        }
+        core_schema.call_method0("timedelta_schema")
     }
 
     fn from_pydantic(value: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(duration) = value.extract::<Self>() {
-            return Ok(duration);
+        let native_error = match value.extract() {
+            Ok(duration) => return Ok(duration),
+            Err(error) => error,
+        };
+
+        if let Ok(value) = value.extract::<String>() {
+            return parse_iso8601_duration(&value).ok_or_else(|| {
+                PyValueError::new_err(format!("Invalid ISO 8601 duration: {value:?}"))
+            });
         }
-        if let Ok(seconds) = value.extract::<f64>()
-            && seconds.is_finite()
-            && seconds >= 0.0
-        {
-            return Ok(Self::from_secs_f64(seconds));
-        }
-        if let Ok(dict) = value.cast::<PyDict>() {
-            let secs = required_dict_item(dict, "secs")?.extract::<u64>()?;
-            return Ok(Self::from_secs(secs));
-        }
-        Err(PyValueError::new_err(
-            "Expected duration as timedelta, non-negative seconds, or {secs} dict",
-        ))
+
+        Err(native_error)
     }
 
     fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
@@ -220,6 +213,51 @@ impl PyPydanticType for Duration {
         // float (seconds), which broke `.total_seconds()` on consumers.
         Ok((*self).into_pyobject(py)?.into_any().unbind())
     }
+}
+
+fn parse_iso8601_duration(value: &str) -> Option<Duration> {
+    let value = value.strip_prefix('P')?;
+    let mut total_seconds = 0.0;
+    let mut number = String::new();
+    let mut in_time = false;
+    let mut seen_component = false;
+
+    for ch in value.chars() {
+        if ch == 'T' {
+            if in_time || !number.is_empty() {
+                return None;
+            }
+            in_time = true;
+            continue;
+        }
+
+        if ch.is_ascii_digit() || ch == '.' {
+            number.push(ch);
+            continue;
+        }
+
+        let amount = number.parse::<f64>().ok()?;
+        if !amount.is_finite() || amount < 0.0 {
+            return None;
+        }
+
+        total_seconds += match (ch, in_time) {
+            ('W', false) => amount * 7.0 * 24.0 * 60.0 * 60.0,
+            ('D', false) => amount * 24.0 * 60.0 * 60.0,
+            ('H', true) => amount * 60.0 * 60.0,
+            ('M', true) => amount * 60.0,
+            ('S', true) => amount,
+            _ => return None,
+        };
+        number.clear();
+        seen_component = true;
+    }
+
+    if !seen_component || !number.is_empty() {
+        return None;
+    }
+
+    Some(Duration::from_secs_f64(total_seconds))
 }
 
 macro_rules! impl_pydantic_measurement {
@@ -598,4 +636,33 @@ pub fn reject_model_kwargs(kwargs: Option<&Bound<'_, PyDict>>, method: &str) -> 
         )));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duration_from_pydantic_accepts_iso8601_strings() {
+        Python::initialize();
+        Python::attach(|py| {
+            let cases = [
+                ("PT19M5S", Duration::from_secs(19 * 60 + 5)),
+                (
+                    "P1DT2H3M4.5S",
+                    Duration::from_secs_f64(
+                        24.0 * 60.0 * 60.0 + 2.0 * 60.0 * 60.0 + 3.0 * 60.0 + 4.5,
+                    ),
+                ),
+                ("PT0S", Duration::ZERO),
+            ];
+
+            for (value, expected) in cases {
+                let value = value.into_pyobject(py).unwrap();
+                let duration = <Duration as PyPydanticType>::from_pydantic(value.as_any()).unwrap();
+
+                assert_eq!(duration, expected);
+            }
+        });
+    }
 }
