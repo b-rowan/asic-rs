@@ -20,6 +20,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -238,6 +239,14 @@ impl GetDataLocations for BraiinsV2604 {
                 },
             )],
             DataField::IsMining => vec![(
+                WEB_MINER_DETAILS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/status"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -541,6 +550,22 @@ impl GetUptime for BraiinsV2604 {
 
 impl GetBestShare for BraiinsV2604 {}
 impl GetSessionBestShare for BraiinsV2604 {}
+
+impl GetOperatingState for BraiinsV2604 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        Some(match data.get(&DataField::OperatingState)?.as_u64()? {
+            0 => return None,
+            1 => OperatingState::Stopped {},
+            2 => OperatingState::Mining {},
+            3 => OperatingState::Paused {},
+            4 => OperatingState::Suspended {},
+            5 => OperatingState::Restricted {},
+            code => OperatingState::Unknown {
+                raw: code.to_string(),
+            },
+        })
+    }
+}
 
 impl GetIsMining for BraiinsV2604 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

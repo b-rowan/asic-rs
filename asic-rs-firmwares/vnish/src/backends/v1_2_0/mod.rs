@@ -22,6 +22,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -309,6 +310,14 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::IsMining => vec![(
+                WEB_STATUS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner_state"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -856,6 +865,18 @@ impl GetUptime for VnishV120 {
 
 impl GetBestShare for VnishV120 {}
 impl GetSessionBestShare for VnishV120 {}
+
+impl GetOperatingState for VnishV120 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        let label = data.get(&DataField::OperatingState)?.as_str()?;
+        match label {
+            "auto-tuning" | "auto_tuning" => Some(OperatingState::Tuning {}),
+            "failure" | "failed" | "broken" => Some(OperatingState::Error {}),
+            "idle" => Some(OperatingState::Idling {}),
+            _ => OperatingState::from_label(label),
+        }
+    }
+}
 
 impl GetIsMining for VnishV120 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

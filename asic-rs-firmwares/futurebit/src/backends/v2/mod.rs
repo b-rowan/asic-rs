@@ -348,7 +348,15 @@ impl GetDataLocations for ApolloV2 {
                     tag: None,
                 },
             )],
-            DataField::Hashboards | DataField::Chips => vec![(
+            DataField::Hashboards => vec![(
+                GQL_BOARD,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Miner/stats/result/stats/0"),
+                    tag: None,
+                },
+            )],
+            DataField::Chips => vec![(
                 GQL_BOARD,
                 DataExtractor {
                     func: get_by_pointer,
@@ -632,6 +640,8 @@ impl GetUptime for ApolloV2 {
 
 impl GetBestShare for ApolloV2 {}
 impl GetSessionBestShare for ApolloV2 {}
+
+impl GetOperatingState for ApolloV2 {}
 
 impl GetIsMining for ApolloV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

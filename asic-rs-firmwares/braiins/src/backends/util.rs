@@ -149,3 +149,62 @@ fn parse_tagged_tuning_target(
         _ => power.or(hashrate),
     }
 }
+
+#[cfg(test)]
+mod operating_state_tests {
+    use std::{collections::HashMap, net::IpAddr};
+
+    use asic_rs_core::{
+        data::{
+            collector::{DataCollector, DataField},
+            command::MinerCommand,
+            operating_state::OperatingState,
+        },
+        test::api::MockAPIClient,
+        traits::miner::Miner,
+    };
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use serde_json::json;
+
+    use super::*;
+    use crate::backends::{v25_07::BraiinsV2507, v26_04::BraiinsV2604};
+
+    #[tokio::test]
+    async fn rest_status_codes_reach_the_snapshot_for_both_backends() -> anyhow::Result<()> {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let miners: [Box<dyn Miner>; 2] = [
+            Box::new(BraiinsV2507::new(ip, AntMinerModel::S21Pro)),
+            Box::new(BraiinsV2604::new(ip, AntMinerModel::S21Pro)),
+        ];
+        let cases = [
+            (1, OperatingState::Stopped {}, false),
+            (2, OperatingState::Mining {}, true),
+            (3, OperatingState::Paused {}, false),
+            (4, OperatingState::Suspended {}, false),
+            (5, OperatingState::Restricted {}, false),
+            (99, OperatingState::Unknown { raw: "99".into() }, false),
+        ];
+        for miner in &miners {
+            for (code, expected, is_mining) in &cases {
+                let mut details: Value =
+                    serde_json::from_str(crate::test::json::v26_04::WEB_MINER_DETAILS_COMMAND)?;
+                details["status"] = json!(code);
+                let client = MockAPIClient::new(HashMap::from([(
+                    MinerCommand::WebAPI {
+                        command: "miner/details",
+                        parameters: None,
+                    },
+                    details,
+                )]));
+                let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
+                let data = collector
+                    .collect(&[DataField::OperatingState, DataField::IsMining])
+                    .await;
+                let snapshot = miner.parse_data(data);
+                assert_eq!(snapshot.operating_state.as_ref(), Some(expected));
+                assert_eq!(snapshot.is_mining, *is_mining);
+            }
+        }
+        Ok(())
+    }
+}

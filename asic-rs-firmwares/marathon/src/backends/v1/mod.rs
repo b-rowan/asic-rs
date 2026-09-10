@@ -17,6 +17,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -561,6 +562,14 @@ impl GetDataLocations for MaraV1 {
                     tag: None,
                 },
             )],
+            DataField::OperatingState => vec![(
+                WEB_BRIEF,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/status"),
+                    tag: None,
+                },
+            )],
             DataField::Uptime => vec![(
                 WEB_BRIEF,
                 DataExtractor {
@@ -943,6 +952,14 @@ impl GetUptime for MaraV1 {
 impl GetBestShare for MaraV1 {}
 impl GetSessionBestShare for MaraV1 {}
 
+impl GetOperatingState for MaraV1 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        data.get(&DataField::OperatingState)
+            .and_then(Value::as_str)
+            .and_then(OperatingState::from_label)
+    }
+}
+
 impl GetIsMining for MaraV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
@@ -1176,6 +1193,39 @@ impl SupportsPresets for MaraV1 {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn operating_state_uses_the_brief_response() {
+        use asic_rs_core::{data::operating_state::OperatingState, test::api::MockAPIClient};
+        use asic_rs_makes_antminer::models::AntMinerModel;
+
+        let miner = MaraV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        for (label, expected) in [
+            ("Mining", OperatingState::Mining {}),
+            ("Idling", OperatingState::Idling {}),
+            (
+                "FutureMaraState",
+                OperatingState::Unknown {
+                    raw: "FutureMaraState".into(),
+                },
+            ),
+        ] {
+            let client = MockAPIClient::new(HashMap::from([(
+                MinerCommand::WebAPI {
+                    command: "brief",
+                    parameters: None,
+                },
+                json!({ "status": label }),
+            )]));
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector
+                .collect(&[DataField::OperatingState, DataField::IsMining])
+                .await;
+            let snapshot = miner.parse_data(data);
+            assert_eq!(snapshot.operating_state, Some(expected));
+            assert_eq!(snapshot.is_mining, label == "Mining");
+        }
+    }
 
     #[test]
     fn test_build_pool_config_allows_empty_groups() -> anyhow::Result<()> {
