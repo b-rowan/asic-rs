@@ -617,6 +617,38 @@ def test_tuning_config_mode_accepts_mining_mode_enum() -> None:
     }
 
 
+def test_tuning_config_manual_round_trips_board_setpoints() -> None:
+    boards = {
+        0: (485.0, 12.6),
+        1: (None, 12.5),
+        2: (500.0, None),
+    }
+    config = TuningConfig.manual(boards)
+    model = TuningConfigModel.model_validate(
+        {
+            "tuning": {
+                "target": {
+                    "type": "manual",
+                    "value": boards,
+                }
+            }
+        }
+    )
+
+    assert config.variant == "manual"
+    assert config.target_boards == boards
+    assert model.tuning.target_boards == boards
+    assert model.model_dump() == {
+        "tuning": {
+            "target": {
+                "type": "manual",
+                "value": boards,
+            },
+            "algorithm": None,
+        }
+    }
+
+
 def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:
     schema = TuningConfigModel.model_json_schema()
 
@@ -728,6 +760,19 @@ def test_tuning_target_variant_repr_is_readable() -> None:
     assert repr(target) == "TuningTarget.mode(mode=Normal)"
     assert str(target) == "TuningTarget.mode(mode=Normal)"
 
+    boards = {0: (485.0, 12.6), 3: (None, 12.5)}
+    manual = TuningTarget.manual(boards)
+    assert manual.variant == "manual"
+    assert manual.boards == boards
+    assert repr(manual) == (
+        "TuningTarget.manual(boards={0: (485.0, 12.6), 3: (None, 12.5)})"
+    )
+
+    manual_without_setpoints = TuningTarget.manual()
+    assert manual_without_setpoints.variant == "manual"
+    assert manual_without_setpoints.boards == {}
+    assert repr(manual_without_setpoints) == "TuningTarget.manual(boards={})"
+
     assert repr(TuningTarget.power(3250.0)) == "TuningTarget.power(watts=3250.0)"
     assert repr(TuningTarget.hashrate(HashRate(110.0, HashRateUnit.TH))) == (
         "TuningTarget.hashrate(hashrate=110 TH/s)"
@@ -745,6 +790,36 @@ def test_tuning_target_variant_repr_is_readable() -> None:
     assert model.miner.tuning_target.target_mode == MiningMode.Normal
     assert repr(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
     assert str(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
+
+
+@pytest.mark.parametrize(
+    "boards",
+    [
+        {},
+        {0: (None, None)},
+        {0: (485.0, None)},
+        {0: (None, 12.6)},
+        {0: (485.0, 12.6), 3: (490.0, 12.7)},
+    ],
+)
+def test_manual_tuning_target_accepts_optional_board_setpoints(
+    boards: dict[int, tuple[float | None, float | None]],
+) -> None:
+    model = MinerDataModel.model_validate(
+        {
+            "miner": minimal_miner_data(
+                tuning_target={"type": "manual", "value": boards}
+            )
+        }
+    )
+
+    assert model.miner.tuning_target is not None
+    assert model.miner.tuning_target.variant == "manual"
+    assert model.miner.tuning_target.boards == boards
+    assert model.model_dump()["miner"]["tuning_target"] == {
+        "type": "manual",
+        "value": boards,
+    }
 
 
 def test_nested_data_model_round_trips_hashrate_payload() -> None:

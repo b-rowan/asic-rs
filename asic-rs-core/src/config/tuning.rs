@@ -3,16 +3,17 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::data::miner::TuningTarget;
+use crate::data::miner::{ManualTuningValues, TuningTarget, manual_targets_to_values};
 
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 /// Desired firmware tuning target.
 ///
-/// A tuning config can target a power limit, a hashrate, or a named mining
-/// mode. The optional algorithm field lets firmwares distinguish tuning
-/// profiles when they support more than one algorithm.
+/// A tuning config can select fixed manual voltage/frequency set points, a
+/// power limit, a hashrate, or a named mining mode. The optional algorithm
+/// field lets firmwares distinguish tuning profiles when they support more
+/// than one algorithm.
 pub struct TuningConfig {
     /// Tuning target requested from the firmware.
     pub target: TuningTarget,
@@ -36,13 +37,22 @@ impl TuningConfig {
         self
     }
 
-    /// Return `"power"`, `"hashrate"`, or `"mode"` for this config target.
+    /// Return the variant name for this config target.
     pub fn variant(&self) -> &'static str {
         match &self.target {
+            TuningTarget::Manual { .. } => "manual",
             TuningTarget::Power(_) => "power",
             TuningTarget::HashRate(_) => "hashrate",
             TuningTarget::MiningMode(_) => "mode",
             TuningTarget::Preset(_) => "preset",
+        }
+    }
+
+    /// Manual board IDs mapped to (frequency in MHz, voltage in volts).
+    pub fn target_boards(&self) -> Option<ManualTuningValues> {
+        match &self.target {
+            TuningTarget::Manual { boards } => Some(manual_targets_to_values(boards)),
+            _ => None,
         }
     }
 
@@ -87,6 +97,14 @@ impl TuningConfig {
 #[pymethods]
 impl TuningConfig {
     #[classmethod]
+    #[pyo3(signature = (boards = None))]
+    fn manual(_cls: &Bound<'_, pyo3::types::PyType>, boards: Option<ManualTuningValues>) -> Self {
+        Self::new(TuningTarget::Manual {
+            boards: crate::data::miner::manual_targets_from_values(boards.unwrap_or_default()),
+        })
+    }
+
+    #[classmethod]
     #[pyo3(signature = (watts, algorithm = None))]
     fn power(
         _cls: &Bound<'_, pyo3::types::PyType>,
@@ -128,6 +146,13 @@ impl TuningConfig {
     #[pyo3(name = "variant")]
     fn py_variant(&self) -> &'static str {
         self.variant()
+    }
+
+    /// Manual board IDs mapped to (frequency in MHz, voltage in volts).
+    #[getter]
+    #[pyo3(name = "target_boards")]
+    fn py_target_boards(&self) -> Option<ManualTuningValues> {
+        self.target_boards()
     }
 
     /// Target power in watts, or `None` if targeting hashrate or mining mode.
@@ -198,6 +223,11 @@ mod python_impls {
                 .flatten();
 
             let target = match variant.as_str() {
+                "manual" => TuningTarget::Manual {
+                    boards: crate::data::miner::manual_targets_from_values(
+                        get_required_field(&obj, "target_boards")?.extract()?,
+                    ),
+                },
                 "power" => {
                     let watts: f64 = get_required_field(&obj, "target_watts")?.extract()?;
                     TuningTarget::Power(Power::from_watts(watts))
@@ -228,7 +258,7 @@ mod python_impls {
                 }
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                        "Unknown TuningConfig variant '{variant}', expected 'power', 'hashrate', 'mode', or 'preset'",
+                        "Unknown TuningConfig variant '{variant}', expected 'manual', 'power', 'hashrate', 'mode', or 'preset'",
                     )));
                 }
             };

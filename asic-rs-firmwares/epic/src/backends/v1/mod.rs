@@ -1092,6 +1092,29 @@ fn first_perpetual_tune_algorithm(summary: &Value) -> Option<(&str, &Value)> {
         .map(|(algorithm, stats)| (algorithm.as_str(), stats))
 }
 
+fn parse_manual_tuning_target(summary: &Value) -> TuningTarget {
+    let voltage = summary
+        .pointer("/Power Supply Stats/Target Voltage")
+        .and_then(tuning_value_as_f64)
+        .map(Voltage::from_millivolts);
+    let boards = summary
+        .pointer("/HwConfig/Boards Target Clock")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|board| {
+            let id = u8::try_from(board.get("Index")?.as_u64()?).ok()?;
+            let frequency = board
+                .get("Data")
+                .and_then(tuning_value_as_f64)
+                .map(Frequency::from_megahertz);
+            Some((id, (frequency, voltage)))
+        })
+        .collect();
+
+    TuningTarget::Manual { boards }
+}
+
 fn parse_tuning_target_from_stats(
     algorithm: &str,
     stats: &Value,
@@ -1169,7 +1192,7 @@ impl GetTuningTarget for PowerPlayV1 {
                 .pointer("/PerpetualTune/Running")
                 .and_then(Value::as_bool)?
             {
-                return None;
+                return Some(parse_manual_tuning_target(summary));
             }
 
             let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
@@ -1185,7 +1208,7 @@ impl GetScaledTuningTarget for PowerPlayV1 {
                 .pointer("/PerpetualTune/Running")
                 .and_then(Value::as_bool)?
             {
-                return None;
+                return Some(parse_manual_tuning_target(summary));
             }
 
             let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
@@ -1530,6 +1553,9 @@ impl SupportsTuningConfig for PowerPlayV1 {
         };
 
         let (algorithm, target) = match &config.target {
+            TuningTarget::Manual { .. } => {
+                anyhow::bail!("Manual tuning target is not supported for ePIC PowerPlay config")
+            }
             TuningTarget::Power(power) => (
                 "PowerTune",
                 to_non_negative_u32_target(power.as_watts(), "power")?,
@@ -1582,6 +1608,13 @@ impl SupportsTuningConfig for PowerPlayV1 {
     ) -> anyhow::Result<TuningConfig> {
         data.get(&ConfigField::Tuning)
             .and_then(|summary| {
+                if !summary
+                    .pointer("/PerpetualTune/Running")
+                    .and_then(Value::as_bool)?
+                {
+                    return Some(TuningConfig::new(parse_manual_tuning_target(summary)));
+                }
+
                 let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
                 let tuning_target =
                     parse_tuning_target_from_stats(algorithm, stats, false, self.device_info.algo)?;
@@ -1934,6 +1967,133 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].message, "Clock voltage adjustment failed");
         assert_eq!(messages[0].severity, MessageSeverity::Error);
+    }
+
+    #[test]
+    fn parse_tuning_target_returns_manual_when_perpetual_tune_is_disabled() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary = serde_json::json!({
+            "PerpetualTune": { "Running": false },
+            "Power Supply Stats": { "Target Voltage": 12_600 },
+            "HwConfig": {
+                "Boards Target Clock": [
+                    { "Index": 0, "Data": 480 },
+                    { "Index": 1, "Data": 490 },
+                ]
+            }
+        });
+        let data = HashMap::from([(DataField::TuningTarget, summary.clone())]);
+        let expected = TuningTarget::Manual {
+            boards: HashMap::from([
+                (
+                    0,
+                    (
+                        Some(Frequency::from_megahertz(480.0)),
+                        Some(Voltage::from_volts(12.6)),
+                    ),
+                ),
+                (
+                    1,
+                    (
+                        Some(Frequency::from_megahertz(490.0)),
+                        Some(Voltage::from_volts(12.6)),
+                    ),
+                ),
+            ]),
+        };
+
+        assert_eq!(miner.parse_tuning_target(&data), Some(expected.clone()));
+        assert_eq!(
+            miner.parse_scaled_tuning_target(&data),
+            Some(expected.clone())
+        );
+
+        let config_data = HashMap::from([(ConfigField::Tuning, summary)]);
+        let config = miner.parse_tuning_config(&config_data)?;
+        assert_eq!(config.target, expected);
+        assert_eq!(config.algorithm, None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_tuning_target_preserves_enabled_tune_while_optimization_is_incomplete()
+    -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary = Value::from_str(SUMMARY)?;
+        let data = HashMap::from([(DataField::TuningTarget, summary)]);
+
+        assert_eq!(
+            miner.parse_tuning_target(&data),
+            Some(TuningTarget::HashRate(HashRate {
+                value: 143.0,
+                unit: HashRateUnit::TeraHash,
+                algo: HashAlgorithm::SHA256,
+            }))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_tuning_target_requires_an_explicit_valid_running_flag() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let invalid_summaries = [
+            serde_json::json!({}),
+            serde_json::json!({ "PerpetualTune": { "Running": null } }),
+            serde_json::json!({ "PerpetualTune": { "Running": "false" } }),
+        ];
+
+        for summary in invalid_summaries {
+            let data = HashMap::from([(DataField::TuningTarget, summary)]);
+            assert_eq!(miner.parse_tuning_target(&data), None);
+            assert_eq!(miner.parse_scaled_tuning_target(&data), None);
+        }
+
+        assert_eq!(miner.parse_tuning_target(&HashMap::new()), None);
+
+        let summary = serde_json::json!({ "PerpetualTune": { "Running": false } });
+        let data = HashMap::from([(DataField::TuningTarget, summary)]);
+        let expected = Some(TuningTarget::Manual {
+            boards: HashMap::new(),
+        });
+
+        assert_eq!(miner.parse_tuning_target(&data), expected);
+        assert_eq!(miner.parse_scaled_tuning_target(&data), expected);
+    }
+
+    #[test]
+    fn parse_manual_tuning_target_retains_each_available_setpoint_independently() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let voltage_only = serde_json::json!({
+            "PerpetualTune": { "Running": false },
+            "Power Supply Stats": { "Target Voltage": 12_600 },
+        });
+        let frequency_only = serde_json::json!({
+            "PerpetualTune": { "Running": false },
+            "HwConfig": {
+                "Boards Target Clock": [
+                    { "Index": 0, "Data": 480 },
+                    { "Index": 1, "Data": 490 },
+                ]
+            }
+        });
+
+        assert_eq!(
+            miner.parse_tuning_target(&HashMap::from([(DataField::TuningTarget, voltage_only,)])),
+            Some(TuningTarget::Manual {
+                boards: HashMap::new(),
+            })
+        );
+        assert_eq!(
+            miner.parse_tuning_target(&HashMap::from([(DataField::TuningTarget, frequency_only,)])),
+            Some(TuningTarget::Manual {
+                boards: HashMap::from([
+                    (0, (Some(Frequency::from_megahertz(480.0)), None)),
+                    (1, (Some(Frequency::from_megahertz(490.0)), None)),
+                ]),
+            })
+        );
     }
 
     #[test]

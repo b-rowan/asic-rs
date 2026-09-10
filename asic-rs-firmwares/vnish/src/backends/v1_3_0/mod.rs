@@ -1251,6 +1251,9 @@ impl SupportsTuningConfig for VnishV130 {
         _scaling_config: Option<ScalingConfig>,
     ) -> anyhow::Result<bool> {
         match config.target {
+            TuningTarget::Manual { .. } => {
+                anyhow::bail!("Manual tuning target is not supported on VNish")
+            }
             TuningTarget::Preset(name) => {
                 let mut settings = self.web.settings().await?;
                 {
