@@ -229,6 +229,16 @@ are backed by Rust structs and expose Pydantic-style helpers.
     };
     ```
 
+Rust pool configs can add an exact worker suffix without storing it in the config model:
+
+```rust
+let with_suffix = pool.use_worker_suffix(".device-1");
+let account_only = with_suffix.clear_worker_suffix();
+```
+
+The suffix passed to `use_worker_suffix` includes the separator. Clearing keeps the account name
+before the first dot, even when the worker name contains more dots.
+
 === "Python"
 
     ```python
