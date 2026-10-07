@@ -242,6 +242,18 @@ impl From<AntMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(vec![Some(160), Some(160), Some(160)]),
             },
+            AntMinerModel::S21XPHydro => Self {
+                fans: Some(0),
+                boards: Some(vec![Some(160); 3]),
+            },
+            AntMinerModel::S21jXPHydro => Self {
+                fans: Some(0),
+                boards: Some(vec![Some(42); 3]),
+            },
+            AntMinerModel::S23Hydro => Self {
+                fans: Some(0),
+                boards: Some(vec![Some(84); 3]),
+            },
             AntMinerModel::Unknown(_) => Default::default(),
         }
     }

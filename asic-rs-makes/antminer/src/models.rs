@@ -190,6 +190,24 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S21E XP HYDRO")]
     #[algorithm(HashAlgorithm::SHA256)]
     S21eXPHydro,
+    #[serde(alias = "ANTMINER S21 XP HYD.")]
+    #[serde(alias = "ANTMINER S21 XP HYDRO")]
+    #[serde(alias = "ANTMINER S21XPHYD.")]
+    #[serde(alias = "ANTMINER S21XPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21XPHydro,
+    #[serde(alias = "ANTMINER S21J XP HYD.")]
+    #[serde(alias = "ANTMINER S21J XP HYDRO")]
+    #[serde(alias = "ANTMINER S21JXPHYD.")]
+    #[serde(alias = "ANTMINER S21JXPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21jXPHydro,
+    #[serde(alias = "ANTMINER S23 HYD.")]
+    #[serde(alias = "ANTMINER S23 HYDRO")]
+    #[serde(alias = "ANTMINER S23HYD.")]
+    #[serde(alias = "ANTMINER S23HYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S23Hydro,
     #[serde(alias = "ANTMINER T21")]
     #[algorithm(HashAlgorithm::SHA256)]
     T21,
