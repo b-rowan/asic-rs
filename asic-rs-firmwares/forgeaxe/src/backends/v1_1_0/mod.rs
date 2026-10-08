@@ -677,7 +677,6 @@ mod tests {
             command::MinerCommand,
         },
         test::api::MockAPIClient,
-        traits::miner::*,
     };
     use asic_rs_makes_forgeaxe::models::ForgeaxeModel;
     use serde_json::Value;
