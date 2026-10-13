@@ -22,7 +22,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::{MiningMode, TuningTarget},
-        pool::{PoolData, PoolGroupData, PoolURL},
+        pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
 };
@@ -133,21 +133,44 @@ fn browser_miner_conf_payload(miner_conf: &Value) -> serde_json::Map<String, Val
 /// `set_miner_conf.cgi` only overwrites the pool slots it is sent, so a list
 /// shorter than the miner's three slots leaves the old trailing pools in
 /// place. Blank the unused slots so they are removed.
-fn pools_payload(config: Vec<PoolGroupConfig>) -> Vec<Value> {
+fn pools_payload(config: Vec<PoolGroupConfig>) -> anyhow::Result<Vec<Value>> {
     let mut pools: Vec<Value> = config
         .into_iter()
         .flat_map(|group| group.pools.into_iter())
         .map(|pool| {
-            json!({
-                "url": pool.url.to_string(),
+            if pool.url.scheme != PoolScheme::StratumV1 || pool.url.pubkey.is_some() {
+                anyhow::bail!("stock Antminer pools require a stratum+tcp URL");
+            }
+            // The CGI rejects the scheme prefix with code M001, even though
+            // PoolURL::Display includes it.
+            Ok(json!({
+                "url": format!("{}:{}", pool.url.host, pool.url.port),
                 "user": pool.username,
                 "pass": pool.password,
-            })
+            }))
         })
-        .collect();
+        .collect::<anyhow::Result<_>>()?;
+
+    if pools.len() > 3 {
+        anyhow::bail!("stock Antminer supports at most three pools");
+    }
 
     pools.resize(3, json!({ "url": "", "user": "", "pass": "" }));
-    pools
+    Ok(pools)
+}
+
+fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
+    let mut payload = browser_miner_conf_payload(miner_conf);
+    payload.insert("pools".to_string(), Value::Array(pools));
+    Value::Object(payload)
+}
+
+fn miner_conf_with_read_shape_pools(miner_conf: &Value, pools: Vec<Value>) -> Option<Value> {
+    let mut payload = miner_conf.clone();
+    payload
+        .as_object_mut()?
+        .insert("pools".to_string(), Value::Array(pools));
+    Some(payload)
 }
 
 fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
@@ -1148,13 +1171,33 @@ impl SupportsPoolsConfig for AntMinerV202307 {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        let pools = pools_payload(config);
+        let pools = pools_payload(config)?;
+        let conf = self.web.get_miner_conf().await?;
+        if !conf.is_object() {
+            anyhow::bail!("stock miner config is not a JSON object");
+        }
 
-        Ok(self
+        let response = self
             .web
-            .set_miner_conf(json!({ "pools": pools }))
-            .await
-            .is_ok())
+            .set_miner_conf(miner_conf_with_pools(&conf, pools.clone()))
+            .await?;
+        if response.get("code").and_then(Value::as_str) == Some("M000") {
+            return Ok(true);
+        }
+
+        // The S21Plus cminer proxy rejects the browser-shaped payload with
+        // M001. Retry its own read-side shape, changing only the pool list.
+        let read_shape = miner_conf_with_read_shape_pools(&conf, pools)
+            .expect("stock miner config was checked to be a JSON object");
+        let response = self.web.set_miner_conf(read_shape).await?;
+        if response.get("code").and_then(Value::as_str) == Some("M000") {
+            return Ok(true);
+        }
+        let code = response
+            .get("code")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        anyhow::bail!("stock miner rejected pool configuration (CGI code {code})")
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -1453,12 +1496,75 @@ mod tests {
                 name: String::new(),
                 quota: 1,
                 pools: vec![pool(1), pool(2)],
-            }]),
+            }])
+            .unwrap(),
             vec![
-                json!({"url": "stratum+tcp://pool1.example:3333", "user": "worker.1", "pass": "x"}),
-                json!({"url": "stratum+tcp://pool2.example:3333", "user": "worker.2", "pass": "x"}),
+                json!({"url": "pool1.example:3333", "user": "worker.1", "pass": "x"}),
+                json!({"url": "pool2.example:3333", "user": "worker.2", "pass": "x"}),
                 json!({"url": "", "user": "", "pass": ""}),
             ]
+        );
+    }
+
+    #[test]
+    fn pools_payload_rejects_schemes_the_stock_cgi_cannot_represent() {
+        let pool = PoolConfig {
+            url: PoolURL::from("stratum+ssl://pool.example:3333".to_string()),
+            username: "worker".to_string(),
+            password: "x".to_string(),
+        };
+        let config = vec![PoolGroupConfig {
+            name: String::new(),
+            quota: 1,
+            pools: vec![pool],
+        }];
+
+        assert!(pools_payload(config).is_err());
+    }
+
+    #[test]
+    fn pool_update_normalizes_read_config_for_cgi_write() {
+        let read_config = json!({
+            "pools": [{"url": "old.example:3333", "user": "old", "pass": "x"}],
+            "bitmain-fan-ctrl": true,
+            "bitmain-fan-pwm": "70",
+            "bitmain-work-mode": "2",
+            "bitmain-freq-level": "85",
+            "api-listen": true
+        });
+        let pools = vec![json!({"url": "new.example:3333", "user": "new", "pass": "x"})];
+
+        assert_eq!(
+            miner_conf_with_pools(&read_config, pools),
+            json!({
+                "pools": [{"url": "new.example:3333", "user": "new", "pass": "x"}],
+                "bitmain-fan-ctrl": true,
+                "bitmain-fan-pwm": "70",
+                "bitmain-work-mode": "2",
+                "freq-level": "85"
+            })
+        );
+    }
+
+    #[test]
+    fn pool_update_can_preserve_read_shape_for_s21plus_cminer() {
+        let read_config = json!({
+            "pools": [{"url": "old.example:3333", "user": "old", "pass": "x"}],
+            "bitmain-fan-ctrl": false,
+            "bitmain-fan-pwm": 100,
+            "bitmain-freq": "550",
+            "bitmain-freq-level": 100,
+            "bitmain-user-ip-cat": "",
+            "bitmain-voltage": "1400",
+            "bitmain-work-mode": 0
+        });
+        let pools = vec![json!({"url": "new.example:3333", "user": "new", "pass": "x"})];
+        let mut expected = read_config.clone();
+        expected["pools"] = Value::Array(pools.clone());
+
+        assert_eq!(
+            miner_conf_with_read_shape_pools(&read_config, pools),
+            Some(expected)
         );
     }
 
