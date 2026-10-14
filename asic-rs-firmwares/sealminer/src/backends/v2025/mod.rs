@@ -12,6 +12,7 @@ use asic_rs_core::{
     },
     data::{
         board::{BoardData, MinerControlBoard},
+        capabilities::{PowerTuningCapabilities, PresetTuningCapabilities, TuningCapabilities},
         collector::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
             get_by_pointer,
@@ -21,11 +22,12 @@ use asic_rs_core::{
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerComponent, MinerMessage},
-        miner::TuningTarget,
+        miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
 };
+use asic_rs_makes_sealminer::models::SealMinerModel;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
@@ -91,7 +93,7 @@ impl GetConfigsLocations for SealMinerV2025 {
                 RPC_STATS,
                 ConfigExtractor {
                     func: cfg_by_pointer,
-                    key: Some("/STATS/0/Power Limit"),
+                    key: Some("/STATS/0"),
                     tag: None,
                 },
             )],
@@ -119,10 +121,6 @@ impl GetDataLocations for SealMinerV2025 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
-            parameters: None,
-        };
-        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
-            command: "summary",
             parameters: None,
         };
         const RPC_POOLS: MinerCommand = MinerCommand::RPC {
@@ -223,10 +221,10 @@ impl GetDataLocations for SealMinerV2025 {
                 },
             )],
             DataField::Hashrate => vec![(
-                RPC_SUMMARY,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/SUMMARY/0/MHS av"),
+                    key: Some("/STATS/0/MHS(2m)"),
                     tag: None,
                 },
             )],
@@ -284,7 +282,7 @@ impl GetDataLocations for SealMinerV2025 {
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/Power Limit"),
+                    key: Some("/STATS/0"),
                     tag: None,
                 },
             )],
@@ -435,7 +433,7 @@ impl GetHashboards for SealMinerV2025 {
                 let outlet_temp = raw_temps.last().copied().map(Temperature::from_celsius);
 
                 let hashrate = stats
-                    .get(format!("{i} MHS(Sample)"))
+                    .get(format!("{i} MHS(2m)"))
                     .and_then(|v| v.as_f64())
                     .map(|mhs| {
                         HashRate {
@@ -548,16 +546,51 @@ impl GetWattage for SealMinerV2025 {
     }
 }
 
+fn parse_stock_tuning(stats: &Value) -> Option<TuningTarget> {
+    let mode = match stats.get("Mining Mode") {
+        Some(mode) => Some(mode.as_str()?),
+        None => None,
+    };
+    match mode {
+        Some("Normal") => Some(TuningTarget::MiningMode(MiningMode::Normal)),
+        Some("High Performance") => Some(TuningTarget::MiningMode(MiningMode::High)),
+        Some("Low Power") => Some(TuningTarget::MiningMode(MiningMode::Low)),
+        Some("") | None => stats
+            .get("Power Limit")
+            .and_then(Value::as_f64)
+            .map(|watts| TuningTarget::Power(Power::from_watts(watts))),
+        _ => None,
+    }
+}
+
 impl GetTuningTarget for SealMinerV2025 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::TuningTarget, |w| {
-            TuningTarget::Power(Power::from_watts(w))
-        })
+        parse_stock_tuning(data.get(&DataField::TuningTarget)?)
     }
 }
 
 impl GetScaledTuningTarget for SealMinerV2025 {}
-impl GetTuningCapabilities for SealMinerV2025 {}
+impl GetTuningCapabilities for SealMinerV2025 {
+    fn parse_tuning_capabilities(
+        &self,
+        _data: &HashMap<DataField, Value>,
+    ) -> Option<TuningCapabilities> {
+        let mut presets = Vec::with_capacity(3);
+        if self.device_info.model == SealMinerModel::A2.as_ref() {
+            presets.push(TuningTarget::MiningMode(MiningMode::Low));
+        }
+        presets.push(TuningTarget::MiningMode(MiningMode::Normal));
+        presets.push(TuningTarget::MiningMode(MiningMode::High));
+        Some(TuningCapabilities {
+            power: Some(PowerTuningCapabilities::default()),
+            presets: Some(PresetTuningCapabilities {
+                default: None,
+                presets,
+            }),
+            ..Default::default()
+        })
+    }
+}
 impl GetLightFlashing for SealMinerV2025 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<String>(DataField::LightFlashing)
@@ -676,12 +709,8 @@ impl SetPowerLimit for SealMinerV2025 {
     }
 
     async fn set_power_limit(&self, watts: Power) -> anyhow::Result<bool> {
-        let param = format!("0,powerlimit,{{\"value\":\"{}\"}}", watts.as_watts() as u32);
-        if self.rpc.ascset(&param).await.is_err() {
-            return Ok(false);
-        }
-        let _ = self.web.reboot().await;
-        Ok(true)
+        // API V0.5 applies the limit and restarts bdminer itself, not the controller.
+        Ok(self.rpc.set_power_limit(watts).await.is_ok())
     }
 }
 
@@ -797,13 +826,13 @@ impl SupportsTuningConfig for SealMinerV2025 {
         &self,
         data: &HashMap<ConfigField, Value>,
     ) -> anyhow::Result<TuningConfig> {
-        let watts = data
+        let target = data
             .get(&ConfigField::Tuning)
-            .and_then(|v| v.as_f64())
-            .ok_or_else(|| anyhow::anyhow!("No power limit in stats"))?;
-        Ok(TuningConfig::new(TuningTarget::Power(Power::from_watts(
-            watts,
-        ))))
+            .and_then(parse_stock_tuning)
+            .ok_or_else(|| {
+                anyhow::anyhow!("Missing or unsupported mining mode/power limit in stats")
+            })?;
+        Ok(TuningConfig::new(target))
     }
 
     async fn set_tuning_config(
@@ -825,11 +854,12 @@ impl SupportsTuningConfig for SealMinerV2025 {
                     SealMinerStockFirmware::default()
                 )
             }
-            TuningTarget::MiningMode(_) => {
-                anyhow::bail!(
-                    "Mining mode not supported on {}",
-                    SealMinerStockFirmware::default()
-                )
+            TuningTarget::MiningMode(mode) => {
+                if mode == MiningMode::Low && self.device_info.model != SealMinerModel::A2.as_ref()
+                {
+                    anyhow::bail!("Low-power mining mode is only supported on SealMiner A2");
+                }
+                Ok(self.rpc.set_mining_mode(mode).await.is_ok())
             }
             TuningTarget::Preset(_) => {
                 anyhow::bail!(
@@ -898,6 +928,10 @@ mod tests {
     };
     use macaddr::MacAddr;
     use measurements::Power;
+    use tokio::{
+        io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+        net::TcpListener,
+    };
 
     use super::*;
     use crate::test::json::v2025::{
@@ -985,7 +1019,7 @@ mod tests {
         assert_eq!(
             miner_data.hashrate,
             Some(HashRate {
-                value: 206.86047351,
+                value: 220.298736318481,
                 unit: HashRateUnit::TeraHash,
                 algo: HashAlgorithm::SHA256
             })
@@ -1002,7 +1036,7 @@ mod tests {
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3504.0)));
         assert_eq!(
             miner_data.tuning_target,
-            Some(TuningTarget::Power(Power::from_watts(3500.0)))
+            Some(TuningTarget::MiningMode(MiningMode::Normal))
         );
         assert_eq!(miner_data.light_flashing, Some(true));
         assert_eq!(miner_data.pools.len(), 1);
@@ -1011,5 +1045,265 @@ mod tests {
             miner_data.pools[0].pools[0].last_share_time,
             Some(1_773_869_544)
         );
+    }
+
+    #[tokio::test]
+    async fn test_realtime_hashrate_windows_zero_and_missing() {
+        let miner = SealMinerV2025::new(IpAddr::from([10, 0, 13, 179]), SealMinerModel::A2);
+
+        // Neither lifetime averages nor short board samples are realtime rates.
+        for rate in [Some(120_000_000.0), Some(0.0), None] {
+            let mut stats = Value::from_str(STATS).unwrap();
+            let fields = stats["STATS"][0].as_object_mut().unwrap();
+            match rate {
+                Some(value) => {
+                    fields.insert("MHS(2m)".to_string(), Value::from(value));
+                    fields.insert("0 MHS(2m)".to_string(), Value::from(value));
+                }
+                None => {
+                    fields.remove("MHS(2m)");
+                    fields.remove("0 MHS(2m)");
+                }
+            }
+            let results = HashMap::from([
+                (
+                    MinerCommand::RPC {
+                        command: "stats",
+                        parameters: None,
+                    },
+                    stats,
+                ),
+                (
+                    MinerCommand::RPC {
+                        command: "summary",
+                        parameters: None,
+                    },
+                    Value::from_str(SUMMARY).unwrap(),
+                ),
+            ]);
+            let mock_api = MockAPIClient::new(results);
+            let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+            let data = collector
+                .collect(&[DataField::Hashrate, DataField::Hashboards])
+                .await;
+
+            let expected = rate.map(|value| HashRate {
+                value: value / 1_000_000.0,
+                unit: HashRateUnit::TeraHash,
+                algo: HashAlgorithm::SHA256,
+            });
+            assert_eq!(miner.parse_hashrate(&data), expected);
+            assert_eq!(miner.parse_hashboards(&data)[0].hashrate, expected);
+        }
+    }
+
+    #[test]
+    fn test_tuning_readback_uses_active_mode_not_saved_power_limit() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        for (mode, target) in [
+            ("Normal", TuningTarget::MiningMode(MiningMode::Normal)),
+            (
+                "High Performance",
+                TuningTarget::MiningMode(MiningMode::High),
+            ),
+            ("Low Power", TuningTarget::MiningMode(MiningMode::Low)),
+        ] {
+            let stats = serde_json::json!({"Mining Mode": mode, "Power Limit": 7650});
+            let data = HashMap::from([(DataField::TuningTarget, stats.clone())]);
+            let config = HashMap::from([(ConfigField::Tuning, stats)]);
+            assert_eq!(miner.parse_tuning_target(&data), Some(target.clone()));
+            assert_eq!(miner.parse_tuning_config(&config).unwrap().target, target);
+        }
+    }
+
+    #[test]
+    fn test_unknown_and_missing_tuning_modes() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        for stats in [
+            serde_json::json!({"Mining Mode": "Smartboost", "Power Limit": 10000}),
+            serde_json::json!({"Mining Mode": "Sleep", "Power Limit": 10000}),
+            serde_json::json!({"Mining Mode": "Custom", "Power Limit": 10000}),
+            serde_json::json!({"Mining Mode": null, "Power Limit": 10000}),
+            serde_json::json!({}),
+        ] {
+            assert_eq!(parse_stock_tuning(&stats), None);
+            let config = HashMap::from([(ConfigField::Tuning, stats)]);
+            assert!(miner.parse_tuning_config(&config).is_err());
+        }
+        for stats in [
+            serde_json::json!({"Power Limit": 3500}),
+            serde_json::json!({"Mining Mode": "", "Power Limit": 3500}),
+        ] {
+            assert_eq!(
+                parse_stock_tuning(&stats),
+                Some(TuningTarget::Power(Power::from_watts(3500.0)))
+            );
+        }
+        assert_eq!(
+            parse_stock_tuning(&serde_json::json!({"Mining Mode": "Normal"})),
+            Some(TuningTarget::MiningMode(MiningMode::Normal))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_low_power_mode_is_rejected_on_a3() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        let error = miner
+            .set_tuning_config(
+                TuningConfig::new(TuningTarget::MiningMode(MiningMode::Low)),
+                None,
+            )
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("only supported on SealMiner A2"));
+        let capabilities = miner.parse_tuning_capabilities(&HashMap::new()).unwrap();
+        assert!(
+            !capabilities
+                .presets
+                .unwrap()
+                .presets
+                .contains(&TuningTarget::MiningMode(MiningMode::Low))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_tuning_writes_require_explicit_success() {
+        for response in [
+            serde_json::json!({"STATUS": [{"STATUS": "E", "Code": 45, "Msg": "Access denied"}]}),
+            serde_json::json!({"STATUS": [{"STATUS": "S", "Code": 120, "Msg": "ASC set failed"}]}),
+            serde_json::json!({"STATUS": [{"STATUS": "S"}]}),
+            serde_json::json!({"STATUS": []}),
+            serde_json::json!({"id": 1}),
+        ] {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let server = tokio::spawn(async move {
+                for _ in 0..2 {
+                    let (socket, _) =
+                        tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                            .await
+                            .unwrap()
+                            .unwrap();
+                    let (reader, mut writer) = socket.into_split();
+                    let mut line = String::new();
+                    BufReader::new(reader).read_line(&mut line).await.unwrap();
+                    writer
+                        .write_all(format!("{response}\n").as_bytes())
+                        .await
+                        .unwrap();
+                }
+            });
+            let ip = IpAddr::from([127, 0, 0, 1]);
+            let mut miner = SealMinerV2025::new(ip, SealMinerModel::A3ProHyd);
+            miner.rpc = SealMinerRPCAPI::new_with_port(ip, port);
+            assert!(
+                !miner
+                    .set_tuning_config(
+                        TuningConfig::new(TuningTarget::MiningMode(MiningMode::High)),
+                        None,
+                    )
+                    .await
+                    .unwrap()
+            );
+            assert!(
+                !miner
+                    .set_power_limit(Power::from_watts(8000.0))
+                    .await
+                    .unwrap()
+            );
+            server.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn test_invalid_power_values_are_rejected_before_networking() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let api = SealMinerRPCAPI::new_with_port(IpAddr::from([127, 0, 0, 1]), port);
+        for watts in [-1.0, f64::NAN, 0.5, f64::from(u32::MAX) + 1.0] {
+            let error = api
+                .set_power_limit(Power::from_watts(watts))
+                .await
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("finite, whole, non-negative watts")
+            );
+        }
+        let listener = listener.into_std().unwrap();
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "LIVE WRITE: changes tuning, restarts mining, and leaves the requested settings in place; requires MINER_IP and SEALMINER_LIVE_TUNING_ACK=1"]
+    async fn set_tuning_config_live_test() -> anyhow::Result<()> {
+        use asic_rs_core::traits::entry::FirmwareEntry;
+
+        anyhow::ensure!(
+            std::env::var("SEALMINER_LIVE_TUNING_ACK").as_deref() == Ok("1"),
+            "Set SEALMINER_LIVE_TUNING_ACK=1 to acknowledge live configuration changes"
+        );
+        let ip: IpAddr = std::env::var("MINER_IP")?.parse()?;
+        let mode = std::env::var("SEALMINER_LIVE_MODE").ok();
+        let power = std::env::var("SEALMINER_LIVE_POWER_WATTS").ok();
+        let target = match (mode.as_deref(), power.as_deref()) {
+            (Some("normal"), None) => TuningTarget::MiningMode(MiningMode::Normal),
+            (Some("high_performance"), None) => TuningTarget::MiningMode(MiningMode::High),
+            (Some("low_power"), None) => TuningTarget::MiningMode(MiningMode::Low),
+            (None, Some(watts)) => TuningTarget::Power(Power::from_watts(watts.parse()?)),
+            _ => anyhow::bail!(
+                "Set exactly one of SEALMINER_LIVE_MODE=normal|high_performance|low_power or SEALMINER_LIVE_POWER_WATTS"
+            ),
+        };
+        let miner = SealMinerStockFirmware::default()
+            .build_miner(ip, None)
+            .await?;
+        let command = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+        let original = miner.get_api_result(&command).await?;
+        let stats = &original["STATS"][0];
+        let expected_mode = match &target {
+            TuningTarget::MiningMode(MiningMode::Normal) => "Normal",
+            TuningTarget::MiningMode(MiningMode::High) => "High Performance",
+            TuningTarget::MiningMode(MiningMode::Low) => "Low Power",
+            _ => stats["Mining Mode"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("Missing original Mining Mode"))?,
+        };
+        let expected_power = match &target {
+            TuningTarget::Power(watts) => watts.as_watts(),
+            _ => stats["Power Limit"]
+                .as_f64()
+                .ok_or_else(|| anyhow::anyhow!("Missing original Power Limit"))?,
+        };
+        anyhow::ensure!(
+            miner
+                .set_tuning_config(TuningConfig::new(target), None)
+                .await?,
+            "Firmware refused the tuning write"
+        );
+        tokio::time::timeout(Duration::from_secs(600), async {
+            loop {
+                if let Ok(response) = miner.get_api_result(&command).await {
+                    let stats = &response["STATS"][0];
+                    if stats["Mining Mode"].as_str() == Some(expected_mode)
+                        && stats["Power Limit"].as_f64() == Some(expected_power)
+                        && stats["PM State"].as_str() == Some("Running")
+                    {
+                        return;
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        })
+        .await
+        .map_err(|_| anyhow::anyhow!("Timed out confirming the requested mode and power cap"))?;
+        Ok(())
     }
 }
