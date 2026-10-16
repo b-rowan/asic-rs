@@ -15,7 +15,7 @@ use asic_rs_core::{
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::HashRate,
         message::MinerMessage,
-        miner::{MinerData, TuningTarget},
+        miner::{CheckedMinerData, MinerData, TuningTarget},
         operating_state::OperatingState,
         pool::PoolGroupData,
     },
@@ -312,6 +312,24 @@ impl Miner {
                 None => Ok(inner.get_data().await),
                 Some(excl) => Ok(inner.get_data_filtered(excl).await),
             }
+        })
+    }
+
+    /// Await telemetry and collection diagnostics. Raises `RuntimeError`
+    /// when no requested field could be extracted from miner responses.
+    #[pyo3(signature = (exclude: "list[DataField] | None" = None))]
+    pub fn get_data_checked<'a>(
+        &self,
+        py: Python<'a>,
+        exclude: Option<Vec<DataField>>,
+    ) -> PyResult<PyAwaitable<CheckedMinerData>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            inner
+                .get_data_checked_filtered(exclude.unwrap_or_default())
+                .await
+                .map_err(|error| PyRuntimeError::new_err(error.to_string()))
         })
     }
     /// Check for an available firmware update (on-demand; queries the vendor's
