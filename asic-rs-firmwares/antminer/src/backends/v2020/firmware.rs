@@ -66,6 +66,15 @@ fn normalized(value: &str) -> String {
     sanitize_name(value).to_ascii_lowercase()
 }
 
+fn normalized_product_model(value: &str) -> String {
+    let model = normalized(value);
+    model
+        .strip_prefix("antminer ")
+        .unwrap_or(&model)
+        .trim()
+        .to_string()
+}
+
 fn compact_normalized(value: &str) -> String {
     normalized(value)
         .chars()
@@ -214,11 +223,11 @@ fn decode_bmu_field(field: &[u8], len: usize) -> String {
 }
 
 fn candidate_score(entry: &BmuEntry, miner: &MinerTypeInfo) -> Option<u8> {
-    let model = normalized(&entry.model);
+    let model = normalized_product_model(&entry.model);
     let hardware = normalized(&entry.hardware);
     let chip = normalized(&entry.chip);
     let filename = normalized(&entry.filename);
-    let miner_model = normalized(&miner.model);
+    let miner_model = normalized_product_model(&miner.model);
     let miner_subtype = normalized(&miner.subtype);
 
     let subtype_matches = !miner_subtype.is_empty()
@@ -261,13 +270,26 @@ pub(super) async fn resolve_firmware_image(
             return Ok(FirmwareImage::new(filename, bytes));
         };
 
-        let best = entries
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, entry)| candidate_score(entry, miner).map(|score| (score, idx)))
-            .max_by_key(|(score, _)| *score)
-            .map(|(_, idx)| entries[idx].clone())
-            .context("No matching firmware image found in BMU bundle")?;
+        let mut best = None;
+        let mut ambiguous = false;
+        for (idx, entry) in entries.iter().enumerate() {
+            let Some(score) = candidate_score(entry, miner) else {
+                continue;
+            };
+            match best {
+                Some((best_score, _)) if score < best_score => {}
+                Some((best_score, _)) if score == best_score => ambiguous = true,
+                _ => {
+                    best = Some((score, idx));
+                    ambiguous = false;
+                }
+            }
+        }
+        let (_, best_idx) = best.context("No matching firmware image found in BMU bundle")?;
+        if ambiguous {
+            bail!("Ambiguous firmware images in BMU bundle for this miner");
+        }
+        let best = entries[best_idx].clone();
 
         let firmware = copy_firmware_range(&bytes, best.data).await?;
         image = FirmwareImage::new(best.filename, firmware);
@@ -413,6 +435,45 @@ mod tests {
 
         assert_eq!(resolved.filename, "s21-hyd.bin");
         assert_eq!(resolved.bytes, b"right");
+    }
+
+    #[tokio::test]
+    async fn bmu_matches_vendor_prefixed_model_without_subtype() {
+        let bmu = build_bmu(&[("s19.bin", "", "", "S19", b"matched")]);
+        let miner = MinerTypeInfo {
+            model: "Antminer S19".to_string(),
+            subtype: String::new(),
+        };
+
+        let resolved =
+            resolve_firmware_image(FirmwareImage::new("bundle.bmu".to_string(), bmu), &miner)
+                .await
+                .unwrap();
+        assert_eq!(resolved.bytes, b"matched");
+    }
+
+    #[tokio::test]
+    async fn bmu_rejects_multiple_model_matches_without_subtype() {
+        let bmu = build_bmu(&[
+            ("s19-zynq.bin", "Zynq7007", "Ctrl_Zynq", "S19", b"zynq"),
+            (
+                "s19-amlogic.bin",
+                "AMLogic",
+                "Ctrl_AMLogic",
+                "S19",
+                b"amlogic",
+            ),
+        ]);
+        let miner = MinerTypeInfo {
+            model: "Antminer S19".to_string(),
+            subtype: String::new(),
+        };
+
+        let error =
+            resolve_firmware_image(FirmwareImage::new("bundle.bmu".to_string(), bmu), &miner)
+                .await
+                .unwrap_err();
+        assert!(error.to_string().contains("Ambiguous firmware images"));
     }
 
     #[tokio::test]
