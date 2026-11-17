@@ -121,6 +121,7 @@ dependencies = [
  "asic-rs-firmwares-luxminer",
  "asic-rs-firmwares-marathon",
  "asic-rs-firmwares-nerdaxe",
+ "asic-rs-firmwares-nmaxe",
  "asic-rs-firmwares-proto",
  "asic-rs-firmwares-sealminer",
  "asic-rs-firmwares-vnish",
@@ -138,6 +139,7 @@ dependencies = [
  "asic-rs-makes-goldshell",
  "asic-rs-makes-marathon",
  "asic-rs-makes-nerdaxe",
+ "asic-rs-makes-nmaxe",
  "asic-rs-makes-proto",
  "asic-rs-makes-sealminer",
  "asic-rs-makes-volcminer",
@@ -437,6 +439,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "asic-rs-firmwares-nmaxe"
+version = "0.8.10"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-nmaxe",
+ "async-trait",
+ "measurements",
+ "once_cell",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "asic-rs-firmwares-proto"
 version = "0.8.10"
 dependencies = [
@@ -691,6 +710,19 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-nerdaxe"
+version = "0.8.10"
+dependencies = [
+ "asic-rs-core",
+ "asic-rs-macros",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+ "ts-rs",
+]
+
+[[package]]
+name = "asic-rs-makes-nmaxe"
 version = "0.8.10"
 dependencies = [
  "asic-rs-core",

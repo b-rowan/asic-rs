@@ -6,7 +6,9 @@ use async_trait::async_trait;
 use crate::{
     errors::ModelSelectionError,
     traits::{
-        auth::MinerAuth, discovery::DiscoveryCommands, identification::FirmwareIdentification,
+        auth::MinerAuth,
+        discovery::DiscoveryCommands,
+        identification::{FirmwareIdentification, WebResponse},
         miner::Miner,
     },
 };
@@ -19,6 +21,22 @@ use crate::{
 pub trait FirmwareEntry:
     FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug + Display
 {
+    /// Optional web endpoint checked only after initial discovery identifies this
+    /// firmware. Entries sharing this endpoint can resolve overlapping root pages.
+    fn secondary_web_path(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Construct using the secondary response, avoiding another model/version fetch.
+    async fn build_miner_from_web_response(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+        _response: &WebResponse<'_>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
+        self.build_miner(ip, auth).await
+    }
+
     /// Construct a fully-typed miner instance for the given IP.
     ///
     /// When `auth` is provided, it is used for both discovery (e.g.

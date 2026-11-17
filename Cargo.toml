@@ -38,6 +38,7 @@ members = [
     "asic-rs-makes/futurebit",
     "asic-rs-makes/goldshell",
     "asic-rs-makes/nerdaxe",
+    "asic-rs-makes/nmaxe",
     "asic-rs-makes/proto",
     "asic-rs-makes/sealminer",
     "asic-rs-makes/volcminer",
@@ -56,6 +57,7 @@ members = [
     "asic-rs-firmwares/luxminer",
     "asic-rs-firmwares/marathon",
     "asic-rs-firmwares/nerdaxe",
+    "asic-rs-firmwares/nmaxe",
     "asic-rs-firmwares/proto",
     "asic-rs-firmwares/sealminer",
     "asic-rs-firmwares/vnish",
@@ -80,6 +82,7 @@ default-members = [
     "asic-rs-makes/futurebit",
     "asic-rs-makes/goldshell",
     "asic-rs-makes/nerdaxe",
+    "asic-rs-makes/nmaxe",
     "asic-rs-makes/proto",
     "asic-rs-makes/sealminer",
     "asic-rs-makes/volcminer",
@@ -98,6 +101,7 @@ default-members = [
     "asic-rs-firmwares/luxminer",
     "asic-rs-firmwares/marathon",
     "asic-rs-firmwares/nerdaxe",
+    "asic-rs-firmwares/nmaxe",
     "asic-rs-firmwares/proto",
     "asic-rs-firmwares/sealminer",
     "asic-rs-firmwares/vnish",
@@ -124,6 +128,7 @@ asic-rs-makes-epic = { path = "asic-rs-makes/epic", version = "0.8.10" }
 asic-rs-makes-futurebit = { path = "asic-rs-makes/futurebit", version = "0.8.10" }
 asic-rs-makes-goldshell = { path = "asic-rs-makes/goldshell", version = "0.8.10" }
 asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe", version = "0.8.10" }
+asic-rs-makes-nmaxe = { path = "asic-rs-makes/nmaxe", version = "0.8.10" }
 asic-rs-makes-proto = { path = "asic-rs-makes/proto", version = "0.8.10" }
 asic-rs-makes-sealminer = { path = "asic-rs-makes/sealminer", version = "0.8.10" }
 asic-rs-makes-volcminer = { path = "asic-rs-makes/volcminer", version = "0.8.10" }
@@ -143,6 +148,7 @@ asic-rs-firmwares-epic = { path = "asic-rs-firmwares/epic", version = "0.8.10" }
 asic-rs-firmwares-luxminer = { path = "asic-rs-firmwares/luxminer", version = "0.8.10" }
 asic-rs-firmwares-marathon = { path = "asic-rs-firmwares/marathon", version = "0.8.10" }
 asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe", version = "0.8.10" }
+asic-rs-firmwares-nmaxe = { path = "asic-rs-firmwares/nmaxe", version = "0.8.10" }
 asic-rs-firmwares-proto = { path = "asic-rs-firmwares/proto", version = "0.8.10" }
 asic-rs-firmwares-sealminer = { path = "asic-rs-firmwares/sealminer", version = "0.8.10" }
 asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish", version = "0.8.10" }
@@ -222,6 +228,7 @@ default = [
     "luxminer",
     "marathon",
     "nerdaxe",
+    "nmaxe",
     "proto",
     "sealminer",
     "vnish",
@@ -243,6 +250,7 @@ epic = ["dep:asic-rs-firmwares-epic"]
 luxminer = ["dep:asic-rs-firmwares-luxminer"]
 marathon = ["dep:asic-rs-firmwares-marathon"]
 nerdaxe = ["dep:asic-rs-firmwares-nerdaxe"]
+nmaxe = ["dep:asic-rs-firmwares-nmaxe"]
 proto = ["dep:asic-rs-firmwares-proto"]
 sealminer = ["dep:asic-rs-firmwares-sealminer"]
 vnish = ["dep:asic-rs-firmwares-vnish"]
@@ -262,6 +270,7 @@ python = [
     "asic-rs-makes-futurebit/python",
     "asic-rs-makes-goldshell/python",
     "asic-rs-makes-nerdaxe/python",
+    "asic-rs-makes-nmaxe/python",
     "asic-rs-makes-proto/python",
     "asic-rs-makes-sealminer/python",
     "asic-rs-makes-volcminer/python",
@@ -280,6 +289,7 @@ python = [
     "asic-rs-firmwares-luxminer?/python",
     "asic-rs-firmwares-marathon?/python",
     "asic-rs-firmwares-nerdaxe?/python",
+    "asic-rs-firmwares-nmaxe?/python",
     "asic-rs-firmwares-proto?/python",
     "asic-rs-firmwares-sealminer?/python",
     "asic-rs-firmwares-vnish?/python",
@@ -301,6 +311,7 @@ asic-rs-makes-epic.workspace = true
 asic-rs-makes-futurebit.workspace = true
 asic-rs-makes-goldshell.workspace = true
 asic-rs-makes-nerdaxe.workspace = true
+asic-rs-makes-nmaxe.workspace = true
 asic-rs-makes-proto.workspace = true
 asic-rs-makes-sealminer.workspace = true
 asic-rs-makes-volcminer.workspace = true
@@ -320,6 +331,7 @@ asic-rs-firmwares-epic = { workspace = true, optional = true }
 asic-rs-firmwares-luxminer = { workspace = true, optional = true }
 asic-rs-firmwares-marathon = { workspace = true, optional = true }
 asic-rs-firmwares-nerdaxe = { workspace = true, optional = true }
+asic-rs-firmwares-nmaxe = { workspace = true, optional = true }
 asic-rs-firmwares-proto = { workspace = true, optional = true }
 asic-rs-firmwares-sealminer = { workspace = true, optional = true }
 asic-rs-firmwares-vnish = { workspace = true, optional = true }

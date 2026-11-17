@@ -200,6 +200,20 @@ async fn get_miner_type_from_command(
     }
 }
 
+// A secondary response may supersede the root-page match only within the same
+// probe family. Never introduce firmware outside the caller's registry.
+fn refine_firmware<'a>(
+    registry: &'a [Arc<dyn FirmwareEntry>],
+    firmware: &'a Arc<dyn FirmwareEntry>,
+    path: &str,
+    response: &WebResponse<'_>,
+) -> &'a Arc<dyn FirmwareEntry> {
+    registry
+        .iter()
+        .find(|entry| entry.secondary_web_path() == Some(path) && entry.identify_web(response))
+        .unwrap_or(firmware)
+}
+
 fn panic_message(panic_info: &(dyn Any + Send)) -> &str {
     if let Some(message) = panic_info.downcast_ref::<&str>() {
         message
@@ -280,6 +294,7 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
             feature = "luxminer",
             feature = "marathon",
             feature = "nerdaxe",
+            feature = "nmaxe",
             feature = "proto",
             feature = "sealminer",
             feature = "vnish",
@@ -364,6 +379,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     #[cfg(feature = "forgeaxe")]
     registry.push(Arc::new(
         asic_rs_firmwares_forgeaxe::firmware::ForgeaxeFirmware::default(),
+    ));
+
+    #[cfg(feature = "nmaxe")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_nmaxe::firmware::NMAxeFirmware::default(),
     ));
 
     // NerdAxe before Bitaxe — both check web root but NerdAxe is more specific
@@ -554,24 +574,54 @@ impl MinerFactory {
         };
 
         match found {
-            Some(fw) => {
-                let auth = self.discovery_auth_by_firmware.get(&fw.to_string());
-                match fw.build_miner(ip, auth).await {
-                    Ok(miner) => {
-                        tracing::debug!(%ip, "miner identified");
-                        Ok(Some(miner))
-                    }
-                    Err(e) => {
-                        tracing::debug!("failed to build miner for {ip}: {e}");
-                        Ok(None)
-                    }
+            Some(fw) => match self.build_discovered_miner(ip, fw, &registry).await {
+                Ok(miner) => {
+                    tracing::debug!(%ip, "miner identified");
+                    Ok(Some(miner))
                 }
-            }
+                Err(e) => {
+                    tracing::debug!("failed to build miner for {ip}: {e}");
+                    Ok(None)
+                }
+            },
             None => {
                 tracing::debug!("failed to identify {ip}");
                 Ok(None)
             }
         }
+    }
+
+    async fn build_discovered_miner(
+        &self,
+        ip: IpAddr,
+        firmware: Arc<dyn FirmwareEntry>,
+        registry: &[Arc<dyn FirmwareEntry>],
+    ) -> Result<Box<dyn Miner>, asic_rs_core::errors::ModelSelectionError> {
+        if let Some(path) = firmware.secondary_web_path() {
+            let (body, headers, status) = send_web_command_on_port(&ip, path, 80)
+                .await
+                .ok_or(asic_rs_core::errors::ModelSelectionError::NoModelResponse)?;
+            let header = |name| {
+                headers
+                    .get(name)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or("")
+            };
+            let response = WebResponse {
+                body: &body,
+                auth_header: header("www-authenticate"),
+                algo_header: header("algorithm"),
+                redirect_header: header("location"),
+                status: status.as_u16(),
+            };
+            let selected = refine_firmware(registry, &firmware, path, &response);
+            let auth = self.discovery_auth_by_firmware.get(&selected.to_string());
+            return selected
+                .build_miner_from_web_response(ip, auth, &response)
+                .await;
+        }
+        let auth = self.discovery_auth_by_firmware.get(&firmware.to_string());
+        firmware.build_miner(ip, auth).await
     }
 
     /// Create an empty factory.
@@ -1474,5 +1524,95 @@ mod tests {
             Some("ForgeOS Stock")
         );
         assert!(firmware.is_some_and(|fw| fw.is_stock()));
+    }
+    #[tokio::test]
+    #[cfg(all(feature = "nmaxe", feature = "bitaxe", feature = "nerdaxe"))]
+    async fn secondary_check_resolves_axe_types_and_builds_from_one_response() {
+        let registry = default_firmware_registry();
+        let bitaxe = registry
+            .iter()
+            .find(|fw| fw.to_string() == "Bitaxe Stock")
+            .unwrap();
+        for (body, expected_firmware, expected_model) in [
+            (
+                r#"{"identity":{"hwModel":"NMQAxe++","displayName":"NMQAxe++Nexus","fwVersion":"v1.0.0"}}"#,
+                "NMAxe Stock",
+                "NMQAxe++Nexus",
+            ),
+            (
+                r#"{"deviceModel":"NerdQAxe++","ASICModel":"BM1370","version":"v1.0.0"}"#,
+                "Nerdaxe Stock",
+                "NerdQAxe",
+            ),
+            (
+                r#"{"deviceModel":"bitaxe","ASICModel":"BM1366","version":"v2.14.0"}"#,
+                "Bitaxe Stock",
+                "Ultra",
+            ),
+        ] {
+            let response = WebResponse {
+                body,
+                auth_header: "",
+                algo_header: "",
+                redirect_header: "",
+                status: 200,
+            };
+            // Simulate a generic AxeOS root response winning initial discovery.
+            let selected = refine_firmware(&registry, bitaxe, "/api/system/info", &response);
+            assert_eq!(selected.to_string(), expected_firmware);
+            // No server is running: construction must use the supplied response.
+            let miner = timeout(
+                Duration::from_millis(100),
+                selected.build_miner_from_web_response(
+                    IpAddr::V4(Ipv4Addr::LOCALHOST),
+                    None,
+                    &response,
+                ),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            assert_eq!(miner.get_device_info().model.to_string(), expected_model);
+        }
+    }
+
+    #[test]
+    #[cfg(all(feature = "nmaxe", feature = "bitaxe"))]
+    fn secondary_check_respects_registry_and_keeps_original_on_unrecognized_response() {
+        let bitaxe: Arc<dyn FirmwareEntry> =
+            Arc::new(asic_rs_firmwares_bitaxe::firmware::BitaxeFirmware::default());
+        let registry = vec![bitaxe.clone()];
+        for (body, status) in [
+            (r#"{"identity":{"hwModel":"NMAxe"}}"#, 200),
+            ("not JSON", 200),
+            (r#"{"ASICModel":"BM1366"}"#, 500),
+        ] {
+            let response = WebResponse {
+                body,
+                status,
+                auth_header: "",
+                algo_header: "",
+                redirect_header: "",
+            };
+            assert!(Arc::ptr_eq(
+                refine_firmware(&registry, &bitaxe, "/api/system/info", &response),
+                &bitaxe
+            ));
+        }
+    }
+
+    #[test]
+    #[cfg(all(feature = "nmaxe", feature = "bitaxe", feature = "nerdaxe"))]
+    fn axe_discovery_uses_only_the_shared_root_command() {
+        let registry = default_firmware_registry();
+        for firmware in registry
+            .iter()
+            .filter(|fw| fw.secondary_web_path().is_some())
+        {
+            assert_eq!(
+                firmware.get_discovery_commands(),
+                vec![asic_rs_core::discovery::HTTP_WEB_ROOT]
+            );
+        }
     }
 }

@@ -27,6 +27,7 @@ Legend:
 | LuxOS | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: |
 | Marathon | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Nerdaxe Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| NMAxe Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Proto Stock | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-check-check: |
 | SealMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | UMC OS | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-list-todo: | :lucide-check-check: |
@@ -226,6 +227,17 @@ Legend:
 		 - [x] `BM1370` (also: `nerdqaxe++`, `NerdQAxe++`)
 	??? note "BM1397 family (1 model)"
 		 - [x] `BM1397`
+??? quote "NMAxe (5 models across 4 families)"
+
+	??? note "NMAXE family (1 model)"
+		 - [x] `NMAxe`
+	??? note "NMAXEGAMMA family (1 model)"
+		 - [x] `NMAxeGamma`
+	??? note "NMQAXE family (2 models)"
+		 - [x] `NMQAxe++` (also: `NMQAxe++Rev6.1`)
+		 - [x] `NMQAxe++Nexus`
+	??? note "REV8 family (1 model)"
+		 - [x] `NMQAxe++Rev8.1`
 ??? quote "Proto (1 model across 1 family)"
 
 	??? note "RIG family (1 model)"

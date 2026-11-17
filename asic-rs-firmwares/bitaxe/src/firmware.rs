@@ -66,6 +66,14 @@ impl MinerFirmware for BitaxeFirmware {
 
 impl FirmwareIdentification for BitaxeFirmware {
     fn identify_web(&self, response: &WebResponse<'_>) -> bool {
+        if let Ok(data) = serde_json::from_str::<serde_json::Value>(response.body) {
+            return response.status == 200
+                && data["ASICModel"].is_string()
+                && !data["deviceModel"]
+                    .as_str()
+                    .is_some_and(|model| model.to_ascii_lowercase().starts_with("nerd"))
+                && !data["identity"].is_object();
+        }
         response.body.contains("AxeOS")
     }
 
@@ -76,6 +84,37 @@ impl FirmwareIdentification for BitaxeFirmware {
 
 #[async_trait]
 impl FirmwareEntry for BitaxeFirmware {
+    fn secondary_web_path(&self) -> Option<&'static str> {
+        Some("/api/system/info")
+    }
+
+    async fn build_miner_from_web_response(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+        response: &WebResponse<'_>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
+        if response.status != 200 {
+            return Err(ModelSelectionError::UnexpectedModelResponse);
+        }
+        let info: serde_json::Value = serde_json::from_str(response.body)
+            .map_err(|_| ModelSelectionError::UnexpectedModelResponse)?;
+        let model = BitaxeMake::parse_model(
+            info["ASICModel"]
+                .as_str()
+                .ok_or(ModelSelectionError::UnexpectedModelResponse)?
+                .to_uppercase(),
+        )?;
+        let version = info["version"]
+            .as_str()
+            .and_then(|version| semver::Version::parse(version.trim_start_matches('v')).ok());
+        let mut miner = crate::backends::Bitaxe::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,

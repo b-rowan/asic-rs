@@ -28,6 +28,7 @@ default = [
     "luxminer",
     "marathon",
     "nerdaxe",
+    "nmaxe",
     "proto",
     "sealminer",
     "vnish",
@@ -50,6 +51,7 @@ epic = ["core", "asic-rs/epic"]
 luxminer = ["core", "asic-rs/luxminer"]
 marathon = ["core", "asic-rs/marathon"]
 nerdaxe = ["core", "asic-rs/nerdaxe"]
+nmaxe = ["core", "asic-rs/nmaxe"]
 proto = ["core", "asic-rs/proto"]
 sealminer = ["core", "asic-rs/sealminer"]
 vnish = ["core", "asic-rs/vnish"]
